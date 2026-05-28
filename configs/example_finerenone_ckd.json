@@ -1,0 +1,36 @@
+{
+  "drug": "Finerenone",
+  "drug_lower": "finerenone",
+  "slug": "finerenone_ckd",
+  "condition": "CKD in type 2 diabetes",
+  "comparator": "Placebo",
+  "title": "Finerenone for cardiorenal outcomes in CKD — Living Meta-Analysis",
+  "hero_h2": "Finerenone for cardiorenal outcomes in type 2 diabetes with CKD",
+  "nyt_headline": "Finerenone cuts cardiorenal events in diabetic kidney disease",
+  "pico": {
+    "pop": "Adults with type 2 diabetes and chronic kidney disease",
+    "int": "Finerenone",
+    "comp": "Placebo",
+    "out": "Composite cardiovascular death or hospitalisation for heart failure",
+    "subgroup": "By baseline eGFR and albuminuria category"
+  },
+  "acronyms": {
+    "NCT02540993": "FIDELIO-DKD",
+    "NCT02545049": "FIGARO-DKD",
+    "NCT04435626": "FINEARTS-HF"
+  },
+  "trials": [
+    { "nct": "NCT02540993", "name": "FIDELIO-DKD", "pmid": "33264825", "phase": "III", "year": 2020,
+      "tE": 367, "tN": 2833, "cE": 420, "cN": 2841, "group": "Finerenone vs placebo",
+      "publishedHR": 0.86, "hrLCI": 0.75, "hrUCI": 0.99,
+      "allOutcomes": [{ "shortLabel": "CV composite", "title": "CV death or HF hospitalisation", "type": "binary" }] },
+    { "nct": "NCT02545049", "name": "FIGARO-DKD", "pmid": "34449181", "phase": "III", "year": 2021,
+      "tE": 458, "tN": 3686, "cE": 519, "cN": 3666, "group": "Finerenone vs placebo",
+      "publishedHR": 0.87, "hrLCI": 0.76, "hrUCI": 0.98,
+      "allOutcomes": [{ "shortLabel": "CV composite", "title": "CV death or HF hospitalisation", "type": "binary" }] },
+    { "nct": "NCT04435626", "name": "FINEARTS-HF", "pmid": "39225278", "phase": "III", "year": 2024,
+      "tE": 624, "tN": 3003, "cE": 719, "cN": 2998, "group": "Finerenone vs placebo",
+      "publishedHR": 0.84, "hrLCI": 0.74, "hrUCI": 0.95,
+      "allOutcomes": [{ "shortLabel": "CV composite", "title": "CV death or HF hospitalisation", "type": "binary" }] }
+  ]
+}

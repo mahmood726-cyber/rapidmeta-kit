@@ -1,0 +1,16 @@
+# Built dashboards are regenerable (and large). Ignore the output folder,
+# but the template/ engine + assets MUST stay in git (they are the kit).
+output/
+
+# Python
+__pycache__/
+*.pyc
+
+# Dev/scratch helpers
+_*.py
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
