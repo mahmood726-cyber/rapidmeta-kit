@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest
+
+  smoke-build:
+    name: smoke build example dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: build the finerenone example (zero deps, deterministic)
+        run: python clone.py configs/example_finerenone_ckd.json --out /tmp/demo/index.html
+      - name: assert output is the full engine + offline assets
+        run: |
+          test -f /tmp/demo/index.html
+          test -f /tmp/demo/assets/plotly.min.js
+          python - <<'PY'
+          import pathlib
+          html = pathlib.Path("/tmp/demo/index.html").read_text(encoding="utf-8")
+          assert len(html) > 500_000, len(html)
+          assert "rapid_meta_finerenone_ckd" in html
+          assert "rapid_meta_dupilumab_copd" not in html
+          print("smoke build OK", len(html), "bytes")
+          PY

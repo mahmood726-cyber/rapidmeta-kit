@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rapidmeta-kit"
+version = "0.1.0"
+description = "Spin up the full interactive RapidMeta meta-analysis dashboard from a small JSON config."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Mahmood Ahmad" }]
+keywords = ["meta-analysis", "systematic-review", "dashboard", "evidence-synthesis"]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "jsonschema>=4"]
+
+[project.urls]
+Homepage = "https://github.com/mahmood726-cyber/rapidmeta-kit"
+Demo = "https://mahmood726-cyber.github.io/rapidmeta-kit/"
+
+# clone.py is a standalone script, not an importable package; nothing to install.
+[tool.setuptools]
+py-modules = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
