@@ -289,6 +289,35 @@ def main():
     for old, new in swaps:
         src = src.replace(old, new)
 
+    # 8) JSON-LD provenance. The base template inherits the previous clone's
+    # canonical URLs (the rapidmeta-finerenone repo) and an empty ORCID
+    # ("identifier":"https://orcid.org/"). Left untouched these mis-attribute
+    # every dashboard's machine-readable provenance to the wrong repo and claim
+    # an author ID that isn't supplied. Rewrite them from config, with safe
+    # defaults, via exact full-field matches + json.dumps so a stray quote /
+    # backslash in a config value can't break the JSON-LD block.
+    STALE_REPO = "https://mahmood726-cyber.github.io/rapidmeta-finerenone/"
+    page_url_stale = f"{STALE_REPO}{slug_upper}_REVIEW.html"
+    canonical_url = cfg.get("canonical_url", f"{slug}.html")
+    publisher_url = cfg.get("publisher_url",
+                            "https://mahmood726-cyber.github.io/rapidmeta-kit/")
+    src = src.replace(f'"url":"{page_url_stale}"',
+                      f'"url":{json.dumps(canonical_url)}')
+    src = src.replace(f'"url":"{STALE_REPO}"',
+                      f'"url":{json.dumps(publisher_url)}')
+    orcid = cfg.get("orcid")
+    if orcid:
+        oid = orcid if str(orcid).startswith("http") else f"https://orcid.org/{orcid}"
+        src = src.replace('"identifier":"https://orcid.org/"',
+                          f'"identifier":{json.dumps(oid)}')
+    else:
+        # No ORCID given: drop the empty, misleading identifier entirely.
+        src = src.replace(',"identifier":"https://orcid.org/"', "")
+    # The help text also cites the source repo as <code>owner/repo</code>
+    # (the slash form, distinct from the github.io URLs handled above).
+    repo = cfg.get("repo", "mahmood726-cyber/rapidmeta-kit")
+    src = src.replace("mahmood726-cyber/rapidmeta-finerenone", repo)
+
     out_path = Path(args.out) if args.out else (HERE / "output" / f"{slug}.html")
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(src, encoding="utf-8")

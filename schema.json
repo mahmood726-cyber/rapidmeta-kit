@@ -12,6 +12,10 @@
     "title": { "type": "string", "minLength": 1 },
     "hero_h2": { "type": "string" },
     "nyt_headline": { "type": "string" },
+    "canonical_url": { "type": "string", "description": "Published URL of this dashboard for JSON-LD provenance. Default: <slug>.html (relative)." },
+    "publisher_url": { "type": "string", "description": "JSON-LD publisher org URL. Default: the rapidmeta-kit Pages site." },
+    "orcid": { "type": "string", "description": "Author ORCID (id or full URL). Omit to drop the empty identifier." },
+    "repo": { "type": "string", "description": "owner/repo cited in the help text. Default: mahmood726-cyber/rapidmeta-kit." },
     "pico": {
       "type": "object",
       "properties": {

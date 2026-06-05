@@ -49,6 +49,53 @@ def test_finerenone_tokens_stamped(tmp_path):
     assert "NCT02540993" in html and "NCT02545049" in html
 
 
+def test_no_stale_provenance_leaks(tmp_path):
+    # Generated dashboards must not inherit the base template's previous-clone
+    # JSON-LD provenance: the rapidmeta-finerenone canonical URL, the leftover
+    # DUPILUMAB_COPD filename stem, or the empty ORCID identifier.
+    out = tmp_path / "fin.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
+                     "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    # The owner-qualified stale-repo refs must be gone. (A bare
+    # "rapidmeta-finerenone" substring can legitimately arise as
+    # "rapidmeta-" + a slug that starts with "finerenone", so we assert the
+    # owner-qualified URL/repo forms, not the bare substring.)
+    assert "github.io/rapidmeta-finerenone" not in html
+    assert "mahmood726-cyber/rapidmeta-finerenone" not in html
+    assert "DUPILUMAB_COPD" not in html
+    assert '"identifier":"https://orcid.org/"' not in html   # empty ORCID dropped
+    # Publisher now points at the kit, not the old topic repo.
+    assert "rapidmeta-kit" in html
+
+
+def test_provenance_overrides_applied(tmp_path):
+    cfg = json.loads((CONFIGS / "example_finerenone_ckd.json").read_text("utf-8"))
+    cfg["canonical_url"] = "https://example.org/reviews/fin.html"
+    cfg["orcid"] = "0000-0002-1825-0097"
+    cfg_path = tmp_path / "fin_meta.json"
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+    out = tmp_path / "fin.html"
+    res = run_clone([str(cfg_path), "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    assert '"url":"https://example.org/reviews/fin.html"' in html
+    assert "https://orcid.org/0000-0002-1825-0097" in html
+
+
+def test_no_unpopulated_placeholders(tmp_path):
+    out = tmp_path / "fin.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
+                     "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    # NB: not {{ / }} — the engine legitimately uses ${{...}[x]} template
+    # literals; only true unpopulated-token markers are checked here.
+    for token in ("REPLACE_ME", "__PLACEHOLDER__", "{{REPLACE", "TODO_FIXME"):
+        assert token not in html, f"unpopulated placeholder {token!r} in output"
+
+
 def test_missing_drug_exits_2(tmp_path):
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps(
