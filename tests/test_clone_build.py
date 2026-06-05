@@ -91,3 +91,32 @@ def test_missing_config_file_exits_2(tmp_path):
     res = run_clone([str(tmp_path / "does_not_exist.json"),
                      "--out", str(tmp_path / "o.html")])
     assert res.returncode == 2
+
+
+def test_apostrophe_condition_rejected(tmp_path):
+    # Regression: a condition with an apostrophe ("Crohn's disease") is stamped
+    # verbatim into single-quoted JS string literals and silently breaks the
+    # dashboard. clone.py must fail closed (exit 2) and write nothing.
+    out = tmp_path / "o.html"
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(
+        {"drug": "Upadacitinib", "slug": "upa_crohn",
+         "condition": "Crohn's disease", "title": "t",
+         "trials": [{"nct": "NCT1", "name": "M"}]}), encoding="utf-8")
+    res = run_clone([str(bad), "--out", str(out)])
+    assert res.returncode == 2
+    assert "condition" in res.stderr.lower()
+    assert "apostrophe" in res.stderr.lower()
+    assert not out.exists()          # nothing written on a rejected config
+
+
+def test_apostrophe_drug_rejected(tmp_path):
+    out = tmp_path / "o.html"
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(
+        {"drug": "Drug's", "slug": "x", "condition": "Y", "title": "t",
+         "trials": [{"nct": "NCT1", "name": "M"}]}), encoding="utf-8")
+    res = run_clone([str(bad), "--out", str(out)])
+    assert res.returncode == 2
+    assert "drug" in res.stderr.lower()
+    assert not out.exists()

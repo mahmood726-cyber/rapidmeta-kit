@@ -45,6 +45,31 @@ def die(msg: str):
     sys.exit(2)
 
 
+# Characters that corrupt the global HTML+JS token swap. drug/condition are
+# stamped VERBATIM (not js-escaped) into both HTML prose and single-quoted JS
+# string literals throughout the engine, so an apostrophe ends a JS string ->
+# SyntaxError -> the whole dashboard silently dies (the build still exits 0).
+# Backslash and angle brackets break the template-literal / regex-replacement
+# contexts the same way. Fail closed: medical names have apostrophe-free
+# canonical forms ("Crohn disease", "Alzheimer disease") that are safe here.
+_SWAP_UNSAFE = {"'": "apostrophe (')", "\\": "backslash (\\)", "<": "<", ">": ">"}
+
+
+def _check_swap_safe(field: str, value: str):
+    bad = sorted(
+        {_SWAP_UNSAFE[c] for c in value if c in _SWAP_UNSAFE}
+        | {f"control U+{ord(c):04X}" for c in value if ord(c) < 0x20}
+    )
+    if bad:
+        die(
+            f"'{field}' contains characters that break the HTML/JS token swap: "
+            f"{', '.join(bad)}. This field is stamped verbatim into JavaScript "
+            f"string literals, so an apostrophe (e.g. \"Crohn's disease\") would "
+            f"silently break the generated dashboard. Use the apostrophe-free "
+            f"canonical form instead (e.g. \"Crohn disease\", \"Alzheimer disease\")."
+        )
+
+
 # ---- JS literal rendering (reused, proven) ---------------------------------
 def js_escape(s):
     return str(s).replace("\\", "\\\\").replace("'", "\\'")
@@ -188,6 +213,14 @@ def main():
     drug_lower = cfg.get("drug_lower", drug.lower())
     comparator = cfg.get("comparator", "Placebo")
     default_group = f"{drug} vs {comparator}"
+
+    # P0: drug / drug_lower / condition are stamped UNESCAPED into JS string
+    # literals by the global token swap below. Reject swap-breaking characters
+    # here, before anything is written, so a bad config fails closed (exit 2)
+    # instead of producing a green build with broken JavaScript.
+    for _field, _val in (("drug", drug), ("drug_lower", drug_lower),
+                         ("condition", condition)):
+        _check_swap_safe(_field, _val)
 
     src = src0 = BASE.read_text(encoding="utf-8")
 
