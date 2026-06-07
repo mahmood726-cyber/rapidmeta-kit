@@ -32,6 +32,7 @@
 
 
     <link rel="stylesheet" href="assets/styles.tailwind.css">
+    <link rel="stylesheet" href="assets/css/paper-studio.css">
 
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
@@ -1118,7 +1119,7 @@
 <script>window.__verdict = {"verdict": "STABLE", "counts": {"P0_internal": 0, "P0_aact_nct_missing": 0, "P0_grim": 0, "P1_aact_concord": 2, "P1_fi_critical": 0, "P1_fi_warn": 0, "P1_pi_gap": 0, "P2_evidence_incomplete": 2, "n_trials_seen": 2, "P2_aact_advisory": 2}, "reasons": ["2 AACT title/registry advisory", "2 AACT outcome-direction divergence(s)", "2 trial(s) missing evidence rows"], "p0_total": 0};</script>
 <meta name="description" content="Finerenone; Adults with CKD in type 2 diabetes and type-2 inflammation; Annual moderate-severe exacerbation rate Pooled mean differences reflect the trial-published primary analyt">
 <!-- jsonld:begin -->
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalScholarlyArticle","headline":"RapidMeta Respiratory | Finerenone for CKD in type 2 diabetes with Type 2 Inflammation v1.1","name":"RapidMeta Respiratory | Finerenone for CKD in type 2 diabetes with Type 2 Inflammation v1.1","url":"https://mahmood726-cyber.github.io/rapidmeta-finerenone/FINERENONE_CKD_REVIEW.html","datePublished":"2026-05-24","dateModified":"2026-05-24","inLanguage":"en","author":{"@type":"Person","name":"Mahmood Ahmad","identifier":"https://orcid.org/"},"publisher":{"@type":"Organization","name":"RapidMeta","url":"https://mahmood726-cyber.github.io/rapidmeta-finerenone/"},"isAccessibleForFree":true,"keywords":"meta-analysis, living review, RapidMeta, Finerenone","description":"Finerenone; Adults with CKD in type 2 diabetes and type-2 inflammation; Annual moderate-severe exacerbation rate Pooled mean differences reflect the trial-published primary analyt","mentions":{"@type":"Drug","name":"Finerenone"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"MedicalScholarlyArticle","headline":"RapidMeta Respiratory | Finerenone for CKD in type 2 diabetes with Type 2 Inflammation v1.1","name":"RapidMeta Respiratory | Finerenone for CKD in type 2 diabetes with Type 2 Inflammation v1.1","url":"finerenone_ckd.html","datePublished":"2026-05-24","dateModified":"2026-05-24","inLanguage":"en","author":{"@type":"Person","name":"Mahmood Ahmad"},"publisher":{"@type":"Organization","name":"RapidMeta","url":"https://mahmood726-cyber.github.io/rapidmeta-kit/"},"isAccessibleForFree":true,"keywords":"meta-analysis, living review, RapidMeta, Finerenone","description":"Finerenone; Adults with CKD in type 2 diabetes and type-2 inflammation; Annual moderate-severe exacerbation rate Pooled mean differences reflect the trial-published primary analyt","mentions":{"@type":"Drug","name":"Finerenone"}}</script>
 <!-- jsonld:end -->
 </head>
 
@@ -1381,6 +1382,8 @@
 
         <button onclick="RapidMeta.switchTab('report')" class="tab-btn h-full text-sm font-medium text-purple-400 hover:text-purple-300 transition-all duration-200 border-b-2 border-transparent" data-tab="report" role="tab" aria-selected="false" aria-controls="tab-report" id="btn-tab-report">6. Scientific Output</button>
 
+        <button onclick="RapidMeta.switchTab('paper')" class="tab-btn h-full text-sm font-medium text-amber-400 hover:text-amber-300 transition-all duration-200 border-b-2 border-transparent" data-tab="paper" role="tab" aria-selected="false" aria-controls="tab-paper" id="btn-tab-paper">7. Paper Studio</button>
+
 
     </nav>
 
@@ -1461,7 +1464,7 @@
                         <tr><td class="p-4 font-bold text-slate-400">Protocol Freeze Date</td><td class="p-4 text-slate-300"><span id="proto-reg-date">2026-03-10</span></td></tr>
 
 
-                        <tr><td class="p-4 font-bold text-slate-400">Protocol Registration</td><td class="p-4 text-slate-300">Immutable timestamp via GitHub commit history at <code style="color:#22d3ee;font-family:ui-monospace,monospace;">github.com/mahmood726-cyber/rapidmeta-finerenone</code>. Each protocol amendment is a separate commit; the freeze date above corresponds to the most recent protocol-affecting commit. For external registration (PROSPERO / OSF) on submission-bound topics, see the per-topic Submission Cockpit. Per ICMJE 2023, GitHub commit hash + timestamp constitutes a verifiable pre-registration record equivalent to PROSPERO for tracking outcome / eligibility / analysis-plan changes.</td></tr>
+                        <tr><td class="p-4 font-bold text-slate-400">Protocol Registration</td><td class="p-4 text-slate-300">Immutable timestamp via GitHub commit history at <code style="color:#22d3ee;font-family:ui-monospace,monospace;">github.com/mahmood726-cyber/rapidmeta-kit</code>. Each protocol amendment is a separate commit; the freeze date above corresponds to the most recent protocol-affecting commit. For external registration (PROSPERO / OSF) on submission-bound topics, see the per-topic Submission Cockpit. Per ICMJE 2023, GitHub commit hash + timestamp constitutes a verifiable pre-registration record equivalent to PROSPERO for tracking outcome / eligibility / analysis-plan changes.</td></tr>
 
 
                         <tr><td class="p-4 font-bold text-slate-400">Last Substantive Amendment</td><td class="p-4 text-slate-300"><span id="proto-amend-date">2026-03-10</span></td></tr>
@@ -4468,6 +4471,74 @@
 
         </section>
 
+
+    
+
+<!-- ============ 7. PAPER STUDIO (pilot) ============ -->
+        <section id="tab-paper" class="tab-content h-full overflow-y-auto hidden paper-studio-page" role="tabpanel" aria-labelledby="btn-tab-paper">
+
+            <div class="paper-toolbar no-print">
+                <span class="ps-title">Evidence Paper Studio</span>
+                <button id="btnWriteMode" title="Editing view: shows prompts, tips and tools.">Write</button>
+                <button id="btnCheckPaper" title="Check what is still missing before you export.">Check paper</button>
+                <button id="btnDownloadCleanPdf" class="primary" title="Your finished paper — THIS is the file you hand in. It opens your device’s “Save as PDF” (a couple of taps/clicks). Unlocks when every section is written.">⬇ Download my paper (PDF)</button>
+                <details class="toolbar-more"><summary title="Other tools and formats">More ▾</summary>
+                  <div class="toolbar-more-body">
+                    <button id="btnPreviewMode" title="See the paper as it will print, with prompts and tips hidden.">Preview finished paper</button>
+                    <button id="btnDownloadWorkingPdf" title="PDF that KEEPS the prompts and tips — good for a tutor to mark.">Version with tips (for my tutor)</button>
+                    <button id="btnRefreshFigures" title="Pull the latest plots and tables from your analysis into the paper.">Refresh figures</button>
+                    <button id="btnToggleTips" title="Show or hide the extra notes and examples. The short how-to under each box always stays.">Hide examples &amp; notes</button>
+                    <button id="btnStartGuide" title="Reopen the “New to writing a paper? Start here” guide.">Start-here guide</button>
+                    <button id="btnDownloadJson" title="Save your paper as a JSON file">Save data</button>
+                    <button id="btnUploadJson" title="Load a previously saved paper">Load data</button>
+                    <button id="btnResetPaper" class="danger" title="Clear your written text (keeps evidence)">Reset text</button>
+                    <button id="btnClearAll" class="danger" title="Remove ALL your writing from this computer — use before leaving a shared/public machine.">Clear all (shared PC)</button>
+                  </div>
+                </details>
+                <details class="download-menu"><summary title="Advanced formats: Word, text, figures, supplementary, transparency">Advanced formats ▾</summary>
+                    <div class="download-menu-body">
+                        <strong>One combined file (PDF is the blue button above)</strong>
+                        <button type="button" data-export="word">Word (.doc)</button>
+                        <button type="button" data-export="html">HTML (.html)</button>
+                        <button type="button" data-export="md">Markdown (.md)</button>
+                        <button type="button" data-export="txt">Plain text (.txt)</button>
+                        <hr>
+                        <strong>Text separate from figures</strong>
+                        <label class="fig-fmt">Figure format
+                            <select id="figFormatSelect"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="svg">SVG</option><option value="tiff">TIFF</option></select>
+                        </label>
+                        <button type="button" data-export="bundle">Manuscript + figures (.zip)</button>
+                        <button type="button" data-export="figures">Figures only (.zip)</button>
+                        <hr>
+                        <strong>Supplementary (submittable)</strong>
+                        <button type="button" data-export="prisma">PRISMA 2020 checklist</button>
+                        <button type="button" data-export="amstar">AMSTAR-2 appraisal</button>
+                        <button type="button" data-export="search">Search strategy</button>
+                        <hr>
+                        <strong>Full transparency</strong>
+                        <button type="button" data-export="transparency" title="Everything RapidMeta produced: all charts, full results, R code, every record with abstract + link.">Transparency appendix (.zip)</button>
+                    </div>
+                </details>
+                <span id="paperSaveStatus" class="ps-save-status">Saved</span>
+                <input id="paperJsonInput" type="file" accept="application/json" hidden>
+            </div>
+
+            <div class="paper-studio-layout">
+                <aside class="paper-sidebar no-print">
+                    <section class="paper-mission-panel">
+                        <h4>Your job</h4>
+                        <p class="paper-mission"><strong>RapidMeta calculates the evidence.</strong> Your job is to explain what it means, what it does not mean, and why it matters. A clean PDF unlocks once the required interpretation fields are complete.</p>
+                    </section>
+                    <section id="evidenceChipsPanel"></section>
+                    <section id="paperChecklistPanel"></section>
+                </aside>
+
+                <article id="paperCanvas" class="paper-canvas paper-mode-write">
+                    <p style="color:#667085">Loading your evidence paper…</p>
+                </article>
+            </div>
+
+        </section>
 
     </main>
 
@@ -8310,7 +8381,7 @@ const ContinuousMDEngine = {
                     tablist.dataset.arrowBound = '1';
 
 
-                    const tabOrder = ['protocol', 'search', 'screen', 'extract', 'analysis', 'report'];
+                    const tabOrder = ['protocol', 'search', 'screen', 'extract', 'analysis', 'report', 'paper'];
 
 
                     tablist.addEventListener('keydown', (e) => {
@@ -44069,6 +44140,82 @@ except ImportError:
   <script src="assets/vendor/meta-regression-permutation.js" defer></script>
   <script src="assets/vendor/grim-benford.js" defer></script>
   <script src="assets/vendor/r-validation-continuous.js" defer></script>
+
+  <script>
+  /* COMPLETE-POOLING-REPAIR (2026-06): ensure every INCLUDED study is actually pooled, using
+     the most robust method the data supports — never inventing data.
+       1) Extraction repair: copy event counts the extraction left at 0 from the review's OWN
+          realData into trial.data.
+       2) If studies are still dropped and every included study reports a published hazard
+          ratio, pool by HR (the correct, most powerful method for time-to-event outcomes) so
+          all such trials are included.
+       3) If any study still cannot be pooled, log a clear warning naming it.
+     Idempotent and self-adapting: a no-op when k already equals the included count. */
+  (function () {
+    var done = false;
+    function inclTrials(R) {
+      return (R.state.trials || []).filter(function (t) {
+        var s = String(t.status || "").toLowerCase(), d = t.data || {};
+        return s === "include" && (Number(d.tN) > 0 || Number(d.cN) > 0 || Number(d.n) > 0);
+      });
+    }
+    function kOf(R) { return R.state.results ? Number(R.state.results.k) : null; }
+    function rerun(R) { try { if (window.AnalysisEngine && AnalysisEngine.run) AnalysisEngine.run(); } catch (e) {} }
+    function repair(tries) {
+      tries = tries || 0;
+      var R = window.RapidMeta;
+      if (!R || !R.state || !R.state.trials) { if (tries < 30) return setTimeout(function () { repair(tries + 1); }, 400); return; }
+      if (done) return;
+      // Wait until the analysis has computed results at least once (k is set); nudge it.
+      if (kOf(R) == null) { rerun(R); if (tries < 30) return setTimeout(function () { repair(tries + 1); }, 400); }
+      var inc = inclTrials(R), fixed = 0;
+      inc.forEach(function (t) {
+        var rd = R.realData && R.realData[t.id];
+        if (rd && (Number(t.data.tE) || 0) === 0 && (Number(t.data.cE) || 0) === 0 && (Number(rd.tE) || 0) > 0) {
+          t.data.tE = rd.tE; t.data.cE = rd.cE;
+          if (!(Number(t.data.tN) > 0) && rd.tN) t.data.tN = rd.tN;
+          if (!(Number(t.data.cN) > 0) && rd.cN) t.data.cN = rd.cN;
+          fixed++;
+        }
+      });
+      if (fixed) { rerun(R); inc = inclTrials(R); }
+      var k = kOf(R);
+      var allHR = inc.length > 0 && inc.every(function (t) { var d = t.data || {}; return Number(d.publishedHR || d.pubHR) > 0; });
+      if (k != null && inc.length > k && allHR && R.setEffectMeasure && R.state.effectMeasure !== "HR") {
+        try { R.setEffectMeasure("HR"); } catch (e) {} rerun(R); k = kOf(R);
+      }
+      done = true;
+      try { if (R.save) R.save(); } catch (e) {}
+      k = kOf(R); inc = inclTrials(R);
+      try {
+        if (k != null && inc.length > k) {
+          var names = inc.filter(function (t) { var d = t.data || {}; return (Number(d.tE) || 0) === 0 && (Number(d.cE) || 0) === 0 && !(Number(d.publishedHR || d.pubHR) > 0); }).map(function (t) { return (t.data && t.data.name) || t.id; });
+          console.warn("[pooling-repair] " + (inc.length - k) + " included study(ies) could not be pooled (no extractable effect): " + names.join(", "));
+        } else { console.log("[pooling-repair] all " + inc.length + " included studies pooled (k=" + k + ")"); }
+      } catch (e) {}
+    }
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { setTimeout(function () { repair(0); }, 1000); });
+    else setTimeout(function () { repair(0); }, 1000);
+  })();
+  </script>
+<!-- ============ Paper Studio: learning drawer + toast ============ -->
+<div id="learningDrawer" class="learning-drawer no-print" hidden role="dialog" aria-modal="true" aria-labelledby="learningTitle">
+  <button id="closeLearningDrawer" aria-label="Close learning panel">Close ✕</button>
+  <h2 id="learningTitle"></h2>
+  <p id="learningShort"></p>
+  <div class="learning-common-mistake"><strong>Common mistake:</strong> <span id="learningMistake"></span></div>
+  <a id="learningCourseLink" target="_blank" rel="noopener">Open full Synthesis lesson</a>
+</div>
+<div id="paperToast" class="paper-toast no-print" role="status" aria-live="polite"></div>
+
+<script src="assets/js/paper-learning-links.js" defer></script>
+<script src="assets/js/paper-readiness-checks.js" defer></script>
+<script src="assets/js/paper-figures.js" defer></script>
+<script src="assets/js/paper-formats.js" defer></script>
+<script src="assets/js/paper-supplementary.js" defer></script>
+<script src="assets/js/paper-export.js" defer></script>
+<script src="assets/js/paper-studio.js" defer></script>
+
 </body>
 
 
