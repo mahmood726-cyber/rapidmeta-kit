@@ -1,0 +1,41 @@
+{
+  "drug": "Early / accelerated renal-replacement therapy",
+  "drug_lower": "early renal-replacement therapy",
+  "slug": "rrt_timing_aki_icu",
+  "condition": "critically ill adults with severe acute kidney injury",
+  "comparator": "delayed / standard RRT initiation",
+  "title": "RapidMeta Critical Care | Timing of renal-replacement therapy in AKI",
+  "hero_h2": "Early vs delayed renal-replacement therapy in critically ill AKI",
+  "nyt_headline": "When to Start Dialysis in Acute Kidney Injury",
+  "pico": {
+    "pop": "Critically ill adults with severe acute kidney injury (KDIGO stage 2-3) in the ICU",
+    "int": "Early / accelerated initiation of renal-replacement therapy",
+    "comp": "Delayed / standard initiation (await conventional indications)",
+    "out": "All-cause mortality (90-day; AKIKI reports 60-day)",
+    "subgroup": "Septic shock (IDEAL-ICU), single-centre surgical (ELAIN) vs multicentre"
+  },
+  "acronyms": {
+    "NCT02568722": "STARRT-AKI",
+    "NCT01932190": "AKIKI",
+    "NCT01730664": "ELAIN",
+    "NCT01682590": "IDEAL-ICU"
+  },
+  "trials": [
+    {"nct": "NCT02568722", "name": "STARRT-AKI", "pmid": "32668114", "phase": "III", "year": 2020,
+     "tE": 643, "tN": 1465, "cE": 639, "cN": 1462,
+     "group": "Accelerated vs standard RRT initiation; multicentre",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (90-day)", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "NCT01932190", "name": "AKIKI", "pmid": "27181456", "phase": "III", "year": 2016,
+     "tE": 150, "tN": 311, "cE": 153, "cN": 308,
+     "group": "Early vs delayed RRT; KDIGO stage 3, mechanical ventilation or vasopressors",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (60-day)", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "NCT01730664", "name": "ELAIN", "pmid": "27209269", "phase": "III", "year": 2016,
+     "tE": 44, "tN": 112, "cE": 65, "cN": 119,
+     "group": "Early vs delayed RRT; single-centre, predominantly post-surgical",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (90-day)", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "NCT01682590", "name": "IDEAL-ICU", "pmid": "30304656", "phase": "III", "year": 2018,
+     "tE": 138, "tN": 239, "cE": 128, "cN": 238,
+     "group": "Early vs delayed RRT in septic shock with severe AKI",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (90-day)", "type": "binary", "estimandType": "OR"}]}
+  ]
+}
