@@ -26,7 +26,11 @@ from __future__ import annotations
 import argparse, html, json, re, sys, io
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+# Guard the UTF-8 stdout shim: under pytest capture (no/odd .buffer) an
+# unconditional reassignment breaks capture and closes the shared buffer.
+if (hasattr(sys.stdout, "buffer")
+        and getattr(sys.stdout, "encoding", "").lower() != "utf-8"
+        and "pytest" not in sys.modules):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 HERE = Path(__file__).resolve().parent
