@@ -32,8 +32,9 @@
         "type": "object",
         "required": ["nct", "name"],
         "properties": {
-          "nct": { "type": "string" },
+          "nct": { "type": "string", "description": "Trial registry ID. Auto-linked ONLY for recognized formats (NCT########, ISRCTN########, ACTRN##############). Any other ID must be paired with an explicit 'sourceUrl' or the build fails closed (clone.py refuses to fabricate a clinicaltrials.gov link from an arbitrary string)." },
           "name": { "type": "string" },
+          "sourceUrl": { "type": "string", "description": "Explicit registry/source URL for the trial. REQUIRED when 'nct' is not a recognized auto-linked registry ID (e.g. EU-CTR, PACTR, ChiCTR, jRCT)." },
           "pmid": { "type": "string" },
           "phase": { "type": "string" },
           "year": { "type": "integer" },

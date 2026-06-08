@@ -133,6 +133,29 @@ def _jsnum(v):
     return str(v)
 
 
+# Trial IDs are typed evidence fields: a registry ID must resolve to its OWN
+# registry, never a fabricated clinicaltrials.gov link. Only these formats are
+# auto-linked; any other ID must carry an explicit `sourceUrl` or the build fails.
+_REGISTRY_PATTERNS = [
+    (re.compile(r"^NCT\d{8}$"),     "https://clinicaltrials.gov/study/{}"),
+    (re.compile(r"^ISRCTN\d{8}$"),  "https://www.isrctn.com/{}"),
+    (re.compile(r"^ACTRN\d{14}$"),  "https://www.anzctr.org.au/TrialSearch.aspx?searchTxt={}&isBasic=True"),
+]
+
+
+def _is_nct(trial_id) -> bool:
+    return bool(re.match(r"^NCT\d{8}$", str(trial_id).strip()))
+
+
+def _registry_url(trial_id):
+    """Canonical registry URL for a recognized trial-ID format, else None."""
+    tid = str(trial_id).strip()
+    for rx, tmpl in _REGISTRY_PATTERNS:
+        if rx.match(tid):
+            return tmpl.format(tid)
+    return None
+
+
 def render_trial_entry(t, default_group):
     head = (
         f"name: '{js_escape(t['name'])}', pmid: '{t.get('pmid','') or ''}', "
@@ -172,10 +195,10 @@ def render_trial_entry(t, default_group):
                     snippet: '{js_escape(t.get('snippet',''))}',
 
 
-                    sourceUrl: '{js_escape(t.get('sourceUrl', f'https://clinicaltrials.gov/study/{nct}'))}',
+                    sourceUrl: '{js_escape(t.get('sourceUrl') or _registry_url(nct) or '')}',
 
 
-                    ctgovUrl: 'https://clinicaltrials.gov/study/{nct}',
+                    ctgovUrl: '{f'https://clinicaltrials.gov/study/{nct}' if _is_nct(nct) else ''}',
 
 
                     evidence: []
@@ -241,10 +264,6 @@ def main():
         die("config needs 'title'.")
     if not isinstance(trials, list) or len(trials) < 1:
         die("config needs a 'trials' array (>=1; >=2 to pool).")
-    for i, t in enumerate(trials):
-        if "nct" not in t or "name" not in t:
-            die(f"trial {i+1} needs at least 'nct' and 'name'.")
-        _validate_trial_values(i, t)
 
     drug_lower = cfg.get("drug_lower", drug.lower())
     comparator = cfg.get("comparator", "Placebo")
@@ -252,11 +271,23 @@ def main():
 
     # P0: drug / drug_lower / condition are stamped UNESCAPED into JS string
     # literals by the global token swap below. Reject swap-breaking characters
-    # here, before anything is written, so a bad config fails closed (exit 2)
-    # instead of producing a green build with broken JavaScript.
+    # FIRST (before per-trial checks) so a bad top-level field fails closed with
+    # the field-specific message, not an incidental trial-ID error.
     for _field, _val in (("drug", drug), ("drug_lower", drug_lower),
                          ("condition", condition)):
         _check_swap_safe(_field, _val)
+
+    for i, t in enumerate(trials):
+        if "nct" not in t or "name" not in t:
+            die(f"trial {i+1} needs at least 'nct' and 'name'.")
+        tid = str(t["nct"]).strip()
+        if _registry_url(tid) is None and not t.get("sourceUrl"):
+            die(f"trial {i+1}: id {tid!r} is not a recognized registry ID "
+                f"(NCT########, ISRCTN########, ACTRN##############). Provide a "
+                f"valid registry ID, or an explicit 'sourceUrl' for other registries "
+                f"(EU-CTR/PACTR/ChiCTR/jRCT...). Refusing to emit a false "
+                f"clinicaltrials.gov link from an arbitrary string.")
+        _validate_trial_values(i, t)
 
     src = src0 = BASE.read_text(encoding="utf-8")
 
