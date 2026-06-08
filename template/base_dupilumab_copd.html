@@ -16,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plot.ly https://webr.r-wasm.org; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://clinicaltrials.gov https://www.ebi.ac.uk https://api.openalex.org https://webr.r-wasm.org https://repo.r-wasm.org http://localhost:* http://127.0.0.1:*; worker-src 'self' blob:; img-src 'self' data: blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plot.ly https://webr.r-wasm.org; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com; connect-src 'self' https://clinicaltrials.gov https://www.ebi.ac.uk https://api.openalex.org https://webr.r-wasm.org https://repo.r-wasm.org http://localhost:* http://127.0.0.1:* https://cdn.plot.ly https://cdnjs.cloudflare.com; worker-src 'self' blob:; img-src 'self' data: blob:;">
 
 
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23020617'/%3E%3Cpath d='M18 18h12c8 0 14 6 14 14s-6 14-14 14H18V18zm10 22c5 0 8-3 8-8s-3-8-8-8h-2v16h2z' fill='%233b82f6'/%3E%3Cpath d='M40 18h6v28h-6z' fill='%23f8fafc'/%3E%3C/svg%3E">
@@ -44237,6 +44237,98 @@ except ImportError:
 <script src="assets/js/paper-export.js" defer></script>
 <script src="assets/js/paper-studio.js" defer></script>
 
+
+<!-- rm-offline-download:begin -->
+<button id="rmOfflineDl" type="button" aria-label="Save a self-contained offline copy of this review"
+  style="position:fixed;bottom:16px;right:16px;z-index:2147483000;padding:10px 14px;border:0;border-radius:8px;background:#1e293b;color:#fff;font:600 13px/1 system-ui,-apple-system,sans-serif;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.35)">&#x2B07; Save offline copy</button>
+<script id="rmOfflineDlScript">
+/* Build a TRUE single-file offline copy: fetch every external <script src> and
+   <link rel=stylesheet> (Plotly, Font Awesome, Tailwind), inline them, and embed
+   referenced fonts as data: URIs, then download. Charts + styling then work with
+   no network. All three CDNs send Access-Control-Allow-Origin:*; connect-src is
+   extended so the fetches are not CSP-blocked. */
+(function () {
+  var btn = document.getElementById('rmOfflineDl');
+  if (!btn) return;
+
+  async function inlineCssUrls(css, baseUrl) {
+    var seen = {}, jobs = [], out = css;
+    var re = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g, m;
+    while ((m = re.exec(css))) {
+      var quote = m[1], u = m[2];
+      if (/^data:/.test(u) || seen[u]) continue;
+      seen[u] = 1;
+      (function (token, url) {
+        jobs.push((async function () {
+          try {
+            var abs = new URL(url, baseUrl).href;
+            var r = await fetch(abs); if (!r.ok) return;
+            var buf = new Uint8Array(await r.arrayBuffer()), bin = '';
+            for (var i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
+            var mime = /\.woff2(\?|#|$)/.test(abs) ? 'font/woff2'
+                     : /\.woff(\?|#|$)/.test(abs) ? 'font/woff'
+                     : /\.ttf(\?|#|$)/.test(abs) ? 'font/ttf'
+                     : /\.eot(\?|#|$)/.test(abs) ? 'application/vnd.ms-fontobject'
+                     : /\.svg(\?|#|$)/.test(abs) ? 'image/svg+xml' : 'application/octet-stream';
+            out = out.split(token).join('url("data:' + mime + ';base64,' + btoa(bin) + '")');
+          } catch (e) {}
+        })());
+      })(m[0], u);
+    }
+    await Promise.all(jobs);
+    return out;
+  }
+
+  btn.addEventListener('click', async function () {
+    var label = btn.textContent; btn.disabled = true; btn.textContent = 'Bundling… (a few MB)';
+    try {
+      var doc = document.documentElement.cloneNode(true);
+      var b = doc.querySelector('#rmOfflineDl'); if (b) b.remove();
+      var s0 = doc.querySelector('#rmOfflineDlScript'); if (s0) s0.remove();
+      // inline external scripts
+      var scripts = [].slice.call(doc.querySelectorAll('script[src]'));
+      for (var i = 0; i < scripts.length; i++) {
+        var sc = scripts[i];
+        try {
+          var rr = await fetch(sc.src); if (!rr.ok) continue;
+          var code = await rr.text(), ns = document.createElement('script');
+          for (var a = 0; a < sc.attributes.length; a++) {
+            var at = sc.attributes[a];
+            if (at.name !== 'src' && at.name !== 'integrity' && at.name !== 'crossorigin')
+              ns.setAttribute(at.name, at.value);
+          }
+          ns.textContent = code; sc.parentNode.replaceChild(ns, sc);
+        } catch (e) {}
+      }
+      // inline external stylesheets (+ their fonts)
+      var links = [].slice.call(doc.querySelectorAll('link[rel="stylesheet"][href]'));
+      for (var j = 0; j < links.length; j++) {
+        var ln = links[j];
+        try {
+          var href = new URL(ln.getAttribute('href'), location.href).href;
+          var r2 = await fetch(href); if (!r2.ok) continue;
+          var cssText = await inlineCssUrls(await r2.text(), href);
+          var st = document.createElement('style'); st.textContent = cssText;
+          ln.parentNode.replaceChild(st, ln);
+        } catch (e) {}
+      }
+      // the bundle is now fully self-contained; drop the CSP meta so it runs from file://
+      var csp = doc.querySelector('meta[http-equiv="Content-Security-Policy"]'); if (csp) csp.remove();
+      var html = '<!DOCTYPE html>\n' + doc.outerHTML;
+      var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      var name = ((location.pathname.split('/').pop() || 'review').replace(/\.html?$/i, '')) + '_offline.html';
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    } catch (e) {
+      alert('Could not build an offline copy: ' + (e && e.message || e));
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  });
+})();
+</script>
+<!-- rm-offline-download:end -->
 </body>
 
 
