@@ -23,7 +23,7 @@ trials.
 Exit codes: 0 = built, 2 = bad config (message says what to fix).
 """
 from __future__ import annotations
-import argparse, json, re, sys, io
+import argparse, html, json, re, sys, io
 from pathlib import Path
 
 if hasattr(sys.stdout, "buffer"):
@@ -55,6 +55,37 @@ def die(msg: str):
 _SWAP_UNSAFE = {"'": "apostrophe (')", "\\": "backslash (\\)", "<": "<", ">": ">"}
 
 
+def _num(v):
+    """A real number (not bool/None/str), else None."""
+    return v if (isinstance(v, (int, float)) and not isinstance(v, bool)) else None
+
+
+def _validate_trial_values(i: int, t: dict):
+    """Fail closed on clinical/statistical impossibilities so a bad config
+    never produces a green build (matches the finerenone repo's
+    test_no_impossible_counts / test_data_integrity regression class)."""
+    nct = t.get("nct", f"#{i+1}")
+    tE, tN, cE, cN = (_num(t.get(k)) for k in ("tE", "tN", "cE", "cN"))
+    for label, n in (("tN", tN), ("cN", cN)):
+        if n is not None and n < 0:
+            die(f"trial {i+1} ({nct}): {label}={n} is negative (impossible arm size).")
+    for ev, n, arm in ((tE, tN, "treatment"), (cE, cN, "comparator")):
+        if ev is not None and ev < 0:
+            die(f"trial {i+1} ({nct}): {arm} event count {ev} is negative.")
+        if ev is not None and n is not None and ev > n:
+            die(f"trial {i+1} ({nct}): {arm} events ({ev}) exceed arm size ({n}) "
+                f"— impossible 2x2 cell.")
+    hrL, hrU, hr = (_num(t.get(k)) for k in ("hrLCI", "hrUCI", "publishedHR"))
+    for label, v in (("publishedHR", hr), ("hrLCI", hrL), ("hrUCI", hrU)):
+        if v is not None and v <= 0:
+            die(f"trial {i+1} ({nct}): {label}={v} must be > 0 (ratio measure).")
+    if hrL is not None and hrU is not None and hrL > hrU:
+        die(f"trial {i+1} ({nct}): inverted CI — hrLCI ({hrL}) > hrUCI ({hrU}).")
+    if hr is not None and hrL is not None and hrU is not None and not (hrL <= hr <= hrU):
+        die(f"trial {i+1} ({nct}): published point estimate {hr} lies outside its "
+            f"CI [{hrL}, {hrU}].")
+
+
 def _check_swap_safe(field: str, value: str):
     bad = sorted(
         {_SWAP_UNSAFE[c] for c in value if c in _SWAP_UNSAFE}
@@ -81,13 +112,13 @@ def render_outcome(o):
         if k in o:
             parts.append(f"{k}: '{js_escape(o[k])}'")
     if "type" in o:
-        parts.append(f"type: '{o['type']}'")
+        parts.append(f"type: '{js_escape(o['type'])}'")
     for k in ("tE", "cE", "matchScore", "effect", "lci", "uci", "md", "se",
               "pubHR", "pubHR_LCI", "pubHR_UCI"):
         if k in o and o[k] is not None:
             parts.append(f"{k}: {o[k]}")
     if "estimandType" in o:
-        parts.append(f"estimandType: '{o['estimandType']}'")
+        parts.append(f"estimandType: '{js_escape(o['estimandType'])}'")
     return "{ " + ", ".join(parts) + " }"
 
 
@@ -118,7 +149,7 @@ def render_trial_entry(t, default_group):
                      "type": "binary"}]
     outcomes_str = ",\n                        ".join(render_outcome(o) for o in outcomes)
     rob = t.get("rob", ["some-concerns"] * 5)
-    rob_str = "[" + ", ".join(f"'{r}'" for r in rob) + "]"
+    rob_str = "[" + ", ".join(f"'{js_escape(r)}'" for r in rob) + "]"
     nct = t["nct"]
     return f"""'{nct}': {{
 
@@ -209,6 +240,7 @@ def main():
     for i, t in enumerate(trials):
         if "nct" not in t or "name" not in t:
             die(f"trial {i+1} needs at least 'nct' and 'name'.")
+        _validate_trial_values(i, t)
 
     drug_lower = cfg.get("drug_lower", drug.lower())
     comparator = cfg.get("comparator", "Placebo")
@@ -224,14 +256,18 @@ def main():
 
     src = src0 = BASE.read_text(encoding="utf-8")
 
-    # 1) Title / hero / NYT headline
-    src = re.sub(r"<title>[^<]*</title>", f"<title>{title}</title>", src, count=1)
+    # 1) Title / hero / NYT headline. HTML-escape so an angle bracket / ampersand
+    #    in a config value can't break the markup or inject an element.
+    src = re.sub(r"<title>[^<]*</title>",
+                 f"<title>{html.escape(title)}</title>", src, count=1)
     if cfg.get("hero_h2"):
+        _hero = html.escape(cfg["hero_h2"])
         src = re.sub(r'(<div class="va-header"><h2[^>]*>)[^<]+(</h2>)',
-                     lambda m: m.group(1) + cfg["hero_h2"] + m.group(2), src, count=1)
+                     lambda m: m.group(1) + _hero + m.group(2), src, count=1)
     if cfg.get("nyt_headline"):
+        _nyt = html.escape(cfg["nyt_headline"])
         src = re.sub(r'(<h3 class="nyt-headline[^>]*>)[^<]+(</h3>)',
-                     lambda m: m.group(1) + cfg["nyt_headline"] + m.group(2), src, count=1)
+                     lambda m: m.group(1) + _nyt + m.group(2), src, count=1)
 
     # 2) AUTO_INCLUDE_TRIAL_IDS
     ncts = [t["nct"] for t in trials]
