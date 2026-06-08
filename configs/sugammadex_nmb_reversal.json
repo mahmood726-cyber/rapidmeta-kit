@@ -1,0 +1,27 @@
+{
+  "drug": "Sugammadex",
+  "drug_lower": "sugammadex",
+  "slug": "sugammadex_nmb_reversal",
+  "condition": "reversal of rocuronium neuromuscular blockade after general anaesthesia",
+  "comparator": "Neostigmine",
+  "title": "RapidMeta Anaesthesia | Sugammadex vs neostigmine for neuromuscular-block reversal",
+  "hero_h2": "Sugammadex vs neostigmine: residual neuromuscular blockade",
+  "nyt_headline": "Reversing the Block",
+  "pico": {
+    "pop": "Adults reversed from rocuronium neuromuscular blockade after general anaesthesia",
+    "int": "Sugammadex",
+    "comp": "Neostigmine (with glycopyrrolate)",
+    "out": "Residual neuromuscular blockade (train-of-four ratio < 0.9 at PACU admission)",
+    "subgroup": "Older adults / prolonged surgery per parent trials"
+  },
+  "acronyms": {"NCT01479764": "Brueckmann 2015", "NCT02861131": "Togioka 2020"},
+  "trials": [
+    {"nct": "NCT01479764", "name": "Brueckmann 2015", "pmid": "25935840", "phase": "IV", "year": 2015,
+     "tE": 0, "tN": 74, "cE": 33, "cN": 76, "group": "Sugammadex vs usual-care neostigmine",
+     "allOutcomes": [{"shortLabel": "ResidualNMB", "title": "Residual NMB (TOF<0.9 at PACU)", "type": "binary"}]},
+    {"nct": "NCT02861131", "name": "Togioka 2020", "pmid": "32139135", "phase": "IV", "year": 2020,
+     "tE": 10, "tN": 98, "cE": 49, "cN": 99, "group": "Sugammadex vs neostigmine (older adults)",
+     "publishedHR": 0.11, "hrLCI": 0.04, "hrUCI": 0.25,
+     "allOutcomes": [{"shortLabel": "ResidualNMB", "title": "Residual NMB (TOF<0.9 at PACU)", "type": "binary"}]}
+  ]
+}

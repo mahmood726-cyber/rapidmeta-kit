@@ -1,0 +1,30 @@
+{
+  "drug": "Balanced crystalloids",
+  "drug_lower": "balanced crystalloids",
+  "slug": "balanced_crystalloids_icu",
+  "condition": "critically ill adults receiving ICU fluid resuscitation",
+  "comparator": "0.9% saline",
+  "title": "RapidMeta Critical Care | Balanced crystalloids vs 0.9% saline in the ICU",
+  "hero_h2": "Balanced crystalloids vs 0.9% saline in critically ill adults",
+  "nyt_headline": "The Fluid Choice in Intensive Care",
+  "pico": {
+    "pop": "Critically ill adults requiring intravenous fluid in the ICU",
+    "int": "Balanced crystalloid (Plasma-Lyte / lactated Ringer)",
+    "comp": "0.9% sodium chloride (saline)",
+    "out": "All-cause mortality (90-day; SMART reports in-hospital 30-day)",
+    "subgroup": "Sepsis, surgical vs medical admission per parent trials"
+  },
+  "acronyms": {"NCT02721654": "PLUS", "NCT02875873": "BaSICS", "NCT02444988": "SMART"},
+  "trials": [
+    {"nct": "NCT02721654", "name": "PLUS", "pmid": "35041780", "phase": "III", "year": 2022,
+     "tE": 530, "tN": 2433, "cE": 530, "cN": 2413, "group": "Balanced (Plasma-Lyte 148) vs saline",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (90-day)", "type": "binary"}]},
+    {"nct": "NCT02875873", "name": "BaSICS", "pmid": "34375394", "phase": "III", "year": 2021,
+     "tE": 1381, "tN": 5230, "cE": 1439, "cN": 5290, "group": "Balanced solution vs saline",
+     "publishedHR": 0.97, "hrLCI": 0.90, "hrUCI": 1.05,
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (90-day)", "type": "binary"}]},
+    {"nct": "NCT02444988", "name": "SMART", "pmid": "29485925", "phase": "III", "year": 2018,
+     "tE": 818, "tN": 7942, "cE": 873, "cN": 7860, "group": "Balanced crystalloids vs saline",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "In-hospital mortality (30-day)", "type": "binary"}]}
+  ]
+}
