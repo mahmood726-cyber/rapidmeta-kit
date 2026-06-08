@@ -57,6 +57,12 @@ def die(msg: str):
 # contexts the same way. Fail closed: medical names have apostrophe-free
 # canonical forms ("Crohn disease", "Alzheimer disease") that are safe here.
 _SWAP_UNSAFE = {"'": "apostrophe (')", "\\": "backslash (\\)", "<": "<", ">": ">"}
+# `condition` (unlike drug/drug_lower) is ALSO stamped into JS regex literals,
+# where a forward slash closes the regex -> SyntaxError (build still exits 0).
+# So slash is unsafe in condition specifically. Use "or"/"and" instead
+# ("general anaesthesia or sedation", "type 1 or 2 diabetes").
+_SWAP_UNSAFE_CONDITION = dict(_SWAP_UNSAFE,
+    **{"/": "forward slash (/) — condition is stamped into a JS regex literal; use 'or'/'and'"})
 
 
 def _num(v):
@@ -90,9 +96,9 @@ def _validate_trial_values(i: int, t: dict):
             f"CI [{hrL}, {hrU}].")
 
 
-def _check_swap_safe(field: str, value: str):
+def _check_swap_safe(field: str, value: str, unsafe: dict = _SWAP_UNSAFE):
     bad = sorted(
-        {_SWAP_UNSAFE[c] for c in value if c in _SWAP_UNSAFE}
+        {unsafe[c] for c in value if c in unsafe}
         | {f"control U+{ord(c):04X}" for c in value if ord(c) < 0x20}
     )
     if bad:
@@ -275,7 +281,8 @@ def main():
     # the field-specific message, not an incidental trial-ID error.
     for _field, _val in (("drug", drug), ("drug_lower", drug_lower),
                          ("condition", condition)):
-        _check_swap_safe(_field, _val)
+        _check_swap_safe(_field, _val,
+                         _SWAP_UNSAFE_CONDITION if _field == "condition" else _SWAP_UNSAFE)
 
     for i, t in enumerate(trials):
         if "nct" not in t or "name" not in t:

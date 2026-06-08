@@ -1,0 +1,39 @@
+{
+  "drug": "Remimazolam",
+  "drug_lower": "remimazolam",
+  "slug": "remimazolam_propofol_hypotension",
+  "condition": "adults under general anaesthesia or deep procedural sedation",
+  "comparator": "propofol",
+  "title": "RapidMeta Anaesthesia | Remimazolam vs propofol — intraoperative hypotension",
+  "hero_h2": "Remimazolam vs propofol: peri-induction and intraoperative hypotension",
+  "nyt_headline": "A Steadier Anaesthetic? Remimazolam and Blood Pressure",
+  "pico": {
+    "pop": "Adults receiving general anaesthesia or deep procedural sedation",
+    "int": "Remimazolam (ultra-short-acting benzodiazepine; approved 2020)",
+    "comp": "Propofol",
+    "out": "Incidence of peri-induction or intraoperative hypotension (per-trial threshold: SBP below 90, or MAP or MBP below 65, or a 30% drop)",
+    "subgroup": "Threshold and timing differ by trial (overall intraop vs post-induction vs ERCP); pooled as the literature does"
+  },
+  "acronyms": {
+    "KCT0006719": "Jeon 2023",
+    "KCT0007488": "Song 2023",
+    "ChiCTR2100049314": "Xiao 2024"
+  },
+  "trials": [
+    {"nct": "KCT0006719", "name": "Jeon 2023 (TIVA, older adults)", "pmid": "38065872", "phase": "IV", "year": 2023,
+     "tE": 20, "tN": 60, "cE": 37, "cN": 62,
+     "sourceUrl": "https://doi.org/10.1097/MD.0000000000036440",
+     "group": "Remimazolam vs propofol TIVA, age 65-80; overall intraoperative hypotension (SBP<90)",
+     "allOutcomes": [{"shortLabel": "Hypotension", "title": "Intraoperative hypotension (SBP<90 mmHg)", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "KCT0007488", "name": "Song 2023 (ACEI/ARB users)", "pmid": "37349690", "phase": "IV", "year": 2023,
+     "tE": 25, "tN": 40, "cE": 34, "cN": 41,
+     "sourceUrl": "https://doi.org/10.1186/s12871-023-02188-9",
+     "group": "Remimazolam vs propofol induction in angiotensin-axis-blockade users; post-induction hypotension (MBP<65 or >=30% drop)",
+     "allOutcomes": [{"shortLabel": "Hypotension", "title": "Post-induction hypotension (MBP<65 / >=30% drop)", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "ChiCTR2100049314", "name": "Xiao 2024 (ERCP)", "pmid": "39453848", "phase": "IV", "year": 2024,
+     "tE": 2, "tN": 40, "cE": 12, "cN": 40,
+     "sourceUrl": "https://doi.org/10.1213/ANE.0000000000007309",
+     "group": "Remimazolam vs propofol GA for therapeutic ERCP; intraoperative hypotension (MAP<65 >=1 min)",
+     "allOutcomes": [{"shortLabel": "Hypotension", "title": "Intraoperative hypotension (MAP<65 mmHg)", "type": "binary", "estimandType": "OR"}]}
+  ]
+}

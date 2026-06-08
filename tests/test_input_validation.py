@@ -96,6 +96,25 @@ def test_invalid_id_with_explicit_source_url_builds(tmp_path):
     assert r.returncode == 0, r.stderr
 
 
+def test_condition_slash_fails_closed(tmp_path):
+    # `condition` is stamped into a JS regex literal; a '/' would close it.
+    r, out = _run_clone(dict(_build_config([{"nct": "NCT01234567", "name": "M",
+                        "tE": 5, "tN": 100, "cE": 10, "cN": 100}]),
+                        condition="general anaesthesia / sedation"), tmp_path)
+    assert r.returncode == 2, r.stderr
+    assert "forward slash" in (r.stderr + r.stdout)
+    assert not out.exists()
+
+
+def test_drug_slash_still_allowed(tmp_path):
+    # '/' is only unsafe in `condition`; drug names like "Early / accelerated RRT"
+    # are stamped into a safe context and must still build.
+    cfg = dict(_build_config([{"nct": "NCT01234567", "name": "M", "tE": 5, "tN": 100,
+                               "cE": 10, "cN": 100}]), drug="Early / accelerated RRT")
+    r, out = _run_clone(cfg, tmp_path)
+    assert r.returncode == 0, r.stderr
+
+
 def test_non_nct_id_emits_no_ctgov_link(tmp_path):
     r, out = _run_clone(_build_config([
         {"nct": "ACTRN12615000957594", "name": "ICU-ROX", "tE": 5, "tN": 100, "cE": 10, "cN": 100}]), tmp_path)
