@@ -96,6 +96,21 @@ def test_invalid_id_with_explicit_source_url_builds(tmp_path):
     assert r.returncode == 0, r.stderr
 
 
+def test_cloned_dashboard_plotly_is_resolvable_cdn(tmp_path):
+    # A clone must reference Plotly from the CDN (where the SRI hash matches),
+    # NOT a bare local `assets/plotly.min.js` — clones ship standalone (single
+    # file, no co-located assets dir), so a local ref 404s and the SRI mismatches
+    # the CDN hash, silently blocking every forest plot.
+    r, out = _run_clone(_build_config([{"nct": "NCT01234567", "name": "M",
+                        "tE": 5, "tN": 100, "cE": 10, "cN": 100}]), tmp_path)
+    assert r.returncode == 0, r.stderr
+    html = out.read_text(encoding="utf-8")
+    assert 'src="https://cdn.plot.ly/plotly-2.27.0.min.js"' in html, "Plotly not loaded from CDN"
+    assert 'src="assets/plotly.min.js"' not in html, "bare local plotly ref would 404 standalone"
+    # the declared SRI must be the CDN file's hash
+    assert "sha384-Hl48Kq2HifOWdXEjMsKo6qxqvRLTYqIGbvlENBmkHAxZKIGCXv43H6W1jA671RzC" in html
+
+
 def test_condition_slash_fails_closed(tmp_path):
     # `condition` is stamped into a JS regex literal; a '/' would close it.
     r, out = _run_clone(dict(_build_config([{"nct": "NCT01234567", "name": "M",
