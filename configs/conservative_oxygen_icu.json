@@ -1,0 +1,41 @@
+{
+  "drug": "Conservative oxygen therapy",
+  "drug_lower": "conservative oxygen therapy",
+  "slug": "conservative_oxygen_icu",
+  "condition": "critically ill adults in the intensive care unit",
+  "comparator": "liberal / conventional oxygen therapy",
+  "title": "RapidMeta Critical Care | Conservative vs liberal oxygen therapy in the ICU",
+  "hero_h2": "Conservative vs liberal oxygen targets in critically ill adults",
+  "nyt_headline": "How Much Oxygen in Intensive Care?",
+  "pico": {
+    "pop": "Critically ill adults in the ICU (mechanically ventilated or with acute hypoxaemic respiratory failure)",
+    "int": "Conservative / lower oxygenation target (PaO2 ~55-90 mmHg or SpO2 ~88-96%)",
+    "comp": "Liberal / conventional / higher oxygenation target",
+    "out": "All-cause mortality at the longest follow-up each trial reports (HOT-ICU 90d, ICU-ROX 180d, LOCO2 28d, Oxygen-ICU ICU-stay)",
+    "subgroup": "ARDS (LOCO2) vs general ICU vs acute hypoxaemic respiratory failure"
+  },
+  "acronyms": {
+    "NCT03174002": "HOT-ICU",
+    "NCT02713451": "LOCO2",
+    "NCT01319643": "Oxygen-ICU",
+    "ACTRN12615000957594": "ICU-ROX"
+  },
+  "trials": [
+    {"nct": "NCT03174002", "name": "HOT-ICU", "pmid": "33471452", "phase": "III", "year": 2021,
+     "tE": 618, "tN": 1441, "cE": 613, "cN": 1447,
+     "group": "Lower (PaO2 60 mmHg) vs higher (90 mmHg) oxygenation; acute hypoxaemic respiratory failure",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (90-day)", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "NCT02713451", "name": "LOCO2", "pmid": "32160661", "phase": "III", "year": 2020,
+     "tE": 34, "tN": 99, "cE": 27, "cN": 102,
+     "group": "Conservative (PaO2 55-70) vs liberal (90-105) oxygen in ARDS; stopped early",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (28-day)", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "NCT01319643", "name": "Oxygen-ICU", "pmid": "27706466", "phase": "III", "year": 2016,
+     "tE": 25, "tN": 216, "cE": 44, "cN": 218,
+     "group": "Conservative (PaO2 70-100) vs conventional oxygen; single-centre, stopped early",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "ICU mortality", "type": "binary", "estimandType": "OR"}]},
+    {"nct": "ACTRN12615000957594", "name": "ICU-ROX", "pmid": "31613432", "phase": "III", "year": 2020,
+     "publishedHR": 1.05, "hrLCI": 0.81, "hrUCI": 1.37,
+     "group": "Conservative vs usual oxygen; mechanically ventilated. ANZCTR-registered (no NCT); 180-day mortality reported as an odds ratio, pooled by generic inverse-variance",
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (180-day; published OR)", "type": "binary", "estimandType": "OR"}]}
+  ]
+}
