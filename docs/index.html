@@ -1482,7 +1482,7 @@
                         <tr><td class="p-4 font-bold text-slate-400">Contributor Roles (CRediT)</td><td class="p-4 text-slate-300">MA &mdash; Conceptualization, Methodology, Data Curation, Writing (Original Draft &amp; Review &amp; Editing), Supervision. Per ICMJE 2023: human author takes full responsibility for accuracy and integrity of the work, including all AI-assisted components.</td></tr>
 
 
-                        <tr><td class="p-4 font-bold text-slate-400">AI Assistance Disclosure</td><td class="p-4 text-slate-300">AI tools (Claude / Anthropic) provided: (a) automated audit tooling implementation (internal-consistency, fragility-index, PI-gap, GRIM/Benford, AACT cross-check, PMID DataBankList verification), (b) statistical module implementation (DerSimonian-Laird+REML+HKSJ pooling, node-splitting, Doi/LFK, comparison-adjusted funnel, CINeMA-lite, POTH, Q-decomposition, contribution matrix), (c) initial drafts of summary text subject to human verification. AI is NOT listed as an author per ICMJE 2023; AI cannot take responsibility for a manuscript. All AI-generated content was reviewed and verified by the human author. The audit/extraction infrastructure is open-source at the GitHub repository for independent verification.</td></tr>
+                        <tr><td class="p-4 font-bold text-slate-400">AI Assistance Disclosure</td><td class="p-4 text-slate-300">AI tools (Claude / Anthropic) provided: (a) automated audit tooling implementation (internal-consistency, fragility-index, PI-gap, GRIM/Benford, AACT cross-check, PMID DataBankList verification), (b) statistical module implementation (REML+HKSJ primary with DerSimonian-Laird sensitivity pooling, node-splitting, Doi/LFK, comparison-adjusted funnel, CINeMA-lite, POTH, Q-decomposition, contribution matrix), (c) initial drafts of summary text subject to human verification. AI is NOT listed as an author per ICMJE 2023; AI cannot take responsibility for a manuscript. All AI-generated content was reviewed and verified by the human author. The audit/extraction infrastructure is open-source at the GitHub repository for independent verification.</td></tr>
 
 
                     </tbody></table>
@@ -14492,7 +14492,7 @@ const ContinuousMDEngine = {
                 // Narrative annotation
 
 
-                'Analysis performed using a REML random-effects model (HKSJ-adjusted) with': 'التحليل أُجري باستخدام نموذج DerSimonian-Laird للتأثيرات العشوائية مع',
+                'Analysis performed using a REML random-effects model (HKSJ-adjusted) with': 'التحليل أُجري باستخدام نموذج REML للتأثيرات العشوائية مع',
 
 
                 'confidence intervals.': 'فترات ثقة.',
@@ -14501,7 +14501,7 @@ const ContinuousMDEngine = {
                 'HKSJ correction applied with max(1, q*) safeguard.': 'تصحيح HKSJ مُطبّق مع حماية max(1, q*).',
 
 
-                'Prediction intervals computed with k\u22122 degrees of freedom per Higgins et al. (2009).': 'فترات التنبؤ محسوبة بـ k−2 درجات حرية وفق Higgins وآخرون (2009).',
+                'Prediction intervals computed with k\u22121 degrees of freedom per Cochrane Handbook v6.5.': 'فترات التنبؤ محسوبة بـ k−2 درجات حرية وفق Higgins وآخرون (2009).',
 
 
 
@@ -39289,7 +39289,7 @@ print(res_sub)`;
                 document.getElementById('nyt-narrative').innerHTML = narrative;
 
 
-                document.getElementById('nyt-annotation').textContent = `Analysis performed using a REML random-effects model (HKSJ-adjusted) with ${ciPct}% confidence intervals. HKSJ correction applied with max(1, q*) safeguard. Prediction intervals computed with k\u22122 degrees of freedom per Higgins et al. (2009).`;
+                document.getElementById('nyt-annotation').textContent = `Analysis performed using a REML random-effects model (HKSJ-adjusted) with ${ciPct}% confidence intervals. HKSJ correction applied with max(1, q*) safeguard. Prediction intervals computed with k\u22121 degrees of freedom per Cochrane Handbook v6.5.`;
 
 
             },
