@@ -1767,13 +1767,13 @@
                         <tr><td class="p-3 font-bold text-slate-400">Effect Measure</td><td id="protocol-em-desc" class="p-3 text-slate-300">Primary analysis uses published hazard ratios when available; otherwise risk ratios from 2x2 counts. Odds ratios are retained for sensitivity analysis.</td><td class="p-3 text-slate-500">Analysis &rarr; Stats</td></tr>
 
 
-                        <tr><td class="p-3 font-bold text-slate-400">Pooling Model</td><td class="p-3 text-slate-300">DerSimonian-Laird random-effects (inverse-variance weighting)</td><td class="p-3 text-slate-500">Analysis &rarr; Forest (#1)</td></tr>
+                        <tr><td class="p-3 font-bold text-slate-400">Pooling Model</td><td class="p-3 text-slate-300">REML random-effects, HKSJ-adjusted (inverse-variance weighting)</td><td class="p-3 text-slate-500">Analysis &rarr; Forest (#1)</td></tr>
 
 
                         <tr><td class="p-3 font-bold text-slate-400">CI Adjustment</td><td class="p-3 text-slate-300">Hartung-Knapp-Sidik-Jonkman (HKSJ); t-distribution with df = k&minus;1</td><td class="p-3 text-slate-500">Analysis &rarr; Stats</td></tr>
 
 
-                        <tr><td class="p-3 font-bold text-slate-400">Prediction Interval</td><td class="p-3 text-slate-300">t-distribution, df = k&minus;2 (Higgins 2009)</td><td class="p-3 text-slate-500">Analysis &rarr; Stats</td></tr>
+                        <tr><td class="p-3 font-bold text-slate-400">Prediction Interval</td><td class="p-3 text-slate-300">t-distribution, df = k&minus;1 (Cochrane Handbook v6.5)</td><td class="p-3 text-slate-500">Analysis &rarr; Stats</td></tr>
 
 
                         <tr><td class="p-3 font-bold text-slate-400">Heterogeneity</td><td class="p-3 text-slate-300">Cochran Q (p-value), I&sup2; (%), &tau;&sup2; (DL estimator)</td><td class="p-3 text-slate-500">Analysis &rarr; Stats</td></tr>
@@ -13235,7 +13235,7 @@ const ContinuousMDEngine = {
                 'Odds Ratio (OR) computed on log scale; 0.5 continuity correction for zero cells': 'نسبة الأرجحية (OR) محسوبة على مقياس لوغاريتمي؛ تصحيح الاستمرارية 0.5 للخلايا الصفرية',
 
 
-                'DerSimonian-Laird random-effects (inverse-variance weighting)': 'التأثيرات العشوائية DerSimonian-Laird (توزين التباين العكسي)',
+                'REML random-effects, HKSJ-adjusted (inverse-variance weighting)': 'التأثيرات العشوائية DerSimonian-Laird (توزين التباين العكسي)',
 
 
                 'Hartung-Knapp-Sidik-Jonkman (HKSJ); t-distribution with df = k': 'Hartung-Knapp-Sidik-Jonkman (HKSJ)؛ توزيع t مع درجات حرية = k',
@@ -14513,7 +14513,7 @@ const ContinuousMDEngine = {
                 // Narrative annotation
 
 
-                'Analysis performed using DerSimonian-Laird random-effects model with': 'التحليل أُجري باستخدام نموذج DerSimonian-Laird للتأثيرات العشوائية مع',
+                'Analysis performed using a REML random-effects model (HKSJ-adjusted) with': 'التحليل أُجري باستخدام نموذج DerSimonian-Laird للتأثيرات العشوائية مع',
 
 
                 'confidence intervals.': 'فترات ثقة.',
@@ -39310,7 +39310,7 @@ print(res_sub)`;
                 document.getElementById('nyt-narrative').innerHTML = narrative;
 
 
-                document.getElementById('nyt-annotation').textContent = `Analysis performed using DerSimonian-Laird random-effects model with ${ciPct}% confidence intervals. HKSJ correction applied with max(1, q*) safeguard. Prediction intervals computed with k\u22122 degrees of freedom per Higgins et al. (2009).`;
+                document.getElementById('nyt-annotation').textContent = `Analysis performed using a REML random-effects model (HKSJ-adjusted) with ${ciPct}% confidence intervals. HKSJ correction applied with max(1, q*) safeguard. Prediction intervals computed with k\u22122 degrees of freedom per Higgins et al. (2009).`;
 
 
             },
@@ -42339,7 +42339,7 @@ except ImportError:
                 ' (' + trialNames.join(', ') + ') enrolling ' + totalN.toLocaleString() + ' randomized participants in total.');
 
 
-            sentences.push('Under DerSimonian-Laird random-effects pooling, ' + drugName + ' was ' + sigText +
+            sentences.push('Under REML random-effects (HKSJ-adjusted) pooling, ' + drugName + ' was ' + sigText +
 
 
                 ' ' + outcomeLabel + ' (' + emShort + ' ' + or + ', ' + confLevel + '% CI ' + lci + ' to ' + uci + ').');
