@@ -96,19 +96,41 @@ def test_invalid_id_with_explicit_source_url_builds(tmp_path):
     assert r.returncode == 0, r.stderr
 
 
-def test_cloned_dashboard_plotly_is_resolvable_cdn(tmp_path):
-    # A clone must reference Plotly from the CDN (where the SRI hash matches),
-    # NOT a bare local `assets/plotly.min.js` — clones ship standalone (single
-    # file, no co-located assets dir), so a local ref 404s and the SRI mismatches
-    # the CDN hash, silently blocking every forest plot.
+def _live_cdn_sri(url):
+    """sha384-<base64> of the live CDN file (decompressed, as the browser checks
+    SRI), or None if the network is unavailable."""
+    import urllib.request, hashlib, base64
+    try:
+        req = urllib.request.Request(url, headers={"Accept-Encoding": "identity"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = r.read()
+    except Exception:
+        return None
+    return "sha384-" + base64.b64encode(hashlib.sha384(data).digest()).decode()
+
+
+def test_cloned_dashboard_plotly_sri_matches_live_cdn(tmp_path):
+    # A clone must load Plotly from the CDN with an integrity hash and NEVER a bare
+    # local `assets/plotly.min.js` (clones ship standalone -> a local ref 404s).
+    # SELF-VERIFYING: rather than assert a hard-coded hash (which silently rots if
+    # the CDN ever republishes), fetch the live file and assert the dashboard's
+    # declared SRI equals what the CDN actually serves. This catches both a stale
+    # template hash and real CDN drift, in whatever environment runs the test.
+    import re, pytest
     r, out = _run_clone(_build_config([{"nct": "NCT01234567", "name": "M",
                         "tE": 5, "tN": 100, "cE": 10, "cN": 100}]), tmp_path)
     assert r.returncode == 0, r.stderr
     html = out.read_text(encoding="utf-8")
-    assert 'src="https://cdn.plot.ly/plotly-2.27.0.min.js"' in html, "Plotly not loaded from CDN"
     assert 'src="assets/plotly.min.js"' not in html, "bare local plotly ref would 404 standalone"
-    # the declared SRI must be the CDN file's hash
-    assert "sha384-Hl48Kq2HifOWdXEjMsKo6qxqvRLTYqIGbvlENBmkHAxZKIGCXv43H6W1jA671RzC" in html
+    m = re.search(r'src="(https://cdn\.plot\.ly/plotly-[\d.]+\.min\.js)"[^>]*integrity="(sha384-[^"]+)"', html)
+    assert m, "Plotly must load from the CDN with an integrity hash"
+    url, declared = m.group(1), m.group(2)
+    live = _live_cdn_sri(url)
+    if live is None:
+        pytest.skip("CDN unreachable; cannot verify SRI online")
+    assert declared == live, (
+        f"Plotly SRI MISMATCH: clone declares {declared} but {url} now hashes to "
+        f"{live}. Update the template integrity to the live value (or vendor Plotly).")
 
 
 def test_condition_slash_fails_closed(tmp_path):
