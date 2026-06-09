@@ -6577,7 +6577,7 @@ const ContinuousMDEngine = {
                     const status = String(trial?.status ?? '').toLowerCase();
 
 
-                    const tN = parseInt(trial?.data?.tN ?? 0, 10) || 0;
+                    const tN = parseInt(trial?.data?.tN ?? 0, 10);
 
 
                     const cN = parseInt(trial?.data?.cN ?? 0, 10) || 0;
@@ -8237,7 +8237,7 @@ const ContinuousMDEngine = {
                         if (String(t?.status ?? '').toLowerCase() !== 'include') return;
 
 
-                        const tN = parseInt(t?.data?.tN ?? 0, 10) || 0;
+                        const tN = parseInt(t?.data?.tN ?? 0, 10);
 
 
                         const cN = parseInt(t?.data?.cN ?? 0, 10) || 0;
