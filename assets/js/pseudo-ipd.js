@@ -1183,3 +1183,110 @@
     }
   };
 }));
+
+/* ===================================================================
+ * PseudoIPDEngine — OPTIONAL survival / pseudo-IPD panel (self-registering).
+ * Bundled with the vendored registry-ipd engine (window.RIPD, above).
+ * Activates ONLY when included trials carry registry KM anchors
+ * (trial.data.kmAnchors). With no anchors it stays hidden and inert, so
+ * existing dashboards are unaffected. It self-hooks into the analysis cycle
+ * by wrapping TransportabilityEngine.render (which already runs on every
+ * analysis) — no inline dashboard edits needed beyond the panel container.
+ * Fail-closed; pseudo-IPD never true IPD; Tier C refused; HR never inverted.
+ * =================================================================== */
+(function () {
+  'use strict';
+  if (typeof window === 'undefined') return;
+  function esc(s) { return (typeof window.escapeHtml === 'function' ? window.escapeHtml(String(s == null ? '' : s)) : String(s == null ? '' : s)); }
+
+  var PseudoIPDEngine = {
+    _trialsWithAnchors: function () {
+      var out = [];
+      var RM = window.RapidMeta;
+      if (!RM || !RM.state || !RM.state.trials) return out;
+      RM.state.trials.forEach(function (t) {
+        var inc = (typeof window.isIncludeLikeForAnalysis === 'function') ? window.isIncludeLikeForAnalysis(t, RM.realData) : true;
+        if (!inc || !t.data) return;
+        var a = t.data.kmAnchors || t.data.survival || null;
+        if (a && Array.isArray(a.arms) && a.arms.length >= 1 && a.arms.some(function (x) { return Array.isArray(x.km_points) && x.km_points.length >= 3; })) {
+          out.push({ trial: t, anchors: a });
+        }
+      });
+      return out;
+    },
+    hasData: function () { return typeof window.RIPD !== 'undefined' && this._trialsWithAnchors().length > 0; },
+    render: function () {
+      var section = document.getElementById('pseudo-ipd-section');
+      var container = document.getElementById('pseudo-ipd-container');
+      if (!section || !container) return;
+      if (typeof window.RIPD === 'undefined' || !this.hasData()) { section.classList.add('hidden'); return; }
+      section.classList.remove('hidden');
+      var RIPD = window.RIPD, H = RIPD._;
+      var self = this;
+      var rows = this._trialsWithAnchors().map(function (o) {
+        var trial = o.trial, anchors = o.anchors;
+        var tname = esc(trial.name || trial.nct || 'trial');
+        var r;
+        try { r = RIPD.reconstruct(anchors); } catch (e) {
+          return '<tr class="border-b border-slate-800/60"><td class="p-3 font-semibold">' + tname + '</td><td class="p-3 text-rose-300" colspan="5">reconstruction error (fail-closed): ' + esc(e.message) + '</td></tr>';
+        }
+        var badge = (r.audit && r.audit.badge) || 'none';
+        var bc = { gold: 'text-amber-300 border-amber-400/40 bg-amber-400/10', silver: 'text-slate-200 border-slate-400/40 bg-slate-400/10', bronze: 'text-orange-300 border-orange-400/40 bg-orange-400/10', none: 'text-rose-300 border-rose-400/40 bg-rose-400/10' }[badge] || 'text-rose-300';
+        var armCells = (r.arms || []).map(function (a) {
+          var km = H.kmFromIPD(a.ipd);
+          var med = H.medianFromKM(km);
+          var fu = a.ipd && a.ipd.length ? Math.max.apply(null, a.ipd.map(function (x) { return x.time; })) : 0;
+          var rm = a.ipd && a.ipd.length ? H.rmst(km, fu) : null;
+          var lbl = esc((a.label || a.arm_id || '').toString().slice(0, 26));
+          return '<div class="text-[10px] leading-tight mb-1"><span class="opacity-70">' + lbl + ':</span> median ' + (med == null ? 'NR' : med.toFixed(1)) + ', RMST@' + fu.toFixed(0) + ' ' + (rm == null ? '--' : rm.toFixed(1)) + ' (n=' + (a.ipd ? a.ipd.length : 0) + ')</div>';
+        }).join('');
+        return '<tr class="border-b border-slate-800/60 align-top">' +
+          '<td class="p-3 font-semibold">' + tname + '</td>' +
+          '<td class="p-3 font-mono text-center">' + esc(r.tier) + '</td>' +
+          '<td class="p-3 font-mono text-[10px]">' + esc(r.method || '--') + '</td>' +
+          '<td class="p-3">' + armCells + '</td>' +
+          '<td class="p-3 text-center"><span class="text-[9px] uppercase tracking-widest px-2 py-1 rounded-full border ' + bc + '">' + esc(badge) + '</span></td>' +
+          '<td class="p-3 text-center font-mono text-[10px] ' + (r.exportable ? 'text-emerald-300' : 'text-rose-300') + '">' + (r.exportable ? 'exportable' : 'blocked') + '</td></tr>';
+      }).join('');
+      container.innerHTML =
+        '<span class="text-[9px] uppercase tracking-widest px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Pseudo-IPD &middot; reconstructed from registry KM anchors &middot; never true IPD</span>' +
+        '<div class="overflow-x-auto mt-3"><table class="w-full text-left text-[11px]">' +
+        '<thead class="bg-slate-950/60 text-[9px] uppercase font-bold tracking-widest opacity-60"><tr>' +
+        '<th class="p-3">Trial</th><th class="p-3 text-center">Tier</th><th class="p-3">Method</th>' +
+        '<th class="p-3">Reconstructed arms (median / RMST)</th><th class="p-3 text-center">Self-audit</th><th class="p-3 text-center">Export</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>' +
+        '<div class="text-[9px] opacity-55 leading-relaxed border-t border-slate-800 mt-4 pt-3">' +
+        '<b>Method &amp; honest scope.</b> Pseudo-IPD reconstructed from ClinicalTrials.gov/AACT structured KM anchors ' +
+        '(Titman-2026 QP / Guyot / anchor-exact, tier-selected) using the vendored offline registry-ipd engine. Output is ' +
+        '<b>pseudo-IPD, never true IPD</b>; Tier C (HR-only) is refused; the HR is never inverted (only arm labels resolved); ' +
+        'any hard-check failure blocks export (badge &ldquo;none&rdquo;). RMST/median are curve-derived (better-behaved under ' +
+        'non-proportional hazards) but their external accuracy is not independently validated &mdash; use as a triangulation ' +
+        'input. References: Guyot 2012; Titman 2026; RESOLVE-IPD 2025.</div>';
+    }
+  };
+  window.PseudoIPDEngine = PseudoIPDEngine;
+
+  // Self-hook: render after each analysis without editing the dashboard's inline
+  // JS. TransportabilityEngine.render already runs every analysis; wrap it once.
+  function installHook() {
+    if (window.__pseudoIpdHooked) return true;
+    var TE = window.TransportabilityEngine;
+    if (TE && typeof TE.render === 'function') {
+      var orig = TE.render.bind(TE);
+      TE.render = function () {
+        var r = orig.apply(this, arguments);
+        try { PseudoIPDEngine.render(); } catch (e) {}
+        return r;
+      };
+      window.__pseudoIpdHooked = true;
+      try { PseudoIPDEngine.render(); } catch (e) {}
+      return true;
+    }
+    return false;
+  }
+  if (!installHook()) {
+    // TransportabilityEngine may not be defined yet (script order); retry briefly.
+    var tries = 0;
+    var iv = setInterval(function () { if (installHook() || ++tries > 50) clearInterval(iv); }, 100);
+  }
+})();

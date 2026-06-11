@@ -31413,7 +31413,6 @@ const AnalysisEngine = {
 
 
                 if (typeof TransportabilityEngine !== 'undefined') TransportabilityEngine.render(trials);
-                if (typeof PseudoIPDEngine !== 'undefined') try { PseudoIPDEngine.render(); } catch (e) {}
 
 
                 if (typeof HTAEngine !== 'undefined') HTAEngine.render(c);
@@ -43058,88 +43057,7 @@ except ImportError:
 
 
 
-        // ===================================================================
-        // PseudoIPDEngine — OPTIONAL survival / pseudo-IPD panel. Activates ONLY
-        // when included trials carry registry KM anchors (trial.data.kmPoints or
-        // .survival). With no anchors it stays hidden and inert — existing
-        // dashboards are byte-identically unaffected. Wraps the vendored offline
-        // registry-ipd engine (window.RIPD); fail-closed, pseudo-IPD never true
-        // IPD, Tier C refused. Mirrors registry-ipd's Bronze/Silver/Gold self-audit.
-        // ===================================================================
-        const PseudoIPDEngine = {
-            _esc(s) { return (typeof escapeHtml === 'function' ? escapeHtml(String(s ?? '')) : String(s ?? '')); },
-            _num(x) { const v = parseFloat(x); return isFinite(v) ? v : null; },
 
-            // Collect trials that supply KM anchors. Accepts t.data.kmAnchors = {
-            //   time_unit, arms:[{arm_id,label,role,N,total_events,follow_up_max,km_points:[{t,S}],median}], hr }
-            // (the registry-ipd trial.json arm shape) OR a per-outcome .kmPoints.
-            _trialsWithAnchors() {
-                const out = [];
-                (RapidMeta.state.trials || []).forEach(t => {
-                    const inc = (typeof isIncludeLikeForAnalysis === 'function') ? isIncludeLikeForAnalysis(t, RapidMeta.realData) : true;
-                    if (!inc || !t.data) return;
-                    const a = t.data.kmAnchors || t.data.survival || null;
-                    if (a && Array.isArray(a.arms) && a.arms.length >= 1 && a.arms.some(x => Array.isArray(x.km_points) && x.km_points.length >= 3)) {
-                        out.push({ trial: t, anchors: a });
-                    }
-                });
-                return out;
-            },
-
-            // Is there anything to show? (used to keep the section hidden when not.)
-            hasData() { return typeof window.RIPD !== 'undefined' && this._trialsWithAnchors().length > 0; },
-
-            render() {
-                const section = document.getElementById('pseudo-ipd-section');
-                const container = document.getElementById('pseudo-ipd-container');
-                if (!section || !container) return;
-                if (typeof window.RIPD === 'undefined' || !this.hasData()) {
-                    section.classList.add('hidden');   // inert: nothing to reconstruct
-                    return;
-                }
-                section.classList.remove('hidden');
-                const RIPD = window.RIPD, H = RIPD._;
-                const rows = this._trialsWithAnchors().map(({ trial, anchors }) => {
-                    const tname = this._esc(trial.name || trial.nct || 'trial');
-                    let r;
-                    try { r = RIPD.reconstruct(anchors); } catch (e) { return `<tr class="border-b border-slate-800/60"><td class="p-3 font-semibold">${tname}</td><td class="p-3 text-rose-300" colspan="5">reconstruction error (fail-closed): ${this._esc(e.message)}</td></tr>`; }
-                    const badge = (r.audit && r.audit.badge) || 'none';
-                    const badgeColor = { gold: 'text-amber-300 border-amber-400/40 bg-amber-400/10', silver: 'text-slate-200 border-slate-400/40 bg-slate-400/10', bronze: 'text-orange-300 border-orange-400/40 bg-orange-400/10', none: 'text-rose-300 border-rose-400/40 bg-rose-400/10' }[badge] || 'text-rose-300';
-                    const armCells = (r.arms || []).map(a => {
-                        const km = H.kmFromIPD(a.ipd);
-                        const med = H.medianFromKM(km);
-                        const fu = a.ipd && a.ipd.length ? Math.max.apply(null, a.ipd.map(x => x.time)) : 0;
-                        const rm = a.ipd && a.ipd.length ? H.rmst(km, fu) : null;
-                        const lbl = this._esc((a.label || a.arm_id || '').toString().slice(0, 26));
-                        return `<div class="text-[10px] leading-tight mb-1"><span class="opacity-70">${lbl}:</span> median ${med == null ? 'NR' : med.toFixed(1)}, RMST@${fu.toFixed(0)} ${rm == null ? '--' : rm.toFixed(1)} (n=${a.ipd ? a.ipd.length : 0})</div>`;
-                    }).join('');
-                    return `<tr class="border-b border-slate-800/60 align-top">
-                        <td class="p-3 font-semibold">${tname}</td>
-                        <td class="p-3 font-mono text-center">${this._esc(r.tier)}</td>
-                        <td class="p-3 font-mono text-[10px]">${this._esc(r.method || '--')}</td>
-                        <td class="p-3">${armCells}</td>
-                        <td class="p-3 text-center"><span class="text-[9px] uppercase tracking-widest px-2 py-1 rounded-full border ${badgeColor}">${this._esc(badge)}</span></td>
-                        <td class="p-3 text-center font-mono text-[10px] ${r.exportable ? 'text-emerald-300' : 'text-rose-300'}">${r.exportable ? 'exportable' : 'blocked'}</td></tr>`;
-                }).join('');
-
-                container.innerHTML = `
-                    <span class="text-[9px] uppercase tracking-widest px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">Pseudo-IPD &middot; reconstructed from registry KM anchors &middot; never true IPD</span>
-                    <div class="overflow-x-auto mt-3"><table class="w-full text-left text-[11px]">
-                        <thead class="bg-slate-950/60 text-[9px] uppercase font-bold tracking-widest opacity-60"><tr>
-                            <th class="p-3">Trial</th><th class="p-3 text-center">Tier</th><th class="p-3">Method</th>
-                            <th class="p-3">Reconstructed arms (median / RMST)</th><th class="p-3 text-center">Self-audit</th><th class="p-3 text-center">Export</th></tr></thead>
-                        <tbody>${rows}</tbody></table></div>
-                    <div class="text-[9px] opacity-55 leading-relaxed border-t border-slate-800 mt-4 pt-3">
-                        <b>Method &amp; honest scope.</b> Pseudo-IPD reconstructed from ClinicalTrials.gov/AACT structured KM anchors
-                        (Titman-2026 QP / Guyot / anchor-exact, tier-selected) using the vendored offline registry-ipd engine. Output is
-                        <b>pseudo-IPD, never true IPD</b>; Tier C (HR-only) is refused; the HR is never inverted (only arm labels resolved);
-                        any hard-check failure blocks export (badge &ldquo;none&rdquo;). RMST/median are curve-derived (better-behaved under
-                        non-proportional hazards) but their external accuracy is not independently validated &mdash; use as a triangulation
-                        input. References: Guyot 2012; Titman 2026; RESOLVE-IPD 2025.
-                    </div>`;
-            }
-        };
-        window.PseudoIPDEngine = PseudoIPDEngine;
 
         window.onload = () => RapidMeta.init();
 
