@@ -33583,7 +33583,7 @@ const AnalysisEngine = {
                 const logEmLabel = RapidMeta.emLabel('log');
 
 
-                const l1 = layout(logEmLabel, 'Study'); l1.yaxis.autorange = 'reversed';
+                const l1 = layout(logEmLabel, 'Study', { height: Math.max(320, 60 + 22 * (data.length + 1)) }); l1.yaxis.autorange = 'reversed';
 
 
                 Plotly.newPlot('plot-forest', [tr1, sum1], l1, PLOTLY_OPTS);
@@ -33706,7 +33706,7 @@ const AnalysisEngine = {
                 const tr3 = { x: tr3X, y: tr3Y, mode: 'lines+markers', type: 'scatter', error_x: { type: 'data', array: tr3E, visible: true, color: '#8b5cf6' }, marker: { color: '#8b5cf6' } };
 
 
-                Plotly.newPlot('plot-cumulative', [tr3], layout('Cumulative ' + logEmLabel, 'Study Added'), PLOTLY_OPTS);
+                Plotly.newPlot('plot-cumulative', [tr3], layout('Cumulative ' + logEmLabel, 'Study Added', { height: Math.max(320, 60 + 22 * sorted.length) }), PLOTLY_OPTS);
 
 
 
@@ -33925,7 +33925,7 @@ const AnalysisEngine = {
                 const tr5 = { x: tr5X, y: tr5Y, mode: 'markers', type: 'scatter', error_x: { type: 'data', array: tr5E, visible: true, color: '#f59e0b' }, marker: { size: 12, color: '#f59e0b' } };
 
 
-                Plotly.newPlot('plot-loo', [tr5, sum1], layout(logEmLabel, 'Omitted Study'), PLOTLY_OPTS);
+                Plotly.newPlot('plot-loo', [tr5, sum1], layout(logEmLabel, 'Omitted Study', { height: Math.max(320, 60 + 22 * tr5Y.length) }), PLOTLY_OPTS);
 
 
 
@@ -39865,6 +39865,8 @@ print(res_sub)`;
                 };
 
 
+                layout.height = Math.max(360, 70 + 26 * ((trace.y ? trace.y.length : 12) + 1));
+                { const _fnE = document.getElementById('plot-forest-nyt'); if (_fnE) _fnE.style.height = layout.height + 'px'; }
                 Plotly.newPlot('plot-forest-nyt', [trace], layout, { displayModeBar: false, responsive: true });
 
 
@@ -39978,6 +39980,8 @@ print(res_sub)`;
                     showlegend: false
                 };
 
+                layout.height = Math.max(360, 70 + 26 * ((trace.y ? trace.y.length : 12) + 1));
+                { const _fnE = document.getElementById('plot-forest-nyt'); if (_fnE) _fnE.style.height = layout.height + 'px'; }
                 Plotly.newPlot('plot-forest-nyt', [trace], layout, { displayModeBar: false, responsive: true });
 
                 const cap = document.querySelector('#plot-forest-nyt')?.closest('section, div')?.querySelector('.nyt-figure-caption');
