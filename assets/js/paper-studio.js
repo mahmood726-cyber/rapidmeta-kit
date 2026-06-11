@@ -543,6 +543,11 @@
       "The certainty of evidence was rated below the highest level, mainly because of limitations such as the small number of studies or imprecision. This means the conclusion should be worded carefully rather than definitively.");
     html += example("Certainty was Moderate, downgraded for imprecision because only three small trials contributed; the conclusion is therefore worded cautiously rather than definitively.",
       "The evidence was good quality.");
+    html += box("studentText.survivalReconstruction", "Survival / time-to-event (reconstructed, optional)", "From the reconstructed survival curves, the restricted mean survival time was... and the median was...", "~2-3 sentences",
+      "Only if your review has time-to-event outcomes with registry KM anchors and the Survival / Pseudo-IPD panel in the Analysis tab is shown. Report the reconstructed RMST and median, note the self-audit badge (Bronze/Silver/Gold), and state plainly that these are PSEUDO-IPD reconstructed from registry summary data — a triangulation input, not true individual-patient data. Leave blank for non-survival reviews.",
+      "From the registry-anchored reconstruction, the restricted mean survival time was modestly longer in the intervention arm and the median was not reached within follow-up. These estimates are pseudo-IPD reconstructed from ClinicalTrials.gov summary data (self-audit badge: Silver), so they support rather than replace the published hazard ratio and should be read as a triangulation check.");
+    html += example("From the reconstructed curves the restricted mean survival time favoured the intervention by a small margin (self-audit: Silver); because these are pseudo-IPD from registry summaries, not true patient data, we report them alongside — not in place of — the published hazard ratio.",
+      "We reconstructed the individual patient data and it proved the drug works.");
     html += story("Two maps lie before you, both pointing the same way. One was drawn by many careful surveyors who walked every mile; the other sketched in haste by a single hand. You might follow either — but you would trust the careful map further, and you would say so out loud. GRADE certainty is how carefully the map was drawn. It is not where the road leads (that is the effect); it is how much to trust the drawing. Match the strength of your words to the strength of your map.");
 
     html += '<h3>Are small studies missing? (publication bias — optional)</h3>';
@@ -1083,7 +1088,8 @@
       { f: "studentText.forestInterpretation", label: "What the forest plot means" },
       { f: "figures.gradeTable.caption", label: "GRADE table caption" },
       { f: "studentText.heterogeneityInterpretation", label: "What the heterogeneity means" },
-      { f: "studentText.certaintyInterpretation", label: "What the certainty means" } ] },
+      { f: "studentText.certaintyInterpretation", label: "What the certainty means" },
+      { f: "studentText.survivalReconstruction", label: "Survival / RMST (optional)" } ] },
     { group: "Discussion", items: [
       { f: "studentText.discussionPrincipalFinding", label: "Discussion: main finding" },
       { f: "studentText.discussionTransportability", label: "Who the result applies to" },

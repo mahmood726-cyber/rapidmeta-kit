@@ -46,7 +46,8 @@
           "publishedHR": { "type": ["number", "null"] },
           "hrLCI": { "type": ["number", "null"] },
           "hrUCI": { "type": ["number", "null"] },
-          "allOutcomes": { "type": "array" }
+          "allOutcomes": { "type": "array" },
+          "kmAnchors": { "type": "object", "description": "OPTIONAL registry KM anchors for survival/pseudo-IPD reconstruction (registry-ipd engine). Shape: { time_unit, arms:[{arm_id,label,role,N,total_events,follow_up_max,km_points:[{t,S}],median}], hr }. Omit entirely for non-survival reviews — the Survival/Pseudo-IPD panel stays hidden and inert when absent." }
         }
       }
     }
