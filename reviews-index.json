@@ -1,6 +1,7 @@
 {
  "generated": "2026-06-11",
  "count": 1088,
+ "related_policy": "same-repo siblings only (relative links resolve)",
  "reviews": [
   {
    "title": "RapidMeta Oncology | 2nd-Gen AR Antagonists Prostate Ultra-Precision v12.0",
@@ -1686,13 +1687,7 @@
    "url": "DAPA_ACUTE_HF_REVIEW.html",
    "file": "Dapa_AcuteHF_LivingMeta/DAPA_ACUTE_HF_REVIEW.html",
    "repo": "Dapa_AcuteHF_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Dapagliflozin in Acute HF v15.0",
-     "drug": "Dapagliflozin",
-     "url": "dapa_acutehf.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Dapagliflozin in Acute HF v15.0",
@@ -1701,13 +1696,7 @@
    "url": "dapa_acutehf.html",
    "file": "livingmeta-upgrade/out/dapa_acutehf.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Dapagliflozin in Acute HF v15.0",
-     "drug": "Dapagliflozin",
-     "url": "DAPA_ACUTE_HF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Neurology | Tenecteplase vs Alteplase in Acute Ischaemic Stroke v1.1",
@@ -1725,13 +1714,7 @@
    "url": "EMPA_MI_REVIEW.html",
    "file": "Empa_MI_LivingMeta/EMPA_MI_REVIEW.html",
    "repo": "Empa_MI_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Empagliflozin in Acute MI v16.0",
-     "drug": "Empagliflozin",
-     "url": "empa_mi.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Empagliflozin in Acute MI v16.0",
@@ -1740,13 +1723,7 @@
    "url": "empa_mi.html",
    "file": "livingmeta-upgrade/out/empa_mi.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Empagliflozin in Acute MI v16.0",
-     "drug": "Empagliflozin",
-     "url": "EMPA_MI_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta | Lasmiditan in acute migraine (audit-first, full-functionality)",
@@ -3048,13 +3025,7 @@
    "url": "INCLISIRAN_REVIEW.html",
    "file": "Inclisiran-LivingMeta/INCLISIRAN_REVIEW.html",
    "repo": "Inclisiran-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Inclisiran (siRNA PCSK9) v16.0",
-     "drug": "Inclisiran (siRNA PCSK9)",
-     "url": "inclisiran.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Inclisiran (siRNA PCSK9) v16.0",
@@ -3063,13 +3034,7 @@
    "url": "inclisiran.html",
    "file": "livingmeta-upgrade/out/inclisiran.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Inclisiran (siRNA PCSK9) v16.0",
-     "drug": "Inclisiran (siRNA PCSK9)",
-     "url": "INCLISIRAN_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | HFrEF Quadruple Therapy NMA v15.0",
@@ -3078,13 +3043,7 @@
    "url": "HFREF_NMA_REVIEW.html",
    "file": "HFrEF_NMA_LivingMeta/HFREF_NMA_REVIEW.html",
    "repo": "HFrEF_NMA_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | HFrEF Quadruple Therapy NMA v15.0",
-     "drug": "HFrEF Quadruple Therapy NMA",
-     "url": "hfref_nma.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | HFrEF Quadruple Therapy NMA v15.0",
@@ -3093,13 +3052,7 @@
    "url": "hfref_nma.html",
    "file": "livingmeta-upgrade/out/hfref_nma.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | HFrEF Quadruple Therapy NMA v15.0",
-     "drug": "HFrEF Quadruple Therapy NMA",
-     "url": "HFREF_NMA_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Conduction System Pacing v16.0",
@@ -3108,13 +3061,7 @@
    "url": "CSP_REVIEW.html",
    "file": "CSP-LivingMeta/CSP_REVIEW.html",
    "repo": "CSP-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Conduction System Pacing v16.0",
-     "drug": "Conduction System Pacing",
-     "url": "csp.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Conduction System Pacing v16.0",
@@ -3123,13 +3070,7 @@
    "url": "csp.html",
    "file": "livingmeta-upgrade/out/csp.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Conduction System Pacing v16.0",
-     "drug": "Conduction System Pacing",
-     "url": "CSP_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Omecamtiv Mecarbil v16.0",
@@ -3138,13 +3079,7 @@
    "url": "omecamtiv.html",
    "file": "livingmeta-upgrade/out/omecamtiv.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Omecamtiv Mecarbil v16.0",
-     "drug": "Omecamtiv Mecarbil",
-     "url": "OMECAMTIV_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Omecamtiv Mecarbil v16.0",
@@ -3153,13 +3088,7 @@
    "url": "OMECAMTIV_REVIEW.html",
    "file": "Omecamtiv-LivingMeta/OMECAMTIV_REVIEW.html",
    "repo": "Omecamtiv-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Omecamtiv Mecarbil v16.0",
-     "drug": "Omecamtiv Mecarbil",
-     "url": "omecamtiv.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | KRAS G12C Inhibitors NSCLC v15.0",
@@ -3168,13 +3097,7 @@
    "url": "KRAS_G12C_NSCLC_REVIEW.html",
    "file": "KRAS_G12C_LivingMeta/KRAS_G12C_NSCLC_REVIEW.html",
    "repo": "KRAS_G12C_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | KRAS G12C Inhibitors NSCLC v15.0",
-     "drug": "KRAS G12C Inhibitors NSCLC",
-     "url": "kras_g12c.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | KRAS G12C Inhibitors NSCLC v15.0",
@@ -3183,13 +3106,7 @@
    "url": "kras_g12c.html",
    "file": "livingmeta-upgrade/out/kras_g12c.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | KRAS G12C Inhibitors NSCLC v15.0",
-     "drug": "KRAS G12C Inhibitors NSCLC",
-     "url": "KRAS_G12C_NSCLC_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Enfortumab Vedotin UC v15.0",
@@ -3198,13 +3115,7 @@
    "url": "ENFORTUMAB_UC_REVIEW.html",
    "file": "Enfortumab_UC_LivingMeta/ENFORTUMAB_UC_REVIEW.html",
    "repo": "Enfortumab_UC_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Enfortumab Vedotin UC v15.0",
-     "drug": "Enfortumab Vedotin UC",
-     "url": "enfortumab_uc.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Enfortumab Vedotin UC v15.0",
@@ -3213,13 +3124,7 @@
    "url": "enfortumab_uc.html",
    "file": "livingmeta-upgrade/out/enfortumab_uc.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Enfortumab Vedotin UC v15.0",
-     "drug": "Enfortumab Vedotin UC",
-     "url": "ENFORTUMAB_UC_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Tirzepatide CV/Obesity v16.0",
@@ -3228,13 +3133,7 @@
    "url": "tirzepatide.html",
    "file": "livingmeta-upgrade/out/tirzepatide.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Tirzepatide CV/Obesity v16.0",
-     "drug": "Tirzepatide CV/Obesity",
-     "url": "TIRZEPATIDE_CV_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Tirzepatide CV/Obesity v16.0",
@@ -3243,13 +3142,7 @@
    "url": "TIRZEPATIDE_CV_REVIEW.html",
    "file": "Tirzepatide-LivingMeta/TIRZEPATIDE_CV_REVIEW.html",
    "repo": "Tirzepatide-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Tirzepatide CV/Obesity v16.0",
-     "drug": "Tirzepatide CV/Obesity",
-     "url": "tirzepatide.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Tricuspid TEER v16.0",
@@ -3258,13 +3151,7 @@
    "url": "tricuspid_teer.html",
    "file": "livingmeta-upgrade/out/tricuspid_teer.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Tricuspid TEER v16.0",
-     "drug": "Tricuspid TEER",
-     "url": "TRICUSPID_TEER_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Tricuspid TEER v16.0",
@@ -3273,13 +3160,7 @@
    "url": "TRICUSPID_TEER_REVIEW.html",
    "file": "Tricuspid-TEER-LivingMeta/TRICUSPID_TEER_REVIEW.html",
    "repo": "Tricuspid-TEER-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Tricuspid TEER v16.0",
-     "drug": "Tricuspid TEER",
-     "url": "tricuspid_teer.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | CT-FFR Guided Strategy v16.0",
@@ -3288,13 +3169,7 @@
    "url": "CTFFR_REVIEW.html",
    "file": "CTFFR-LivingMeta/CTFFR_REVIEW.html",
    "repo": "CTFFR-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | CT-FFR Guided Strategy v16.0",
-     "drug": "CT-FFR Guided Strategy",
-     "url": "ctffr.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | CT-FFR Guided Strategy v16.0",
@@ -3303,13 +3178,7 @@
    "url": "ctffr.html",
    "file": "livingmeta-upgrade/out/ctffr.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | CT-FFR Guided Strategy v16.0",
-     "drug": "CT-FFR Guided Strategy",
-     "url": "CTFFR_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Leadless Pacing v16.0",
@@ -3318,13 +3187,7 @@
    "url": "LEADLESS_PACING_REVIEW.html",
    "file": "Leadless-Pacing-LivingMeta/LEADLESS_PACING_REVIEW.html",
    "repo": "Leadless-Pacing-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Leadless Pacing v16.0",
-     "drug": "Leadless Pacing",
-     "url": "leadless_pacing.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Leadless Pacing v16.0",
@@ -3333,13 +3196,7 @@
    "url": "leadless_pacing.html",
    "file": "livingmeta-upgrade/out/leadless_pacing.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Leadless Pacing v16.0",
-     "drug": "Leadless Pacing",
-     "url": "LEADLESS_PACING_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | PAH Therapies NMA v15.0",
@@ -3348,13 +3205,7 @@
    "url": "pah_nma.html",
    "file": "livingmeta-upgrade/out/pah_nma.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | PAH Therapies NMA v15.0",
-     "drug": "PAH Therapies NMA",
-     "url": "PAH_NMA_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | PAH Therapies NMA v15.0",
@@ -3363,13 +3214,7 @@
    "url": "PAH_NMA_REVIEW.html",
    "file": "PAH_NMA_LivingMeta/PAH_NMA_REVIEW.html",
    "repo": "PAH_NMA_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | PAH Therapies NMA v15.0",
-     "drug": "PAH Therapies NMA",
-     "url": "pah_nma.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Sotagliflozin (Dual SGLT1/2i) v16.0",
@@ -3378,13 +3223,7 @@
    "url": "sotagliflozin.html",
    "file": "livingmeta-upgrade/out/sotagliflozin.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Sotagliflozin (Dual SGLT1/2i) v16.0",
-     "drug": "Sotagliflozin (Dual SGLT1/2i)",
-     "url": "SOTAGLIFLOZIN_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Sotagliflozin (Dual SGLT1/2i) v16.0",
@@ -3393,13 +3232,7 @@
    "url": "SOTAGLIFLOZIN_REVIEW.html",
    "file": "Sotagliflozin-LivingMeta/SOTAGLIFLOZIN_REVIEW.html",
    "repo": "Sotagliflozin-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Sotagliflozin (Dual SGLT1/2i) v16.0",
-     "drug": "Sotagliflozin (Dual SGLT1/2i)",
-     "url": "sotagliflozin.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v15.0",
@@ -3413,16 +3246,6 @@
      "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v16.0",
      "drug": "Orforglipron (Oral GLP-1)",
      "url": "orforglipron_v2.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v16.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "ORFORGLIPRON_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v15.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "ORFORGLIPRON_REVIEW.html"
     }
    ]
   },
@@ -3438,16 +3261,6 @@
      "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v15.0",
      "drug": "Orforglipron (Oral GLP-1)",
      "url": "orforglipron.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v16.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "ORFORGLIPRON_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v15.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "ORFORGLIPRON_REVIEW.html"
     }
    ]
   },
@@ -3458,18 +3271,7 @@
    "url": "ORFORGLIPRON_REVIEW.html",
    "file": "orforglipron-livingmeta/ORFORGLIPRON_REVIEW.html",
    "repo": "orforglipron-livingmeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v15.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "orforglipron.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v16.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "orforglipron_v2.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v15.0",
@@ -3478,18 +3280,7 @@
    "url": "ORFORGLIPRON_REVIEW.html",
    "file": "Orforglipron_LivingMeta/ORFORGLIPRON_REVIEW.html",
    "repo": "Orforglipron_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v15.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "orforglipron.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Orforglipron (Oral GLP-1) v16.0",
-     "drug": "Orforglipron (Oral GLP-1)",
-     "url": "orforglipron_v2.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Oncology | Checkpoint Inhibitors Melanoma 1L Ultra-Precision v12.0",
@@ -3525,38 +3316,7 @@
    "url": "BEMPEDOIC_ACID_REVIEW.html",
    "file": "rapidmeta-finerenone/BEMPEDOIC_ACID_REVIEW.html",
    "repo": "rapidmeta-finerenone",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | DSD for ART Retention RapidMeta v1.0",
-     "drug": "DSD for ART Retention RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "index.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
@@ -3565,38 +3325,7 @@
    "url": "dashboard.html",
    "file": "community-hypertension-africa/paper/dashboard.html",
    "repo": "community-hypertension-africa",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | DSD for ART Retention RapidMeta v1.0",
-     "drug": "DSD for ART Retention RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "index.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
@@ -3605,33 +3334,7 @@
    "url": "index.html",
    "file": "mahmood726-cyber.github.io/community-hypertension-africa/index.html",
    "repo": "mahmood726-cyber.github.io",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "dashboard.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | DSD for ART Retention RapidMeta v1.0",
@@ -3640,33 +3343,7 @@
    "url": "index.html",
    "file": "mahmood726-cyber.github.io/dsd-art-ssa/index.html",
    "repo": "mahmood726-cyber.github.io",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "dashboard.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
@@ -3675,38 +3352,7 @@
    "url": "dashboard.html",
    "file": "hpv-self-sampling-ssa/paper/dashboard.html",
    "repo": "hpv-self-sampling-ssa",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | DSD for ART Retention RapidMeta v1.0",
-     "drug": "DSD for ART Retention RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "index.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
@@ -3715,33 +3361,7 @@
    "url": "index.html",
    "file": "mahmood726-cyber.github.io/hpv-self-sampling-ssa/index.html",
    "repo": "mahmood726-cyber.github.io",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "dashboard.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
@@ -3750,33 +3370,7 @@
    "url": "index.html",
    "file": "mahmood726-cyber.github.io/pph-carbetocin-africa/index.html",
    "repo": "mahmood726-cyber.github.io",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "dashboard.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
@@ -3785,38 +3379,7 @@
    "url": "dashboard.html",
    "file": "pph-carbetocin-africa/paper/dashboard.html",
    "repo": "pph-carbetocin-africa",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | DSD for ART Retention RapidMeta v1.0",
-     "drug": "DSD for ART Retention RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "index.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
@@ -3825,33 +3388,7 @@
    "url": "index.html",
    "file": "mahmood726-cyber.github.io/tb-short-course-ssa/index.html",
    "repo": "mahmood726-cyber.github.io",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "dashboard.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "dashboard.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
@@ -3860,38 +3397,7 @@
    "url": "dashboard.html",
    "file": "tb-short-course-ssa/paper/dashboard.html",
    "repo": "tb-short-course-ssa",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Bempedoic Acid Ultra-Precision v12.5",
-     "drug": "Bempedoic Acid Ultra-Precision",
-     "url": "BEMPEDOIC_ACID_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Community HTN Control RapidMeta v1.0",
-     "drug": "Community HTN Control RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | DSD for ART Retention RapidMeta v1.0",
-     "drug": "DSD for ART Retention RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | HPV Self-Sampling (SSA) RapidMeta v1.0",
-     "drug": "HPV Self-Sampling (SSA) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | PPH Carbetocin (Africa) RapidMeta v1.0",
-     "drug": "PPH Carbetocin (Africa) RapidMeta",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Short-Course TB (SSA) RapidMeta v1.0",
-     "drug": "Short-Course TB (SSA) RapidMeta",
-     "url": "index.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | PCSK9 Inhibitor Precision v12.0",
@@ -3992,11 +3498,6 @@
    "repo": "rapidmeta-finerenone",
    "related": [
     {
-     "title": "RapidMeta Respiratory | Dupilumab for COPD with Type 2 Inflammation v1.1",
-     "drug": "Dupilumab for COPD with Type 2 Inflammation",
-     "url": "base_dupilumab_copd.html"
-    },
-    {
      "title": "RapidMeta Respiratory | Ensifentrine for COPD (PDE3/4 Inhibitor) v1.0",
      "drug": "Ensifentrine for COPD (PDE3/4 Inhibitor)",
      "url": "ENSIFENTRINE_COPD_REVIEW.html"
@@ -4010,18 +3511,7 @@
    "url": "base_dupilumab_copd.html",
    "file": "rapidmeta-kit/template/base_dupilumab_copd.html",
    "repo": "rapidmeta-kit",
-   "related": [
-    {
-     "title": "RapidMeta Respiratory | Dupilumab for COPD with Type 2 Inflammation v1.1",
-     "drug": "Dupilumab for COPD with Type 2 Inflammation",
-     "url": "DUPILUMAB_COPD_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Respiratory | Ensifentrine for COPD (PDE3/4 Inhibitor) v1.0",
-     "drug": "Ensifentrine for COPD (PDE3/4 Inhibitor)",
-     "url": "ENSIFENTRINE_COPD_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Respiratory | Ensifentrine for COPD (PDE3/4 Inhibitor) v1.0",
@@ -4035,11 +3525,6 @@
      "title": "RapidMeta Respiratory | Dupilumab for COPD with Type 2 Inflammation v1.1",
      "drug": "Dupilumab for COPD with Type 2 Inflammation",
      "url": "DUPILUMAB_COPD_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Respiratory | Dupilumab for COPD with Type 2 Inflammation v1.1",
-     "drug": "Dupilumab for COPD with Type 2 Inflammation",
-     "url": "base_dupilumab_copd.html"
     }
    ]
   },
@@ -4920,13 +4405,7 @@
    "url": "ANTI_AMYLOID_AD_REVIEW.html",
    "file": "AntiAmyloid-AD-LivingMeta/ANTI_AMYLOID_AD_REVIEW.html",
    "repo": "AntiAmyloid-AD-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Anti-Amyloid in Alzheimers v16.0",
-     "drug": "Anti-Amyloid",
-     "url": "antiamyloid_ad.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Anti-Amyloid in Alzheimers v16.0",
@@ -4935,13 +4414,7 @@
    "url": "antiamyloid_ad.html",
    "file": "livingmeta-upgrade/out/antiamyloid_ad.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Anti-Amyloid in Alzheimers v16.0",
-     "drug": "Anti-Amyloid",
-     "url": "ANTI_AMYLOID_AD_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Neurology | Anti-Amyloid Antibodies in Alzheimer\u2019s Disease v1.0",
@@ -5370,13 +4843,7 @@
    "url": "pfa_af.html",
    "file": "livingmeta-upgrade/out/pfa_af.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | PFA in Atrial Fibrillation v16.0",
-     "drug": "PFA",
-     "url": "PFA_AF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | PFA in Atrial Fibrillation v16.0",
@@ -5385,13 +4852,7 @@
    "url": "PFA_AF_REVIEW.html",
    "file": "PFA-AF-LivingMeta/PFA_AF_REVIEW.html",
    "repo": "PFA-AF-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | PFA in Atrial Fibrillation v16.0",
-     "drug": "PFA",
-     "url": "pfa_af.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta | Inotersen in ATTR polyneuropathy (audit-first, full-functionality)",
@@ -5757,18 +5218,7 @@
    "url": "tdxd_breast.html",
    "file": "livingmeta-upgrade/out/tdxd_breast.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | T-DXd in Breast Cancer v16.0",
-     "drug": "T-DXd",
-     "url": "TDXd_BREAST_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Oncology | Neoadjuvant IO in Breast Cancer Ultra-Precision v12.0",
-     "drug": "Neoadjuvant IO",
-     "url": "NEOADJUVANT_IO_BREAST_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | T-DXd in Breast Cancer v16.0",
@@ -5777,18 +5227,7 @@
    "url": "TDXd_BREAST_REVIEW.html",
    "file": "TDXd_Breast_LivingMeta/TDXd_BREAST_REVIEW.html",
    "repo": "TDXd_Breast_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | T-DXd in Breast Cancer v16.0",
-     "drug": "T-DXd",
-     "url": "tdxd_breast.html"
-    },
-    {
-     "title": "RapidMeta Oncology | Neoadjuvant IO in Breast Cancer Ultra-Precision v12.0",
-     "drug": "Neoadjuvant IO",
-     "url": "NEOADJUVANT_IO_BREAST_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Oncology | Neoadjuvant IO in Breast Cancer Ultra-Precision v12.0",
@@ -5797,18 +5236,7 @@
    "url": "NEOADJUVANT_IO_BREAST_REVIEW.html",
    "file": "rapidmeta-finerenone/NEOADJUVANT_IO_BREAST_REVIEW.html",
    "repo": "rapidmeta-finerenone",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | T-DXd in Breast Cancer v16.0",
-     "drug": "T-DXd",
-     "url": "tdxd_breast.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | T-DXd in Breast Cancer v16.0",
-     "drug": "T-DXd",
-     "url": "TDXd_BREAST_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta | Fidaxomicin in C. difficile (audit-first, full-functionality)",
@@ -6456,23 +5884,7 @@
    "url": "semaglutide_ckd.html",
    "file": "livingmeta-upgrade/out/semaglutide_ckd.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in CKD v16.0",
-     "drug": "Semaglutide",
-     "url": "SEMAGLUTIDE_CKD_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | SGLT2 Inhibitors in CKD Ultra-Precision v12.5",
-     "drug": "SGLT2 Inhibitors",
-     "url": "SGLT2_CKD_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | SGLT2 Inhibitors in CKD Ultra-Precision v12.5",
-     "drug": "SGLT2 Inhibitors",
-     "url": "SGLT2_CKD_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Semaglutide in CKD v16.0",
@@ -6481,23 +5893,7 @@
    "url": "SEMAGLUTIDE_CKD_REVIEW.html",
    "file": "Semaglutide_CKD_LivingMeta/SEMAGLUTIDE_CKD_REVIEW.html",
    "repo": "Semaglutide_CKD_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in CKD v16.0",
-     "drug": "Semaglutide",
-     "url": "semaglutide_ckd.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | SGLT2 Inhibitors in CKD Ultra-Precision v12.5",
-     "drug": "SGLT2 Inhibitors",
-     "url": "SGLT2_CKD_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | SGLT2 Inhibitors in CKD Ultra-Precision v12.5",
-     "drug": "SGLT2 Inhibitors",
-     "url": "SGLT2_CKD_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Nephrology | Modern Cardiorenal Therapies in CKD (+/- T2D) NMA v1.0",
@@ -6563,18 +5959,7 @@
    "url": "SGLT2_CKD_REVIEW.html",
    "file": "Living-metas/Library/Current/Finrenone Reviews/SGLT2_CKD_REVIEW.html",
    "repo": "Living-metas",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in CKD v16.0",
-     "drug": "Semaglutide",
-     "url": "semaglutide_ckd.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in CKD v16.0",
-     "drug": "Semaglutide",
-     "url": "SEMAGLUTIDE_CKD_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | SGLT2 Inhibitors in CKD Ultra-Precision v12.5",
@@ -6583,18 +5968,7 @@
    "url": "SGLT2_CKD_REVIEW.html",
    "file": "rapidmeta-finerenone/SGLT2_CKD_REVIEW.html",
    "repo": "rapidmeta-finerenone",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in CKD v16.0",
-     "drug": "Semaglutide",
-     "url": "semaglutide_ckd.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in CKD v16.0",
-     "drug": "Semaglutide",
-     "url": "SEMAGLUTIDE_CKD_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "Finerenone for cardiorenal outcomes in CKD \u2014 Living Meta-Analysis",
@@ -6603,13 +5977,7 @@
    "url": "_kit_baseline.html",
    "file": "livingmeta-upgrade/out/_kit_baseline.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "Finerenone for cardiorenal outcomes in CKD \u2014 Living Meta-Analysis",
-     "drug": "Finerenone for cardiorenal outcomes",
-     "url": "index.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "Finerenone for cardiorenal outcomes in CKD \u2014 Living Meta-Analysis",
@@ -6618,13 +5986,7 @@
    "url": "index.html",
    "file": "rapidmeta-kit/docs/index.html",
    "repo": "rapidmeta-kit",
-   "related": [
-    {
-     "title": "Finerenone for cardiorenal outcomes in CKD \u2014 Living Meta-Analysis",
-     "drug": "Finerenone for cardiorenal outcomes",
-     "url": "_kit_baseline.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Oncology | Zolbetuximab in CLDN18.2+ HER2- Gastric/GEJ Adenocarcinoma (1L) v1.0",
@@ -6729,28 +6091,7 @@
    "url": "DUPILUMAB_COPD_REVIEW.html",
    "file": "Dupilumab_COPD_LivingMeta/DUPILUMAB_COPD_REVIEW.html",
    "repo": "Dupilumab_COPD_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta | Aclidinium in COPD (audit-first, full-functionality)",
-     "drug": "Aclidinium",
-     "url": "ACLIDINIUM_COPD_AUTO_FULL_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta | Indacaterol in COPD (audit-first, full-functionality)",
-     "drug": "Indacaterol",
-     "url": "INDACATEROL_COPD_AUTO_FULL_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta | Indacaterol/glycopyrronium in COPD (audit-first, full-functionality)",
-     "drug": "Indacaterol/glycopyrronium",
-     "url": "INDACATEROL_GLYCOPYR_COPD_AUTO_FULL_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta | Roflumilast in COPD (audit-first, full-functionality)",
-     "drug": "Roflumilast",
-     "url": "ROFLUMILAST_COPD_AUTO_FULL_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta | Aclidinium in COPD (audit-first, full-functionality)",
@@ -6760,11 +6101,6 @@
    "file": "rapidmeta-finerenone/ACLIDINIUM_COPD_AUTO_FULL_REVIEW.html",
    "repo": "rapidmeta-finerenone",
    "related": [
-    {
-     "title": "RapidMeta Cardiology | Dupilumab in COPD v15.0",
-     "drug": "Dupilumab",
-     "url": "DUPILUMAB_COPD_REVIEW.html"
-    },
     {
      "title": "RapidMeta | Indacaterol in COPD (audit-first, full-functionality)",
      "drug": "Indacaterol",
@@ -6791,11 +6127,6 @@
    "repo": "rapidmeta-finerenone",
    "related": [
     {
-     "title": "RapidMeta Cardiology | Dupilumab in COPD v15.0",
-     "drug": "Dupilumab",
-     "url": "DUPILUMAB_COPD_REVIEW.html"
-    },
-    {
      "title": "RapidMeta | Aclidinium in COPD (audit-first, full-functionality)",
      "drug": "Aclidinium",
      "url": "ACLIDINIUM_COPD_AUTO_FULL_REVIEW.html"
@@ -6821,11 +6152,6 @@
    "repo": "rapidmeta-finerenone",
    "related": [
     {
-     "title": "RapidMeta Cardiology | Dupilumab in COPD v15.0",
-     "drug": "Dupilumab",
-     "url": "DUPILUMAB_COPD_REVIEW.html"
-    },
-    {
      "title": "RapidMeta | Aclidinium in COPD (audit-first, full-functionality)",
      "drug": "Aclidinium",
      "url": "ACLIDINIUM_COPD_AUTO_FULL_REVIEW.html"
@@ -6850,11 +6176,6 @@
    "file": "rapidmeta-finerenone/ROFLUMILAST_COPD_AUTO_FULL_REVIEW.html",
    "repo": "rapidmeta-finerenone",
    "related": [
-    {
-     "title": "RapidMeta Cardiology | Dupilumab in COPD v15.0",
-     "drug": "Dupilumab",
-     "url": "DUPILUMAB_COPD_REVIEW.html"
-    },
     {
      "title": "RapidMeta | Aclidinium in COPD (audit-first, full-functionality)",
      "drug": "Aclidinium",
@@ -7683,13 +7004,7 @@
    "url": "osimertinib_nsclc.html",
    "file": "livingmeta-upgrade/out/osimertinib_nsclc.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Osimertinib in EGFR+ NSCLC v16.0",
-     "drug": "Osimertinib",
-     "url": "OSIMERTINIB_NSCLC_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Osimertinib in EGFR+ NSCLC v16.0",
@@ -7698,13 +7013,7 @@
    "url": "OSIMERTINIB_NSCLC_REVIEW.html",
    "file": "Osimertinib_NSCLC_LivingMeta/OSIMERTINIB_NSCLC_REVIEW.html",
    "repo": "Osimertinib_NSCLC_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Osimertinib in EGFR+ NSCLC v16.0",
-     "drug": "Osimertinib",
-     "url": "osimertinib_nsclc.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta | Osimertinib in EGFR-mutant NSCLC (audit-first, full-functionality)",
@@ -8670,21 +7979,6 @@
    "repo": "rapidmeta-finerenone",
    "related": [
     {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "vericiguat.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "VERICIGUAT_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
-     "drug": "IV Iron",
-     "url": "IV_IRON_HF_REVIEW.html"
-    },
-    {
      "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
      "drug": "IV Iron",
      "url": "IV_IRON_HF_REVIEW.html"
@@ -8698,28 +7992,7 @@
    "url": "vericiguat.html",
    "file": "livingmeta-upgrade/out/vericiguat.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | SGLT2 Inhibitor Class NMA in Heart Failure v1.0",
-     "drug": "SGLT2 Inhibitor Class NMA",
-     "url": "SGLT2I_HF_NMA_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "VERICIGUAT_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
-     "drug": "IV Iron",
-     "url": "IV_IRON_HF_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
-     "drug": "IV Iron",
-     "url": "IV_IRON_HF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
@@ -8728,28 +8001,7 @@
    "url": "VERICIGUAT_REVIEW.html",
    "file": "Vericiguat-LivingMeta/VERICIGUAT_REVIEW.html",
    "repo": "Vericiguat-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | SGLT2 Inhibitor Class NMA in Heart Failure v1.0",
-     "drug": "SGLT2 Inhibitor Class NMA",
-     "url": "SGLT2I_HF_NMA_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "vericiguat.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
-     "drug": "IV Iron",
-     "url": "IV_IRON_HF_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
-     "drug": "IV Iron",
-     "url": "IV_IRON_HF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
@@ -8758,23 +8010,7 @@
    "url": "IV_IRON_HF_REVIEW.html",
    "file": "Living-metas/Library/Current/Finrenone Reviews/IV_IRON_HF_REVIEW.html",
    "repo": "Living-metas",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | SGLT2 Inhibitor Class NMA in Heart Failure v1.0",
-     "drug": "SGLT2 Inhibitor Class NMA",
-     "url": "SGLT2I_HF_NMA_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "vericiguat.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "VERICIGUAT_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | IV Iron in Heart Failure Ultra-Precision v12.5",
@@ -8788,16 +8024,6 @@
      "title": "RapidMeta Cardiology | SGLT2 Inhibitor Class NMA in Heart Failure v1.0",
      "drug": "SGLT2 Inhibitor Class NMA",
      "url": "SGLT2I_HF_NMA_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "vericiguat.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Vericiguat in Heart Failure v16.0",
-     "drug": "Vericiguat",
-     "url": "VERICIGUAT_REVIEW.html"
     }
    ]
   },
@@ -8980,11 +8206,6 @@
      "title": "RapidMeta Cardiology | Sacubitril/Valsartan (ARNI) in HF Ultra-Precision v12.5",
      "drug": "Sacubitril/Valsartan (ARNI)",
      "url": "ARNI_HF_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sacubitril/Valsartan (ARNI) in HF Ultra-Precision v12.5",
-     "drug": "Sacubitril/Valsartan (ARNI)",
-     "url": "ARNI_HF_REVIEW.html"
     }
    ]
   },
@@ -9000,11 +8221,6 @@
      "title": "RapidMeta | Hydralazine/isosorbide in HF (audit-first, full-functionality)",
      "drug": "Hydralazine/isosorbide",
      "url": "HYDRALAZINE_ISOSORBIDE_AUTO_FULL_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sacubitril/Valsartan (ARNI) in HF Ultra-Precision v12.5",
-     "drug": "Sacubitril/Valsartan (ARNI)",
-     "url": "ARNI_HF_REVIEW.html"
     },
     {
      "title": "RapidMeta Cardiology | Sacubitril/Valsartan (ARNI) in HF Ultra-Precision v12.5",
@@ -9029,18 +8245,7 @@
    "url": "ARNI_HF_REVIEW.html",
    "file": "Living-metas/Library/Current/Finrenone Reviews/ARNI_HF_REVIEW.html",
    "repo": "Living-metas",
-   "related": [
-    {
-     "title": "RapidMeta | Hydralazine/isosorbide in HF (audit-first, full-functionality)",
-     "drug": "Hydralazine/isosorbide",
-     "url": "HYDRALAZINE_ISOSORBIDE_AUTO_FULL_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta | Sacubitril/valsartan in HF (audit-first, full-functionality)",
-     "drug": "Sacubitril/valsartan",
-     "url": "SACUBITRIL_HEARTFAIL_AUTO_FULL_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Sacubitril/Valsartan (ARNI) in HF Ultra-Precision v12.5",
@@ -9078,23 +8283,7 @@
    "url": "semaglutide_hfpef.html",
    "file": "livingmeta-upgrade/out/semaglutide_hfpef.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in HFpEF v16.0",
-     "drug": "Semaglutide",
-     "url": "SEMAGLUTIDE_HFPEF_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Incretin Therapies in HFpEF Ultra-Precision v12.5",
-     "drug": "Incretin Therapies",
-     "url": "INCRETIN_HFpEF_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Incretin Therapies in HFpEF Ultra-Precision v12.5",
-     "drug": "Incretin Therapies",
-     "url": "INCRETIN_HFpEF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Semaglutide in HFpEF v16.0",
@@ -9103,23 +8292,7 @@
    "url": "SEMAGLUTIDE_HFPEF_REVIEW.html",
    "file": "Semaglutide-HFpEF-LivingMeta/SEMAGLUTIDE_HFPEF_REVIEW.html",
    "repo": "Semaglutide-HFpEF-LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in HFpEF v16.0",
-     "drug": "Semaglutide",
-     "url": "semaglutide_hfpef.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Incretin Therapies in HFpEF Ultra-Precision v12.5",
-     "drug": "Incretin Therapies",
-     "url": "INCRETIN_HFpEF_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Incretin Therapies in HFpEF Ultra-Precision v12.5",
-     "drug": "Incretin Therapies",
-     "url": "INCRETIN_HFpEF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Incretin Therapies in HFpEF Ultra-Precision v12.5",
@@ -9128,18 +8301,7 @@
    "url": "INCRETIN_HFpEF_REVIEW.html",
    "file": "Living-metas/Library/Current/Finrenone Reviews/INCRETIN_HFpEF_REVIEW.html",
    "repo": "Living-metas",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in HFpEF v16.0",
-     "drug": "Semaglutide",
-     "url": "semaglutide_hfpef.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in HFpEF v16.0",
-     "drug": "Semaglutide",
-     "url": "SEMAGLUTIDE_HFPEF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Incretin Therapies in HFpEF Ultra-Precision v12.5",
@@ -9148,18 +8310,7 @@
    "url": "INCRETIN_HFpEF_REVIEW.html",
    "file": "rapidmeta-finerenone/INCRETIN_HFpEF_REVIEW.html",
    "repo": "rapidmeta-finerenone",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in HFpEF v16.0",
-     "drug": "Semaglutide",
-     "url": "semaglutide_hfpef.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Semaglutide in HFpEF v16.0",
-     "drug": "Semaglutide",
-     "url": "SEMAGLUTIDE_HFPEF_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta | Omecamtiv mecarbil in HFrEF (audit-first, full-functionality)",
@@ -9732,16 +8883,6 @@
    "repo": "rapidmeta-finerenone",
    "related": [
     {
-     "title": "RapidMeta Cardiology | Sparsentan in IgA Nephropathy v15.0",
-     "drug": "Sparsentan",
-     "url": "sparsentan_igan.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sparsentan in IgA Nephropathy v15.0",
-     "drug": "Sparsentan",
-     "url": "SPARSENTAN_IGAN_REVIEW.html"
-    },
-    {
      "title": "RapidMeta Renal | Sparsentan (Dual ETA/AT1 Antagonist) in IgA Nephropathy v1.0",
      "drug": "Sparsentan (Dual ETA/AT1 Antagonist)",
      "url": "SPARSENTAN_IGAN_REVIEW.html"
@@ -9755,23 +8896,7 @@
    "url": "sparsentan_igan.html",
    "file": "livingmeta-upgrade/out/sparsentan_igan.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Renal | Iptacopan (Factor B Inhibitor) in IgA Nephropathy v1.0",
-     "drug": "Iptacopan (Factor B Inhibitor)",
-     "url": "IPTACOPAN_IGAN_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sparsentan in IgA Nephropathy v15.0",
-     "drug": "Sparsentan",
-     "url": "SPARSENTAN_IGAN_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Renal | Sparsentan (Dual ETA/AT1 Antagonist) in IgA Nephropathy v1.0",
-     "drug": "Sparsentan (Dual ETA/AT1 Antagonist)",
-     "url": "SPARSENTAN_IGAN_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Sparsentan in IgA Nephropathy v15.0",
@@ -9780,18 +8905,7 @@
    "url": "SPARSENTAN_IGAN_REVIEW.html",
    "file": "Sparsentan_IgAN_LivingMeta/SPARSENTAN_IGAN_REVIEW.html",
    "repo": "Sparsentan_IgAN_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Renal | Iptacopan (Factor B Inhibitor) in IgA Nephropathy v1.0",
-     "drug": "Iptacopan (Factor B Inhibitor)",
-     "url": "IPTACOPAN_IGAN_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sparsentan in IgA Nephropathy v15.0",
-     "drug": "Sparsentan",
-     "url": "sparsentan_igan.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Renal | Sparsentan (Dual ETA/AT1 Antagonist) in IgA Nephropathy v1.0",
@@ -9805,11 +8919,6 @@
      "title": "RapidMeta Renal | Iptacopan (Factor B Inhibitor) in IgA Nephropathy v1.0",
      "drug": "Iptacopan (Factor B Inhibitor)",
      "url": "IPTACOPAN_IGAN_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sparsentan in IgA Nephropathy v15.0",
-     "drug": "Sparsentan",
-     "url": "sparsentan_igan.html"
     }
    ]
   },
@@ -11682,18 +10791,7 @@
    "url": "DCB_PAD_REVIEW.html",
    "file": "dcb-pad-livingmeta/DCB_PAD_REVIEW.html",
    "repo": "dcb-pad-livingmeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v15.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "dcb_pad.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v16.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "dcb_pad_v2.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v15.0",
@@ -11702,18 +10800,7 @@
    "url": "DCB_PAD_REVIEW.html",
    "file": "DCB_PAD_LivingMeta/DCB_PAD_REVIEW.html",
    "repo": "DCB_PAD_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v15.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "dcb_pad.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v16.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "dcb_pad_v2.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v15.0",
@@ -11723,16 +10810,6 @@
    "file": "livingmeta-upgrade/out/dcb_pad.html",
    "repo": "livingmeta-upgrade",
    "related": [
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v16.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "DCB_PAD_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v15.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "DCB_PAD_REVIEW.html"
-    },
     {
      "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v16.0",
      "drug": "Drug-Coated Balloons",
@@ -11748,16 +10825,6 @@
    "file": "livingmeta-upgrade/out/dcb_pad_v2.html",
    "repo": "livingmeta-upgrade",
    "related": [
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v16.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "DCB_PAD_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v15.0",
-     "drug": "Drug-Coated Balloons",
-     "url": "DCB_PAD_REVIEW.html"
-    },
     {
      "title": "RapidMeta Cardiology | Drug-Coated Balloons in PAD v15.0",
      "drug": "Drug-Coated Balloons",
@@ -11781,23 +10848,7 @@
    "url": "sotatercept_pah.html",
    "file": "livingmeta-upgrade/out/sotatercept_pah.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Sotatercept in PAH v16.0",
-     "drug": "Sotatercept",
-     "url": "SOTATERCEPT_PAH_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sotatercept (Activin Signaling Inhibitor) in PAH v1.0",
-     "drug": "Sotatercept (Activin Signaling Inhibitor)",
-     "url": "SOTATERCEPT_PAH_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta | Selexipag in PAH (audit-first, full-functionality)",
-     "drug": "Selexipag",
-     "url": "SELEXIPAG_PAH_AUTO_FULL_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Sotatercept in PAH v16.0",
@@ -11806,18 +10857,7 @@
    "url": "SOTATERCEPT_PAH_REVIEW.html",
    "file": "Sotatercept_PAH_LivingMeta/SOTATERCEPT_PAH_REVIEW.html",
    "repo": "Sotatercept_PAH_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Sotatercept in PAH v16.0",
-     "drug": "Sotatercept",
-     "url": "sotatercept_pah.html"
-    },
-    {
-     "title": "RapidMeta | Selexipag in PAH (audit-first, full-functionality)",
-     "drug": "Selexipag",
-     "url": "SELEXIPAG_PAH_AUTO_FULL_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Sotatercept (Activin Signaling Inhibitor) in PAH v1.0",
@@ -11827,11 +10867,6 @@
    "file": "rapidmeta-finerenone/SOTATERCEPT_PAH_REVIEW.html",
    "repo": "rapidmeta-finerenone",
    "related": [
-    {
-     "title": "RapidMeta Cardiology | Sotatercept in PAH v16.0",
-     "drug": "Sotatercept",
-     "url": "sotatercept_pah.html"
-    },
     {
      "title": "RapidMeta | Selexipag in PAH (audit-first, full-functionality)",
      "drug": "Selexipag",
@@ -11847,16 +10882,6 @@
    "file": "rapidmeta-finerenone/SELEXIPAG_PAH_AUTO_FULL_REVIEW.html",
    "repo": "rapidmeta-finerenone",
    "related": [
-    {
-     "title": "RapidMeta Cardiology | Sotatercept in PAH v16.0",
-     "drug": "Sotatercept",
-     "url": "sotatercept_pah.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Sotatercept in PAH v16.0",
-     "drug": "Sotatercept",
-     "url": "SOTATERCEPT_PAH_REVIEW.html"
-    },
     {
      "title": "RapidMeta Cardiology | Sotatercept (Activin Signaling Inhibitor) in PAH v1.0",
      "drug": "Sotatercept (Activin Signaling Inhibitor)",
@@ -14236,18 +13261,7 @@
    "url": "tezepelumab_asthma.html",
    "file": "livingmeta-upgrade/out/tezepelumab_asthma.html",
    "repo": "livingmeta-upgrade",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Tezepelumab in Severe Asthma v16.0",
-     "drug": "Tezepelumab",
-     "url": "TEZEPELUMAB_ASTHMA_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta | Tezepelumab in severe asthma (audit-first, full-functionality)",
-     "drug": "Tezepelumab",
-     "url": "TEZEPELUMAB_ASTHMA_REVIEW_FULL_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | Tezepelumab in Severe Asthma v16.0",
@@ -14256,18 +13270,7 @@
    "url": "TEZEPELUMAB_ASTHMA_REVIEW.html",
    "file": "Tezepelumab_Asthma_LivingMeta/TEZEPELUMAB_ASTHMA_REVIEW.html",
    "repo": "Tezepelumab_Asthma_LivingMeta",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Tezepelumab in Severe Asthma v16.0",
-     "drug": "Tezepelumab",
-     "url": "tezepelumab_asthma.html"
-    },
-    {
-     "title": "RapidMeta | Tezepelumab in severe asthma (audit-first, full-functionality)",
-     "drug": "Tezepelumab",
-     "url": "TEZEPELUMAB_ASTHMA_REVIEW_FULL_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta | Tezepelumab in severe asthma (audit-first, full-functionality)",
@@ -14276,18 +13279,7 @@
    "url": "TEZEPELUMAB_ASTHMA_REVIEW_FULL_REVIEW.html",
    "file": "rapidmeta-finerenone/TEZEPELUMAB_ASTHMA_REVIEW_FULL_REVIEW.html",
    "repo": "rapidmeta-finerenone",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | Tezepelumab in Severe Asthma v16.0",
-     "drug": "Tezepelumab",
-     "url": "tezepelumab_asthma.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | Tezepelumab in Severe Asthma v16.0",
-     "drug": "Tezepelumab",
-     "url": "TEZEPELUMAB_ASTHMA_REVIEW.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Respiratory | Biologics in Severe Asthma (rate ratio) v1.0",
@@ -14610,18 +13602,7 @@
    "url": "dashboard.html",
    "file": "hiv-testing-adolescents-ssa/paper/dashboard.html",
    "repo": "hiv-testing-adolescents-ssa",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | AGYW HIV Testing in SSA RapidMeta v1.0",
-     "drug": "AGYW HIV Testing",
-     "url": "index.html"
-    },
-    {
-     "title": "RapidMeta Cardiology | POC Viral Load in SSA RapidMeta v1.0",
-     "drug": "POC Viral Load",
-     "url": "index.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | AGYW HIV Testing in SSA RapidMeta v1.0",
@@ -14630,13 +13611,7 @@
    "url": "index.html",
    "file": "mahmood726-cyber.github.io/hiv-testing-adolescents-ssa/index.html",
    "repo": "mahmood726-cyber.github.io",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | AGYW HIV Testing in SSA RapidMeta v1.0",
-     "drug": "AGYW HIV Testing",
-     "url": "dashboard.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Cardiology | POC Viral Load in SSA RapidMeta v1.0",
@@ -14645,13 +13620,7 @@
    "url": "index.html",
    "file": "mahmood726-cyber.github.io/poc-vl-ssa/index.html",
    "repo": "mahmood726-cyber.github.io",
-   "related": [
-    {
-     "title": "RapidMeta Cardiology | AGYW HIV Testing in SSA RapidMeta v1.0",
-     "drug": "AGYW HIV Testing",
-     "url": "dashboard.html"
-    }
-   ]
+   "related": []
   },
   {
    "title": "RapidMeta Infectious Disease | Dolutegravir First-Line ART in Sub-Saharan Africa v1.0",
@@ -15069,11 +14038,6 @@
      "title": "RapidMeta Critical Care | Conservative vs liberal oxygen therapy in the ICU",
      "drug": "Conservative vs liberal oxygen therapy",
      "url": "CONSERVATIVE_OXYGEN_ICU_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Critical Care | Conservative vs liberal oxygen therapy in the ICU",
-     "drug": "Conservative vs liberal oxygen therapy",
-     "url": "CONSERVATIVE_OXYGEN_ICU_REVIEW.html"
     }
    ]
   },
@@ -15085,11 +14049,6 @@
    "file": "rapidmeta-kit/output/BALANCED_CRYSTALLOIDS_ICU_REVIEW.html",
    "repo": "rapidmeta-kit",
    "related": [
-    {
-     "title": "RapidMeta Critical Care | Conservative vs liberal oxygen therapy in the ICU",
-     "drug": "Conservative vs liberal oxygen therapy",
-     "url": "CONSERVATIVE_OXYGEN_ICU_REVIEW.html"
-    },
     {
      "title": "RapidMeta Critical Care | Conservative vs liberal oxygen therapy in the ICU",
      "drug": "Conservative vs liberal oxygen therapy",
@@ -15109,11 +14068,6 @@
      "title": "RapidMeta Critical Care | Balanced crystalloids vs 0.9% saline in the ICU",
      "drug": "Balanced crystalloids vs 0.9% saline",
      "url": "BALANCED_CRYSTALLOIDS_ICU_REVIEW.html"
-    },
-    {
-     "title": "RapidMeta Critical Care | Balanced crystalloids vs 0.9% saline in the ICU",
-     "drug": "Balanced crystalloids vs 0.9% saline",
-     "url": "BALANCED_CRYSTALLOIDS_ICU_REVIEW.html"
     }
    ]
   },
@@ -15125,11 +14079,6 @@
    "file": "rapidmeta-kit/output/CONSERVATIVE_OXYGEN_ICU_REVIEW.html",
    "repo": "rapidmeta-kit",
    "related": [
-    {
-     "title": "RapidMeta Critical Care | Balanced crystalloids vs 0.9% saline in the ICU",
-     "drug": "Balanced crystalloids vs 0.9% saline",
-     "url": "BALANCED_CRYSTALLOIDS_ICU_REVIEW.html"
-    },
     {
      "title": "RapidMeta Critical Care | Balanced crystalloids vs 0.9% saline in the ICU",
      "drug": "Balanced crystalloids vs 0.9% saline",
