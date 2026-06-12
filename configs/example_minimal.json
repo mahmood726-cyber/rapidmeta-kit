@@ -3,6 +3,8 @@
   "slug": "drugx_conditiony",
   "condition": "Condition Y",
   "title": "Drug X for Condition Y — Living Meta-Analysis",
+  "hero_h2": "Drug X for Condition Y",
+  "nyt_headline": "Drug X for Condition Y: pooled RCT evidence",
   "trials": [
     { "nct": "NCT00000001", "name": "TRIAL-1", "year": 2021, "tE": 40, "tN": 400, "cE": 60, "cN": 400 },
     { "nct": "NCT00000002", "name": "TRIAL-2", "year": 2022, "tE": 35, "tN": 380, "cE": 55, "cN": 390 }

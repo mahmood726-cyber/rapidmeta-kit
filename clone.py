@@ -49,6 +49,23 @@ def die(msg: str):
     sys.exit(2)
 
 
+def _replace_exactly(src: str, old: str, new: str, what: str, n: int = 1) -> str:
+    """Full-string literal replace that fails closed if the expected number of
+    occurrences is not present. The existing step-8 url replaces do NOT assert,
+    so a base-template change can silently no-op and leave inherited prose in
+    the output while every test still passes. Every honesty-bug reset below goes
+    through here so a partial/zero match is a hard build error, not a silent
+    leak. Match the POST-step-1 / PRE-swap base string (see ordering note)."""
+    count = src.count(old)
+    if count != n:
+        die(f"internal: expected {n} occurrence(s) of {what} in the base "
+            f"template, found {count}. The base template changed — clone.py's "
+            f"honesty-bug resets are out of sync and would silently leak the "
+            f"DUPILUMAB_COPD base claims. Refusing to emit a mis-attributed "
+            f"dashboard.")
+    return src.replace(old, new)
+
+
 # Characters that corrupt the global HTML+JS token swap. drug/condition are
 # stamped VERBATIM (not js-escaped) into both HTML prose and single-quoted JS
 # string literals throughout the engine, so an apostrophe ends a JS string ->
@@ -322,23 +339,32 @@ def main():
     new_map = ", ".join(f"'{n}': '{js_escape(a)}'" for n, a in acro.items())
     src = re.sub(r"nctAcronyms:\s*\{[^}]*\}", f"nctAcronyms: {{ {new_map} }}", src, count=1)
 
-    # 4) PICO protocol
-    pico = cfg.get("pico")
-    if pico:
-        proto_re = re.compile(
-            r"(protocol:\s*\{\s*pop:\s*')(?:\\'|[^'])*(',\s*int:\s*')(?:\\'|[^'])*"
-            r"(',\s*comp:\s*')(?:\\'|[^'])*(',\s*out:\s*')(?:\\'|[^'])*"
-            r"(',\s*subgroup:\s*')(?:\\'|[^'])*('.*?)\}",
-            re.DOTALL)
+    # 4) PICO protocol. ALWAYS reset (not just when config supplies `pico`):
+    # the base `protocol:{}` carries dupilumab estimand prose ("Adults with COPD
+    # and type-2 inflammation", "Annual moderate-severe exacerbation rate ...",
+    # "Blood eosinophils, smoking status, ICS use"). The token swap leaves all of
+    # that intact, so a config that omits `pico` would otherwise ship dupilumab
+    # PICO text. Fall back to topic-neutral defaults derived from drug/condition.
+    pico = cfg.get("pico") or {}
+    proto_re = re.compile(
+        r"(protocol:\s*\{\s*pop:\s*')(?:\\'|[^'])*(',\s*int:\s*')(?:\\'|[^'])*"
+        r"(',\s*comp:\s*')(?:\\'|[^'])*(',\s*out:\s*')(?:\\'|[^'])*"
+        r"(',\s*subgroup:\s*')(?:\\'|[^'])*('.*?)\}",
+        re.DOTALL)
+    _proto_n = len(proto_re.findall(src))
+    if _proto_n != 1:
+        die(f"internal: expected exactly 1 protocol:{{...}} block in the base "
+            f"template, found {_proto_n} — base changed; refusing to leak the "
+            f"inherited dupilumab PICO prose.")
 
-        def repl(m):
-            return (m.group(1) + js_escape(pico.get("pop", "")) +
-                    m.group(2) + js_escape(pico.get("int", drug)) +
-                    m.group(3) + js_escape(pico.get("comp", comparator)) +
-                    m.group(4) + js_escape(pico.get("out", "")) +
-                    m.group(5) + js_escape(pico.get("subgroup", "")) +
-                    m.group(6) + "}")
-        src = proto_re.sub(repl, src, count=1)
+    def repl(m):
+        return (m.group(1) + js_escape(pico.get("pop") or f"Adults with {condition}") +
+                m.group(2) + js_escape(pico.get("int", drug)) +
+                m.group(3) + js_escape(pico.get("comp", comparator)) +
+                m.group(4) + js_escape(pico.get("out") or "Primary outcome (see Outcome Selector)") +
+                m.group(5) + js_escape(pico.get("subgroup", "")) +
+                m.group(6) + "}")
+    src = proto_re.sub(repl, src, count=1)
 
     # 5) realData
     entries = ",\n\n\n                ".join(
@@ -347,6 +373,161 @@ def main():
 
     # 6) localStorage keys: rapid_meta_dupilumab_copd -> rapid_meta_<slug>
     src = src.replace(f"rapid_meta_{BASE_SLUG}", f"rapid_meta_{slug}")
+
+    # 6b) HONESTY-BUG resets (run AFTER step 1's <title> rewrite and BEFORE the
+    #     step-7 token swap, so we match the pristine base strings exactly).
+    #     Left untouched, the swap only rewrites the Dupilumab/COPD/slug tokens
+    #     and leaves the dupilumab-specific PROSE, the "RapidMeta Respiratory"
+    #     headline, the frozen 2026-05-24 dates, and the "landmark RCTs" quality
+    #     claim — all of which become false claims on a new topic. Every reset
+    #     below asserts its match count (via _replace_exactly) so a future base
+    #     change can't silently no-op into a leak.
+    import datetime as _dt
+
+    # P0-1: meta description + JSON-LD description. The base value is dupilumab
+    # estimand prose ("type-2 inflammation; Annual moderate-severe exacerbation
+    # rate ..."). Rewrite from optional config 'description', else a topic-
+    # neutral default. The same string appears in <meta content="..."> and in
+    # the JSON-LD "description":"..." field — both are reset.
+    _base_desc = ("Dupilumab; Adults with COPD and type-2 inflammation; "
+                  "Annual moderate-severe exacerbation rate Pooled mean "
+                  "differences reflect the trial-published primary analyt")
+    _desc = cfg.get("description") or (
+        f"{drug} in {condition}: living meta-analysis dashboard.")
+    # The meta tag is plain-HTML attribute text; HTML-escape it. The JSON-LD
+    # field is JSON; json.dumps it (the leading/trailing quotes come from dumps).
+    src = _replace_exactly(
+        src,
+        f'<meta name="description" content="{_base_desc}">',
+        f'<meta name="description" content="{html.escape(_desc, quote=True)}">',
+        'the inherited <meta> description')
+    src = _replace_exactly(
+        src,
+        f'"description":"{_base_desc}"',
+        f'"description":{json.dumps(_desc)}',
+        'the inherited JSON-LD description')
+
+    # P0-2: JSON-LD headline + name, the in-engine app: title, and the two
+    # print/export <title>s. The base brand is "RapidMeta Respiratory | ... with
+    # Type 2 Inflammation v1.1". Build the new brand from the required config
+    # title, prefixing "RapidMeta <specialty> | " ONLY if config sets specialty
+    # (drop the hardcoded "Respiratory" otherwise — a false specialty claim on a
+    # cardiology/critical-care topic).
+    _specialty = cfg.get("specialty")
+    _brand = f"RapidMeta {_specialty} | {title}" if _specialty else title
+    _base_brand = ("RapidMeta Respiratory | Dupilumab for COPD with "
+                   "Type 2 Inflammation v1.1")
+    # JSON-LD headline+name (one combined, unique substring -> count 1).
+    src = _replace_exactly(
+        src,
+        f'"headline":"{_base_brand}","name":"{_base_brand}"',
+        f'"headline":{json.dumps(_brand)},"name":{json.dumps(_brand)}',
+        'the inherited JSON-LD headline/name')
+    # The in-engine app-name and the two print/export <title>s share the bare
+    # brand string verbatim (3 occurrences after step 1 consumed the page
+    # <title>). Reset all three together.
+    src = _replace_exactly(src, _base_brand, html.escape(_brand),
+                           'the inherited app/print brand titles', n=3)
+
+    # P0-3: JSON-LD datePublished / dateModified. The base is frozen at
+    # 2026-05-24 (the dupilumab build date). Use optional config 'date', else
+    # today's build date — never inherit the stale date.
+    _date = cfg.get("date") or _dt.date.today().isoformat()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(_date)):
+        die(f"config 'date' must be ISO YYYY-MM-DD (got {_date!r}).")
+    src = _replace_exactly(src, '"datePublished":"2026-05-24"',
+                           f'"datePublished":{json.dumps(_date)}',
+                           'the inherited datePublished')
+    src = _replace_exactly(src, '"dateModified":"2026-05-24"',
+                           f'"dateModified":{json.dumps(_date)}',
+                           'the inherited dateModified')
+
+    # P1-5: hero subtitle quality claim. "Multi-source meta-analysis of landmark
+    # RCTs" overstates the evidence base ("landmark" is unearned). Soften to
+    # "included RCTs". Appears 3x: the hero <p> plus two i18n lookup KEYS — all
+    # three are reset together so the Arabic-translation lookup keeps matching
+    # the displayed English text.
+    src = _replace_exactly(src, "landmark RCTs", "included RCTs",
+                           'the "landmark RCTs" hero/i18n claim', n=3)
+
+    # P0-1b: the visible "Review Title" PICO row + the editable Population /
+    # Primary-Outcome <input> values carry dupilumab estimand prose verbatim
+    # ("(IL-4Ralpha Monoclonal Antibody) for Moderate-to-Severe COPD with Type 2
+    # Inflammation (Blood Eosinophils >=300/uL)...", "Adults with COPD and
+    # type-2 inflammation", "Annual moderate-severe exacerbation rate"). The
+    # token swap alone leaves the dupilumab-specific clinical detail intact, so
+    # these are reset from config (pico.* / review_title) with topic-neutral
+    # defaults. _pico is the config pico block (may be None).
+    _pico = cfg.get("pico") or {}
+    _review_title = cfg.get("review_title", title)
+    src = _replace_exactly(
+        src,
+        '<td class="p-4 text-slate-300">Dupilumab (IL-4Ralpha Monoclonal '
+        'Antibody) for Moderate-to-Severe COPD with Type 2 Inflammation '
+        '(Blood Eosinophils >=300/uL): A Living Systematic Review and '
+        'Meta-Analysis of Phase 3 RCTs</td>',
+        f'<td class="p-4 text-slate-300">{html.escape(_review_title)}</td>',
+        'the inherited Review Title row')
+    _pop = _pico.get("pop") or f"Adults with {condition}"
+    src = _replace_exactly(
+        src,
+        'value="Adults with COPD and type-2 inflammation"',
+        f'value="{html.escape(_pop, quote=True)}"',
+        'the inherited Population PICO input')
+    _out = _pico.get("out") or "Primary outcome (see Outcome Selector)"
+    src = _replace_exactly(
+        src,
+        'value="Annual moderate-severe exacerbation rate"',
+        f'value="{html.escape(_out, quote=True)}"',
+        'the inherited Primary Outcome PICO input')
+
+    # P0-1c: PUBLISHED_META_BENCHMARKS is a hardcoded dupilumab external-evidence
+    # block (real BOREAS/NOTUS NEJM trials, Bhatt 2023/2024). On any cloned topic
+    # the swap turns these into FABRICATED comparators ("finerenone vs placebo
+    # ... NEJM 2023;389:205-214"). The consumer reads it with `?? []`, so empty
+    # it unless the config supplies its own benchmarks. Matched as a regex on the
+    # whole const (whitespace-tolerant) but asserted to change exactly once.
+    _bench_re = re.compile(
+        r"const PUBLISHED_META_BENCHMARKS = \{.*?\n        \};",
+        re.DOTALL)
+    _bench_matches = _bench_re.findall(src)
+    if len(_bench_matches) != 1:
+        die(f"internal: expected exactly 1 PUBLISHED_META_BENCHMARKS block, "
+            f"found {len(_bench_matches)} — base template changed; refusing to "
+            f"leak fabricated dupilumab benchmark comparators.")
+    if cfg.get("benchmarks"):
+        _bench_js = "const PUBLISHED_META_BENCHMARKS = " + json.dumps(
+            cfg["benchmarks"]) + ";"
+    else:
+        _bench_js = "const PUBLISHED_META_BENCHMARKS = {};"
+    src = _bench_re.sub(lambda _m: _bench_js, src, count=1)
+
+    # P1-6: fail closed if the template tree carries an inherited self-assurance
+    # badge tier (an unearned Bronze/Silver/Gold assurance claim) or an
+    # assurance.json. The current base has none (its only "Gold" hits are
+    # "Goldacre" citations), so this is a forward regression guard: if a future
+    # base re-bakes an assurance tier, refuse to clone it onto a new topic where
+    # the badge would be a false claim.
+    _assurance_files = list((HERE / "template").rglob("assurance.json"))
+    if _assurance_files:
+        die(f"inherited assurance artifact(s) in the template tree: "
+            f"{', '.join(str(p) for p in _assurance_files)}. A cloned topic "
+            f"must not inherit a self-assurance badge tier it has not earned. "
+            f"Remove the assurance.json from the base before cloning.")
+    _baked_tier = re.search(
+        r'(?:assurance|badge)[_\s]*tier"?\s*[:=]\s*"?(Bronze|Silver|Gold)',
+        src, re.I)
+    if _baked_tier:
+        die(f"the base template bakes in an assurance/badge tier "
+            f"({_baked_tier.group(1)}) — refusing to stamp an unearned "
+            f"assurance claim onto the cloned topic.")
+
+    # P1-4: hero_h2 / nyt_headline fail-closed. If the config omits these, the
+    # post-swap fallback (handled below) is the base text with only the
+    # drug/condition tokens swapped — which can still carry a topic-specific
+    # claim (the hero "...with Type-2 Inflammation", the "Dupilumab Evidence"
+    # NYT headline). Rather than ship that leaked claim, require the operator to
+    # supply them. (Checked after the swap, below, where the fallback is final.)
 
     # 7) Global token swaps. ORDER MATTERS — most specific/compound first so
     # a later short swap can't corrupt a longer token. Uppercase forms (used
@@ -366,6 +547,30 @@ def main():
     ]
     for old, new in swaps:
         src = src.replace(old, new)
+
+    # P1-4 (resolved here, post-swap): hero_h2 / nyt_headline fail-closed.
+    # When the config supplies these, step 1 already overwrote the hero <h2> /
+    # NYT <h3>. When it omits them, the displayed text is the BASE prose with
+    # only the drug/condition tokens swapped — which can still carry a topic-
+    # specific claim the new topic never earned:
+    #   * hero fallback "<drug> in <condition> with Type-2 Inflammation"
+    #   * NYT fallback  "The <drug> Evidence"  (was "The Dupilumab Evidence")
+    # If a banned token survives in the un-overridden fallback, refuse to build
+    # and tell the operator to supply hero_h2 / nyt_headline explicitly.
+    _LEAK_TOKENS = ("Type-2 Inflammation", "Type 2 Inflammation",
+                    "Dupilumab Evidence")
+    if not cfg.get("hero_h2") or not cfg.get("nyt_headline"):
+        _leaked = [tok for tok in _LEAK_TOKENS if tok in src]
+        if _leaked:
+            missing = [f for f, present in (("hero_h2", cfg.get("hero_h2")),
+                                            ("nyt_headline", cfg.get("nyt_headline")))
+                       if not present]
+            die(f"the un-overridden hero/NYT fallback still contains "
+                f"topic-specific base text {_leaked} that does not match "
+                f"'{drug} in {condition}'. The drug/condition token swap alone "
+                f"cannot make this honest. Supply {', '.join(missing)} in the "
+                f"config (a topic-neutral headline) so the dashboard does not "
+                f"ship an inherited DUPILUMAB_COPD claim.")
 
     # 8) JSON-LD provenance. The base template inherits the previous clone's
     # canonical URLs (the rapidmeta-finerenone repo) and an empty ORCID

@@ -167,3 +167,129 @@ def test_apostrophe_drug_rejected(tmp_path):
     assert res.returncode == 2
     assert "drug" in res.stderr.lower()
     assert not out.exists()
+
+
+# --- HONESTY-BUG regression: no inherited DUPILUMAB_COPD base claims leak -----
+# The base template is the validated DUPILUMAB_COPD build. The token swap only
+# rewrites the drug/condition/slug tokens; the dupilumab-specific PROSE, the
+# "RapidMeta Respiratory" brand, the frozen 2026-05-24 dates, the "landmark
+# RCTs" quality claim, and the BOREAS/NOTUS benchmark comparators all survive
+# unless clone.py explicitly resets them. These tests assert a new-topic build
+# carries NONE of those base claims (models test_no_stale_provenance_leaks).
+
+# Every string here is a verbatim dupilumab-base claim that MUST NOT survive a
+# clone to an unrelated topic. Case-insensitive so a "Type-2"/"type-2" variant
+# can't slip through.
+_BANNED_BASE_CLAIMS = [
+    "type-2 inflammation",
+    "type 2 inflammation",
+    "annual moderate-severe exacerbation",
+    "rapidmeta respiratory",
+    "landmark rcts",
+    "dupilumab evidence",
+    "il-4ralpha",          # the dupilumab mechanism in the Review Title row
+    "boreas",              # hardcoded dupilumab benchmark comparators
+    "notus",
+]
+
+
+def test_no_inherited_base_claims_leak(tmp_path):
+    out = tmp_path / "fin.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
+                     "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8").lower()
+    leaked = [c for c in _BANNED_BASE_CLAIMS if c in html]
+    assert not leaked, f"inherited DUPILUMAB_COPD base claim(s) leaked: {leaked}"
+    # The frozen base build-date must not survive (P0-3).
+    assert "2026-05-24" not in html
+    # JSON-LD headline/name must come from the config title, not the base brand.
+    assert '"headline":"rapidmeta respiratory' not in html
+    assert '"name":"rapidmeta respiratory' not in html
+    # The benchmark block was emptied (no fabricated comparators).
+    assert "const published_meta_benchmarks = {};" in html
+
+
+def test_jsonld_dates_are_build_date_not_frozen(tmp_path):
+    # P0-3: datePublished/dateModified default to the build date, never the
+    # inherited 2026-05-24. With no config 'date' they should be today's ISO.
+    import datetime
+    out = tmp_path / "fin.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
+                     "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    today = datetime.date.today().isoformat()
+    assert f'"datePublished":"{today}"' in html
+    assert f'"dateModified":"{today}"' in html
+
+
+def test_config_date_overrides_build_date(tmp_path):
+    cfg = json.loads((CONFIGS / "example_finerenone_ckd.json").read_text("utf-8"))
+    cfg["date"] = "2026-01-15"
+    cfg_path = tmp_path / "fin_date.json"
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+    out = tmp_path / "fin.html"
+    res = run_clone([str(cfg_path), "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    assert '"datePublished":"2026-01-15"' in html
+    assert '"dateModified":"2026-01-15"' in html
+
+
+def test_jsonld_is_valid_json(tmp_path):
+    # The honesty resets stamp config values into the JSON-LD via json.dumps;
+    # an em-dash / quote / backslash in the title must not break the block.
+    import re as _re
+    out = tmp_path / "fin.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
+                     "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    m = _re.search(r'<script type="application/ld\+json">(.*?)</script>',
+                   html, _re.S)
+    assert m, "JSON-LD block missing"
+    data = json.loads(m.group(1))            # raises if the resets broke JSON
+    assert "Finerenone" in data["headline"]
+    assert data["description"]               # non-empty topic-neutral default
+
+
+def test_description_override_applied(tmp_path):
+    cfg = json.loads((CONFIGS / "example_finerenone_ckd.json").read_text("utf-8"))
+    cfg["description"] = "Custom honest synopsis of the finerenone review."
+    cfg_path = tmp_path / "fin_desc.json"
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
+    out = tmp_path / "fin.html"
+    res = run_clone([str(cfg_path), "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    assert "Custom honest synopsis of the finerenone review." in html
+
+
+def test_missing_hero_with_leak_fails_closed(tmp_path):
+    # P1-4: a config that omits hero_h2/nyt_headline AND whose token swap leaves
+    # a topic-specific base claim in the hero/NYT fallback must fail closed (the
+    # clone would otherwise display "...with Type-2 Inflammation" for a non-
+    # dupilumab topic). drug/condition here do not contain the swapped tokens,
+    # so the "Type-2 Inflammation" hero fallback survives -> die(2).
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps(
+        {"drug": "Finerenone", "slug": "fin_x", "condition": "CKD",
+         "title": "Finerenone for CKD",
+         "trials": [{"nct": "NCT02540993", "name": "FIDELIO"}]}),
+        encoding="utf-8")
+    out = tmp_path / "o.html"
+    res = run_clone([str(bad), "--out", str(out)])
+    assert res.returncode == 2
+    assert "hero_h2" in res.stderr or "nyt_headline" in res.stderr
+
+
+def test_specialty_drops_respiratory_by_default(tmp_path):
+    # P0-2: without a config 'specialty', the brand is just the title — the
+    # hardcoded "Respiratory" specialty word must not appear.
+    out = tmp_path / "fin.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
+                     "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    assert "Respiratory" not in html
