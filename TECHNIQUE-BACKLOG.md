@@ -7,6 +7,30 @@ real (grep of `template/assets/vendor/`), the source is named, and the R-verifie
 experimental flag is checked. Experimental engines must carry an **"Experimental"**
 badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`).
 
+## DONE 2026-06-13 (P1 batch — selection model, UWLS, rare-events GLMM, RVE)
+- Vendored four R-verified `allmeta/shared/` engines VERBATIM into
+  `template/assets/vendor/`: `uwls.js`, `selmodel.js`, `rve.js`,
+  `rare-events-glmm.js`, plus `_alm-stats-shim.js` (supplies the optional
+  `AlmMaCore`/`AlmStats` t-quantile so UWLS/RVE/selmodel use t_{k-1}, not z —
+  shim's qt matches R to ≤1e-4).
+- Four panels: **UWLS** (multiplicative-heterogeneity sensitivity vs the RE
+  primary; observational IV trap), **Vevea-Hedges** (step-function selection
+  pub-bias panel, auto k≥4, declines on unidentifiable fits), **rare-events
+  GLMM** (CM.EL conditional-exact, auto-mounts only when ≥1 zero cell, contrasts
+  the +0.5-corrected OR it replaces), and **RVE/CR2** (paste-input tool for
+  dependent effects — the kit's 1-effect-per-trial model has no clusters so it
+  can't auto-mount; computes only on explicit user input, anti-fabrication).
+- Wired into both HTML hosts (`template/base_dupilumab_copd.html` +
+  `docs/index.html`); engines+panels copied to all three asset trees
+  (template/docs/root) in lockstep.
+- Tests (all green, 70 total): `test_advanced_engines.py` (8 node anchors:
+  UWLS vs R lm to 1e-6, RVE β exact, rare-events native zero-cell + CM.EL,
+  selmodel ML well-formedness) + `test_panels_mount.py` (DOM-stub smoke proving
+  all 4 panels mount without runtime error).
+- Data-model note: RVE is the only P1 item that does NOT fit the kit's
+  one-effect-per-trial model (it needs clusters), hence paste-input not auto —
+  same class of data-model gap as the dose-response GL two-stage below.
+
 ## DONE this session
 - **Survival engine** `rapidmeta-survival.js` (HR pool, RMST, interval-HR, NNT,
   non-PH) authored + wired; HR-NNT + non-PH are first-class (REML+HKSJ+t, Altman-
@@ -33,10 +57,10 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
 | Technique | Source | Kit gap |
 |---|---|---|
 | ~~PET-PEESE conditional small-study adjustment~~ | — | **DONE** (in funnel-diagnostics) |
-| Vevea-Hedges step-function selection model | `allmeta/shared/selmodel.js` | no selection-model engine |
-| Robust Variance Estimation (CR2, Hedges-Tipton-Johnson) | `allmeta/shared/rve.js` | no cluster-robust / dependent-effects |
-| UWLS / multiplicative-heterogeneity pooling | `allmeta/shared/uwls.js` | additive RE only; advanced-stats prefers UWLS for observational |
-| Binomial-normal GLMM for rare events | `allmeta/shared/rare-events-glmm.js` | kit uses +0.5 correction (biases OR→1) |
+| ~~Vevea-Hedges step-function selection model~~ | — | **DONE** — `selmodel.js` + `selmodel-panel.js` (pub-bias panel, k≥4, auto) |
+| ~~Robust Variance Estimation (CR2, Hedges-Tipton-Johnson)~~ | — | **DONE** — `rve.js` + `rve-panel.js` (paste-input tool; kit's 1-effect/trial model has no clusters, so it's user-supplied dependent-effects, not auto) |
+| ~~UWLS / multiplicative-heterogeneity pooling~~ | — | **DONE** — `uwls.js` + `uwls-panel.js` (sensitivity vs RE primary; t_{k-1} CI via `_alm-stats-shim.js`) |
+| ~~Binomial-normal GLMM for rare events~~ | — | **DONE** — `rare-events-glmm.js` + `rare-events-panel.js` (CM.EL conditional-exact; auto-mounts only when ≥1 zero cell, contrasts the +0.5-corrected OR) |
 | ~~Full bivariate Reitsma ML DTA~~ | — | **DONE** (see above) |
 | ~~Two-stage Greenland-Longnecker dose-response~~ | `allmeta/shared/dose-response.js` | **needs a per-study dose-level data model** (cell counts at each dose); kit carries one (dose, effect) per trial. Slope t-test done; GL covariance is a future data-model item. |
 
