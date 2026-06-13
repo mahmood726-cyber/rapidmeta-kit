@@ -26554,7 +26554,7 @@ const ContinuousMDEngine = {
                 const nullLine = { x: [pts[0].rho, pts[pts.length - 1].rho], y: [1, 1], mode: 'lines', line: { color: '#ef4444', dash: 'dot', width: 1 }, showlegend: false };
 
 
-                const layout = { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', xaxis: { title: 'Selection parameter (\u03C1)', gridcolor: '#1e293b', color: '#94a3b8' }, yaxis: { title: 'Adjusted ' + RapidMeta.emLabel('short'), gridcolor: '#1e293b', color: '#94a3b8' }, font: { color: '#94a3b8', size: 10 }, margin: { t: 10, b: 40, l: 60, r: 20 }, showlegend: true, legend: { x: 0.7, y: 0.95, font: { size: 9 } } };
+                const layout = { paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', xaxis: { title: 'Selection severity (heuristic knob, NOT Copas \u03C1)', gridcolor: '#1e293b', color: '#94a3b8' }, yaxis: { title: 'Adjusted ' + RapidMeta.emLabel('short'), gridcolor: '#1e293b', color: '#94a3b8' }, font: { color: '#94a3b8', size: 10 }, margin: { t: 10, b: 40, l: 60, r: 20 }, showlegend: true, legend: { x: 0.7, y: 0.95, font: { size: 9 } } };
 
 
                 Plotly.newPlot('plot-copas', [ciUp, ciLo, mainLine, nullLine], layout, { displayModeBar: false, responsive: true });
@@ -26563,7 +26563,7 @@ const ContinuousMDEngine = {
                 const copDesc = document.getElementById('desc-copas');
 
 
-                if (copDesc) copDesc.textContent = 'EXPLORATORY: Copas-style sensitivity (heuristic rank-reweighting, NOT Copas-Shi MLE; no published validation): adjusted ' + RapidMeta.emLabel('short') + ' ranges from ' + result.minEst.toFixed(2) + ' to ' + result.maxEst.toFixed(2) + ' across selection parameters (\u03C1 = -0.99 to 0). Verdict: ' + (result.robust ? 'Robust \u2014 findings are insensitive to potential selection bias.' : 'Sensitive \u2014 results change substantially under different selection assumptions (range > 5 percentage points).') + ' This analysis is exploratory and does not contribute to the GRADE publication bias assessment.';
+                if (copDesc) copDesc.textContent = 'EXPLORATORY: Copas-style sensitivity (heuristic rank-reweighting, NOT Copas-Shi MLE; no published validation): adjusted ' + RapidMeta.emLabel('short') + ' ranges from ' + result.minEst.toFixed(2) + ' to ' + result.maxEst.toFixed(2) + ' across selection parameters (\u03C1 = -0.99 to 0). Verdict: ' + (result.robust ? 'Robust \u2014 findings are insensitive to potential selection bias.' : 'Sensitive \u2014 results change substantially under different selection assumptions (range > 5 percentage points).') + ' This analysis is exploratory and does not contribute to the GRADE publication bias assessment. The validated Copas-Shi profile MLE (a faithful port of metasens::copas) is in the “Copas–Shi selection MLE” panel — use that for inference; this curve x-axis is a heuristic severity knob, not the Copas correlation ρ.';
 
 
             }
@@ -44417,6 +44417,9 @@ except ImportError:
 <script src="assets/vendor/nma-dbt.js" defer></script>
 <script src="assets/vendor/gosh-panel.js" defer></script>
 <script src="assets/vendor/nma-dbt-panel.js" defer></script>
+<!-- Advanced-technique HTML-app extraction: Copas-Shi selection-model profile MLE (metasens::copas) -->
+<script src="assets/vendor/copas-shi.js" defer></script>
+<script src="assets/vendor/copas-shi-panel.js" defer></script>
 
 
 <!-- rm-offline-download:begin -->

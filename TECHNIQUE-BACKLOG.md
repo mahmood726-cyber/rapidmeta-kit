@@ -141,9 +141,35 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
 - Tests: +2 (`test_alm_poth_cran_closed_form_anchor`,
   `test_poth_compute_headline_is_canonical_wigle`). Suite = 80.
 
+## DONE 2026-06-13 (Flagged-item resolution — Copas-Shi full MLE)
+- **Copas-Shi (2000) selection-model profile MLE** (`copas-shi.js` extracted
+  VERBATIM from the allmeta `copas/index.html` engine — a faithful port of
+  `metasens:::copas.loglik.without.beta` + its analytic gradient, box-constrained
+  MLE). Re-scope decision: PORT the real MLE rather than patch the heuristic.
+  Reproduces `copas-oracle.json` (R metasens 1.5-3): unadjusted FE = metafor
+  (`0.246944262521`, 1e-6); profile-MLE effect/ρ/τ match the oracle to ~1e-7
+  where ρ is identified (publprob ≤ 0.9). At publprob=1, g1=0 so ρ is
+  non-identified (degenerate) — anchored on effect/τ there, not ρ; the seTE
+  *display* fallback chain differs ~6e-3 (metasens-faithful carry-forward, not a
+  validated quantity).
+- New `copas-shi-panel.js` auto-mounts (binary, k≥3) a Copas-Shi sensitivity
+  table (publprob path → adjusted OR + 95% CI + ρ + est. unpublished) with the
+  k<15 illustrative caveat (advanced-stats), via `PanelHelper`. Wired after the
+  GOSH/DBT panels in both hosts; copied to all three asset trees; smoke harness
+  now mounts **10** panels.
+- **Secondary-claim fix**: the kit's pre-existing heuristic Copas chart (#13)
+  borrowed Copas's "ρ" parameter name for an ad-hoc severity knob. Relabelled
+  its x-axis to "Selection severity (heuristic knob, NOT Copas ρ)" and its
+  EXPLORATORY disclosure now points to the validated Copas-Shi MLE panel for
+  inference (both HTML hosts).
+- Tests: +1 (`test_copas_shi_profile_mle_matches_metasens_oracle`). Suite = 81.
+
 ## Flagged (needs correction before applying)
-- **Copas-Shi full MLE** (kit's "Copas" is a heuristic ρ-sweep, not the MLE) — verifier found a secondary claim issue; re-scope before porting.
+- ~~**Copas-Shi full MLE**~~ — **DONE 2026-06-13** (see above; ported the real MLE).
 - ~~**Closed-form Wigle POTH (S²/S²max)**~~ — **DONE 2026-06-13** (see above).
+- _All flagged items resolved. Remaining backlog = documented data-model
+  DEFERRALS (location-scale, CNMA, spec-collapse, transported-NMA) + the
+  WILL-NOT-PORT server-side MCMC item (Emax MBNMA)._
 
 ## Integration notes
 - Port targets are self-contained `allmeta/shared/*.js`; adapt to `PanelHelper`

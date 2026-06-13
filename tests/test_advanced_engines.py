@@ -398,3 +398,39 @@ def test_poth_compute_headline_is_canonical_wigle():
     assert out["hasEntropyField"] is True
     assert abs(out["noisyPoth"] - out["almDirect"]) < 1e-12   # single source of truth
     assert out["entropyDistinct"] is True   # canonical POTH != rank-entropy metric
+
+
+def test_copas_shi_profile_mle_matches_metasens_oracle():
+    """copas-shi.js (extracted verbatim from allmeta/copas) = the full Copas &
+    Shi (2000) selection-model profile MLE, a faithful port of metasens::copas.
+    Anchored to copas-oracle.json (copas-tiny fixture, R metasens 1.5-3): the
+    unadjusted FE matches metafor (te_fe=0.246944262521 to 1e-6), and the
+    profile-MLE effect/rho/tau along the publication-probability path match the
+    oracle where rho is IDENTIFIED (p<=0.9; at p=1, g1=0 so the selection model
+    is degenerate and rho is non-identified, per the engine's documented
+    caveat). The adjusted effect attenuates as the assumed publication
+    probability drops (small-study-effect adjustment)."""
+    out = _node(r"""
+        const C = require('./template/assets/vendor/copas-shi.js');
+        const rows = [
+          {te:0.25,se:0.08},{te:0.18,se:0.10},{te:0.40,se:0.15},{te:0.30,se:0.09},
+          {te:0.12,se:0.07},{te:0.55,se:0.20},{te:0.22,se:0.08},{te:0.32,se:0.12},
+          {te:0.45,se:0.17},{te:0.28,se:0.10}];
+        const s = C.sensitivity(rows);
+        const g = {}; s.grid.forEach(p => { g[p.publprob] = p; });
+        console.log(JSON.stringify({
+          k:s.k, fe:s.fe_pooled,
+          te1:g['1'].te_adj, te09:g['0.9'].te_adj, rho09:g['0.9'].rho, tau09:g['0.9'].tau,
+          te03:g['0.3'].te_adj, tau03:g['0.3'].tau,
+          attenuates: g['1'].te_adj > g['0.3'].te_adj
+        }));
+    """)
+    assert out["k"] == 10
+    assert abs(out["fe"] - 0.246944262521) < 1e-6        # metafor FE anchor
+    assert abs(out["te1"] - 0.2469253041113) < 1e-4      # p=1 (no selection)
+    assert abs(out["te09"] - 0.2414960626094) < 1e-5     # metasens profile MLE
+    assert abs(out["rho09"] - 0.9999) < 1e-4             # rho identified at p=0.9
+    assert abs(out["tau09"] - 0.0) < 1e-6
+    assert abs(out["te03"] - 0.2286357398443) < 1e-4     # most-adjusted point
+    assert abs(out["tau03"] - 0.0) < 1e-6
+    assert out["attenuates"] is True                      # bias adjustment pulls effect down
