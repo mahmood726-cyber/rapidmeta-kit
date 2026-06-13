@@ -126,9 +126,24 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
 - **[Experimental]** Browser least-squares Emax dose-response — `allmeta/glp1-obesity-mbnma/bayes_mbnma.py` — **WILL NOT PORT**: server-side MCMC; integration notes say do NOT port MCMC to the browser. Surface only as pre-computed Experimental results.
 - **[Experimental]** Population-transported NMA (entropy balancing) — `allmeta/shared/transported-nma-v1.js` — **DEFERRED (experimental)**: surface only as pre-computed; needs target-population covariate data.
 
+## DONE 2026-06-13 (Flagged-item resolution — closed-form Wigle POTH)
+- **Closed-form Wigle POTH** (`alm-poth.js` vendored verbatim from
+  `allmeta/shared/poth.js`; CRAN `poth` oracle: `poth([.9,.6,.3,.2])=0.54`,
+  perfect=1, flat=0). The kit's `poth.js` previously headlined a Shannon
+  rank-entropy ratio under Wigle's name — a misattribution, since Wigle's POTH
+  IS the S²/S²max variance ratio. Fixed: `POTH.compute(rankogram)` now derives
+  SUCRA from the rankogram and headlines the canonical closed form (matches
+  `AlmPOTH` to float precision — single source of truth), with the entropy
+  metric demoted to a clearly-labelled secondary `rankEntropyPrecision` field +
+  "Secondary" render section. The `nma-sucra.js` POTH≥0.5 winner-gate now gates
+  on the correct (canonical) value with no call-site change. `alm-poth.js`
+  wired before `poth.js` in both HTML hosts; copied to all three asset trees.
+- Tests: +2 (`test_alm_poth_cran_closed_form_anchor`,
+  `test_poth_compute_headline_is_canonical_wigle`). Suite = 80.
+
 ## Flagged (needs correction before applying)
 - **Copas-Shi full MLE** (kit's "Copas" is a heuristic ρ-sweep, not the MLE) — verifier found a secondary claim issue; re-scope before porting.
-- **Closed-form Wigle POTH (S²/S²max)** — kit `poth.js` uses a Shannon-entropy ratio (a *different* valid metric); allmeta has the CRAN-`poth`-verified variance form. Treat as an optional refinement, not a bug.
+- ~~**Closed-form Wigle POTH (S²/S²max)**~~ — **DONE 2026-06-13** (see above).
 
 ## Integration notes
 - Port targets are self-contained `allmeta/shared/*.js`; adapt to `PanelHelper`

@@ -338,3 +338,63 @@ def test_rare_events_conditional_exact_cmel():
     """)
     assert out["ok"] is True and out["model"] == "CM.EL"
     assert out["OR"] < 1  # treatment protective
+
+
+def test_alm_poth_cran_closed_form_anchor():
+    """alm-poth.js (vendored verbatim) = the canonical Wigle S²/S²max closed
+    form, anchored to the CRAN `poth` package oracle (allmeta test_poth.py):
+    poth([0.9,0.6,0.3,0.2]) = 0.075/(5/36) = 0.54 exactly; perfect/flat = 1/0."""
+    out = _node(r"""
+        const A = require('./template/assets/vendor/alm-poth.js');
+        console.log(JSON.stringify({
+          perfect: A.poth([0,1]).poth,
+          perfect3: A.poth([0,0.5,1]).poth,
+          flat: A.poth([0.5,0.5,0.5]).poth,
+          closed: A.poth([0.9,0.6,0.3,0.2]).poth,
+          tooFew: A.poth([0.7]),
+          bounded: A.poth([0.99,0.01,0.5,0.5,0.5]).poth,
+          sucra: A.sucraFromRankProbs([[1,0,0],[0,1,0],[0,0,1]])
+        }));
+    """)
+    assert abs(out["perfect"] - 1.0) < 1e-12
+    assert abs(out["perfect3"] - 1.0) < 1e-12
+    assert abs(out["flat"] - 0.0) < 1e-12
+    assert abs(out["closed"] - 0.54) < 1e-9       # CRAN poth oracle
+    assert out["tooFew"] is None                  # n<2 -> null
+    assert 0.0 <= out["bounded"] <= 1.0
+    assert [round(x, 6) for x in out["sucra"]] == [1.0, 0.5, 0.0]
+
+
+def test_poth_compute_headline_is_canonical_wigle():
+    """The kit's POTH.compute(rankogram) now headlines the canonical Wigle
+    closed form (== AlmPOTH on the SUCRA derived from the rankogram), with the
+    Shannon rank-entropy demoted to a distinct `rankEntropyPrecision` field.
+    Certain ranks -> SUCRA {1,.5,0} -> POTH 1; a noisy rankogram must match the
+    AlmPOTH closed form to float precision (single source of truth)."""
+    out = _node(r"""
+        const A = require('./template/assets/vendor/alm-poth.js');
+        const P = require('./template/assets/vendor/poth.js');
+        const certain = P.compute([
+          {treatment:'A', rankProbs:[1,0,0]},
+          {treatment:'B', rankProbs:[0,1,0]},
+          {treatment:'C', rankProbs:[0,0,1]}]);
+        const rg = [
+          {treatment:'A', rankProbs:[0.7,0.2,0.1]},
+          {treatment:'B', rankProbs:[0.2,0.6,0.2]},
+          {treatment:'C', rankProbs:[0.1,0.2,0.7]}];
+        const k = P.compute(rg);
+        const sucras = A.sucraFromRankProbs(rg.map(x=>x.rankProbs));
+        console.log(JSON.stringify({
+          certainPoth: certain.poth,
+          certainSucra: certain.sucra,
+          hasEntropyField: typeof certain.rankEntropyPrecision === 'number',
+          noisyPoth: k.poth,
+          almDirect: A.poth(sucras).poth,
+          entropyDistinct: Math.abs(k.poth - k.rankEntropyPrecision) > 1e-9
+        }));
+    """)
+    assert abs(out["certainPoth"] - 1.0) < 1e-12
+    assert out["certainSucra"] == [1.0, 0.5, 0.0]
+    assert out["hasEntropyField"] is True
+    assert abs(out["noisyPoth"] - out["almDirect"]) < 1e-12   # single source of truth
+    assert out["entropyDistinct"] is True   # canonical POTH != rank-entropy metric
