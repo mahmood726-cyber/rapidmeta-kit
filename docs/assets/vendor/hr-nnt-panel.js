@@ -15,14 +15,21 @@
     if (!rd) return [];
     var out = [];
     Object.values(rd).forEach(function (t) {
-      if (typeof t.HR === 'number' && typeof t.HR_ci_lo === 'number' && typeof t.HR_ci_hi === 'number') {
+      // Only pool genuine hazard-ratio trials — RR/OR packs (finerenone is
+      // estimandType:'RR') must NOT be surfaced as HRs (category error).
+      if (String(t.estimandType || 'HR').toUpperCase() !== 'HR') return;
+      // Accept either the survival-panel field names (HR/HR_ci_lo/HR_ci_hi) or
+      // the rapidmeta realData names (publishedHR/hrLCI/hrUCI).
+      var HR = isFinite(+t.HR) ? +t.HR : +t.publishedHR;
+      var lo = isFinite(+t.HR_ci_lo) ? +t.HR_ci_lo : +t.hrLCI;
+      var hi = isFinite(+t.HR_ci_hi) ? +t.HR_ci_hi : +t.hrUCI;
+      if (isFinite(HR) && isFinite(lo) && isFinite(hi)) {
         out.push({
           studlab: String(t.name || t.studlab || '?'),
-          HR: +t.HR,
-          HR_ci_lo: +t.HR_ci_lo,
-          HR_ci_hi: +t.HR_ci_hi,
-          events_ctl: t.events_ctl,
-          n_ctl: t.n_ctl
+          HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
+          // baseline-risk for NNT: fall back to comparator-arm 2x2 (cE/cN).
+          events_ctl: isFinite(+t.events_ctl) ? +t.events_ctl : +t.cE,
+          n_ctl: isFinite(+t.n_ctl) ? +t.n_ctl : +t.cN
         });
       }
     });
