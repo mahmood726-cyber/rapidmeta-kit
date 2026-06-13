@@ -271,6 +271,59 @@ def test_begg_mazumdar_rank_test_tau_matches_metafor():
     assert 0.05 < out["p"] < 0.12  # non-significant; normal-approx p
 
 
+def test_gosh_enumeration_and_full_pool():
+    # GOSH: full enumeration for k<=15 yields 2^k-1 minus singletons; the
+    # full-sample subset estimate equals the standard pool.
+    out = _node(r"""
+        const G = require('./template/assets/vendor/gosh.js');
+        const rows=[{te:0.2,se:0.10},{te:0.5,se:0.12},{te:0.35,se:0.09},{te:0.8,se:0.15}];
+        const o=G.gosh(rows,{model:'RE'});
+        const full=G.pool(rows,'RE');
+        console.log(JSON.stringify({n:o.nSubsets, enumerated:o.enumerated,
+          fullMatch:Math.abs(full.mu-o.full.mu)<1e-12, muMin:o.muMin, muMax:o.muMax}));
+    """)
+    assert out["n"] == 11  # 2^4-1=15 minus 4 singletons
+    assert out["enumerated"] is True
+    assert out["fullMatch"] is True
+    assert out["muMin"] <= out["muMax"]
+
+
+def test_nma_dbt_matches_netmeta_oracle():
+    # Design-by-treatment: fitNMA consistency Q/TE match the netmeta inco-tiny
+    # oracle exactly; the single-loop global inconsistency p equals the node-split
+    # p (0.96149087) from the same oracle.
+    out = _node(r"""
+        const D = require('./template/assets/vendor/nma-dbt.js');
+        const rows=[['A','B',0.20,0.10],['A','B',0.35,0.12],['A','B',0.28,0.09],
+          ['A','C',0.50,0.11],['A','C',0.42,0.13],['B','C',0.18,0.10],['B','C',0.25,0.14]]
+          .map(r=>({A:r[0],B:r[1],te:r[2],se:r[3]}));
+        const fit=D.fitNMA(rows,null,0);
+        const r=D.dbt(rows,0);
+        console.log(JSON.stringify({Q:fit.Q, df:fit.df, B:fit.beta[0], C:fit.beta[1],
+          incQ:r.Q, incDf:r.df, incP:r.p,
+          chi95_1:D.chiSqCDF(3.841459,1), chi95_2:D.chiSqCDF(5.991465,2)}));
+    """)
+    assert abs(out["Q"] - 1.3352011607) < 1e-8        # netmeta consistency Q
+    assert out["df"] == 5
+    assert abs(out["B"] - (-0.26802239)) < 1e-6       # netmeta TE_B
+    assert abs(out["C"] - (-0.46922524)) < 1e-6       # netmeta TE_C
+    assert out["incDf"] == 1
+    assert abs(out["incP"] - 0.96149087) < 1e-4       # == oracle node-split p (single loop)
+    assert abs(out["chi95_1"] - 0.95) < 1e-5          # chiSqCDF == R pchisq
+    assert abs(out["chi95_2"] - 0.95) < 1e-5
+
+
+def test_nma_dbt_detects_inconsistency_and_star():
+    out = _node(r"""
+        const D = require('./template/assets/vendor/nma-dbt.js');
+        const inc=[{A:'A',B:'B',te:0.5,se:0.1},{A:'A',B:'C',te:0.8,se:0.1},{A:'B',B:'C',te:-0.2,se:0.1}];
+        const star=[{A:'A',B:'B',te:0.5,se:0.1},{A:'A',B:'C',te:0.8,se:0.1}];
+        console.log(JSON.stringify({inc:D.dbt(inc,0), star:D.dbt(star,0)}));
+    """)
+    assert out["inc"]["p"] < 0.05            # inconsistent loop flagged
+    assert "note" in out["star"]             # star network -> unidentifiable
+
+
 def test_rare_events_conditional_exact_cmel():
     out = _node(r"""
         const M = require('./template/assets/vendor/rare-events-glmm.js');

@@ -55,6 +55,8 @@ require(V + 'trimfill.js');
 require(V + 'multiplicative-nma.js');
 require(V + 'multilevel-reml.js');
 require(V + 'limit-ma.js');
+require(V + 'gosh.js');
+require(V + 'nma-dbt.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -62,6 +64,8 @@ require(V + 'rve-panel.js');
 require(V + 'multiplicative-nma-panel.js');
 require(V + 'multilevel-reml-panel.js');
 require(V + 'limit-ma-panel.js');
+require(V + 'gosh-panel.js');
+require(V + 'nma-dbt-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -106,10 +110,11 @@ const PANEL_ID = {
   UWLSPanel: 'uwls-panel', SelModelPanel: 'selmodel-panel',
   RareEventsPanel: 'rare-events-panel', RVEPanel: 'rve-panel',
   MultiplicativeNMAPanel: 'multiplicative-nma-panel', MultilevelREMLPanel: 'multilevel-reml-panel',
-  LimitMAPanel: 'limit-ma-panel',
+  LimitMAPanel: 'limit-ma-panel', GOSHPanel: 'gosh-panel', NmaDBTPanel: 'nma-dbt-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
- 'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel'].forEach((p) => {
+ 'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
+ 'GOSHPanel', 'NmaDBTPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -148,4 +153,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 7 panels mounted + RVE/multilevel parse/fit + NMA buildRows + funnel/Begg verified');
+console.log('SMOKE OK: 9 panels mounted + RVE/multilevel parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT verified');

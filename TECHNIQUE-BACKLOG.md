@@ -7,6 +7,21 @@ real (grep of `template/assets/vendor/`), the source is named, and the R-verifie
 experimental flag is checked. Experimental engines must carry an **"Experimental"**
 badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`).
 
+## DONE 2026-06-13 (P3 batch #2 — GOSH + design-by-treatment inconsistency)
+- **GOSH** (`gosh.js` + panel): subset-cloud heterogeneity diagnostic extracted
+  verbatim from allmeta/gosh; full enumeration k≤15, seeded xoshiro sample k>15;
+  inline canvas scatter (estimate vs I²) + cluster-gap modality hint. Auto, k≥3.
+- **Design-by-treatment** (`nma-dbt.js` + panel): global inconsistency test
+  extracted verbatim from allmeta/nma-inconsistency; fitNMA matches the netmeta
+  inco-tiny oracle EXACTLY (Q=1.3352011607, TE_B=−0.26802239, TE_C=−0.46922524),
+  chiSqCDF == R pchisq, single-loop global p == oracle node-split p (0.96149087).
+  NMA-conditional; FE + DL-RE columns; complements the kit's node-split.
+- Tests: +3 (GOSH enumeration/full-pool, DBT netmeta-oracle parity, DBT
+  inconsistent/star behaviour). Smoke harness now mounts 9 panels. Suite = 78.
+- This clears every extractable backlog item; remaining are the documented
+  data-model-mismatch DEFERRALS, the WILL-NOT-PORT server-side MCMC item, and the
+  two rescope-flagged items (Copas full MLE, closed-form POTH).
+
 ## DONE 2026-06-13 (P3 batch — Rücker limit-MA + Begg-Mazumdar)
 - **Limit meta-analysis** (`limit-ma.js` + panel): engine extracted verbatim from
   the allmeta limit-ma HTML app; metasens::limitmeta parity to 1e-12 (limit,
@@ -102,11 +117,11 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
 - Extended pub-bias battery — `allmeta/pubbias-tests` — **PARTIAL DONE 2026-06-13**: added **Begg-Mazumdar** rank test to funnel-diagnostics (Kendall τ-b = metafor::ranktest exactly, 0.4319297483313; p is the source's normal approximation). NOTE: the allmeta source app only *names* Harbord/Thompson-Sharp in prose — they are NOT implemented as code there, so they were not ported (would be net-new, not a port).
 - ~~Multiplicative-heterogeneity NMA (network UWLS)~~ — **DONE 2026-06-13** `multiplicative-nma.js` + `multiplicative-nma-panel.js` (NMA-conditional auto-panel, AIC additive-vs-multiplicative; netmeta FE/Q parity + √φ invariants)
 - Additive component-NMA (CNMA) — `allmeta/shared/cnma-receptor.js` — **DEFERRED**: needs a component-design matrix (which treatments contain which components) the kit doesn't model; niche.
-- Design-by-treatment global inconsistency (complete node-split panel) — `allmeta/nma-inconsistency` — **TODO (HTML-app extraction, NMA-only)**: kit already has node-split (`nma-consistency.js`); this adds the global design-by-treatment test.
+- ~~Design-by-treatment global inconsistency~~ — **DONE 2026-06-13** `nma-dbt.js` + `nma-dbt-panel.js` (extracted verbatim from `nma-inconsistency`): fitNMA matches the netmeta inco-tiny oracle exactly (Q=1.3352011607, TE_B/C exact); chiSqCDF == R pchisq; single-loop global p == oracle node-split p. NMA-conditional; complements the existing node-split.
 
 ## P3 — niche / experimental
 - ~~Q-profile CI for I²/τ² helper~~ — **ALREADY IN KIT** (`tau2-qprofile.js`, Viechtbauer 2007). No port needed.
-- GOSH plot (multimodal/subgroup heterogeneity) — `allmeta/gosh` — **TODO (HTML-app extraction)**: fits yi/vi but heavy (subset resampling + scatter); lower priority.
+- ~~GOSH plot (multimodal/subgroup heterogeneity)~~ — **DONE 2026-06-13** `gosh.js` + `gosh-panel.js` (extracted verbatim from `allmeta/gosh`): full enumeration k≤15 / seeded random sample k>15; inline canvas scatter (estimate vs I²) with full-sample point + a simple cluster-gap modality hint.
 - Spec-collapse / multiverse weighted-likelihood aggregator — `allmeta/shared/spec-collapse.js` — **DEFERRED**: needs multiverse specs (many analyses of one dataset); the kit is single-MA. This is the separate Spec-Collapse Atlas project's domain.
 - **[Experimental]** Browser least-squares Emax dose-response — `allmeta/glp1-obesity-mbnma/bayes_mbnma.py` — **WILL NOT PORT**: server-side MCMC; integration notes say do NOT port MCMC to the browser. Surface only as pre-computed Experimental results.
 - **[Experimental]** Population-transported NMA (entropy balancing) — `allmeta/shared/transported-nma-v1.js` — **DEFERRED (experimental)**: surface only as pre-computed; needs target-population covariate data.
