@@ -51,7 +51,15 @@
   // opts: {xMin, xMax, label}
   PS.renderForest = function (el, res, opts) {
     opts = opts || {};
-    if (!window.Plotly || !el || !res) return false;
+    if (!el || !res) return false;
+    // Synthēsis theme (the default paper skin) → bespoke journal-styled SVG
+    // forest with weight-squares, maroon diamond, PI bracket + annotation
+    // callout. Plotly path below is the fallback for the plain/other themes.
+    if (PS.isSynthesisTheme && PS.isSynthesisTheme() && PS.renderForestSynthesis) {
+      var sres = PS.renderForestSynthesis(el, res, opts);
+      if (sres) return true;
+    }
+    if (!window.Plotly) return false;
     var cont = !!res.isContinuous;
     var rows = studyPoints(res);
     // Pooled-only is allowed (e.g. a manually-added outcome with no per-study rows).
