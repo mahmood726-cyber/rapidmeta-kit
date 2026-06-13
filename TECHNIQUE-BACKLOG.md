@@ -14,6 +14,13 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
   the model doesn't carry → self-skip). Fixed a generated-code bug: it forced
   fixed-effect pooling at k<5 (anticonservative); now REML+HKSJ+t+PI for all k≥2.
   Field-map: panels read `publishedHR/hrLCI/hrUCI` + gate on `estimandType==='HR'`.
+- **DTA full bivariate Reitsma** `dta-reitsma.js` — replaces the ρ=0 independent-DL
+  pool with the R-verified bivariate ML (estimated Σ/ρ), vendored from
+  `allmeta/shared/dta-bivariate.js`, bit-exact vs `mada::reitsma` on AuditC. Panel
+  auto-upgrades via `RapidMetaDTA`; DL fallback for k<4.
+- **Dose-response** slope test z → Knapp-Hartung **t_{k-2}** (the only in-data-model
+  flaw; the full GL two-stage needs per-study dose-level cell-count tables the kit's
+  one-point-per-trial model doesn't carry — promoted to the data-model item below).
 
 ## P1 — high value, R-verified, ready to port (pure-JS `allmeta/shared/`)
 | Technique | Source | Kit gap |
@@ -23,8 +30,8 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
 | Robust Variance Estimation (CR2, Hedges-Tipton-Johnson) | `allmeta/shared/rve.js` | no cluster-robust / dependent-effects |
 | UWLS / multiplicative-heterogeneity pooling | `allmeta/shared/uwls.js` | additive RE only; advanced-stats prefers UWLS for observational |
 | Binomial-normal GLMM for rare events | `allmeta/shared/rare-events-glmm.js` | kit uses +0.5 correction (biases OR→1) |
-| **Full bivariate Reitsma ML DTA** | `allmeta/shared/dta-bivariate.js` | kit `dta-bivariate.js` fixes ρ=0 (logit-DL); needs full ML + ρ |
-| **Two-stage Greenland-Longnecker dose-response** | `allmeta/shared/dose-response.js` | kit `dose-response.js` is naive one-stage, ignores within-study covariance |
+| ~~Full bivariate Reitsma ML DTA~~ | — | **DONE** (see above) |
+| ~~Two-stage Greenland-Longnecker dose-response~~ | `allmeta/shared/dose-response.js` | **needs a per-study dose-level data model** (cell counts at each dose); kit carries one (dose, effect) per trial. Slope t-test done; GL covariance is a future data-model item. |
 
 ## P2 — meaningful, R-verified
 - Three-level (multilevel) REML MA — `allmeta/shared/multilevel-reml.js`
