@@ -21,11 +21,18 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
 - **Dose-response** slope test z → Knapp-Hartung **t_{k-2}** (the only in-data-model
   flaw; the full GL two-stage needs per-study dose-level cell-count tables the kit's
   one-point-per-trial model doesn't carry — promoted to the data-model item below).
+- **PET-PEESE** conditional small-study-effect adjustment added to funnel-diagnostics
+  (Stanley-Doucouliagos, t_{k-2}, PET→PEESE switch) — ported from allmeta/pet-peese.
+- **Extraction**: vendored allmeta `rct-regex-extract.js` + a self-mounting offline
+  "paste-to-extract" tool in the Extraction tab (anti-fabrication guards; never
+  auto-writes). Remaining allmeta extractors available to add: `ctgov-extract.js`
+  (CT.gov JSON → trial), `rct-classifier-v1.js` (RCT screen), `extract-grounding-v1.js`
+  (verify numbers vs source), `pdf-extract-v1.js` (needs pdf.js bundled — offline cost).
 
 ## P1 — high value, R-verified, ready to port (pure-JS `allmeta/shared/`)
 | Technique | Source | Kit gap |
 |---|---|---|
-| PET-PEESE conditional small-study adjustment | `allmeta/pet-peese` | kit has Egger/Peters only, NO PET-PEESE |
+| ~~PET-PEESE conditional small-study adjustment~~ | — | **DONE** (in funnel-diagnostics) |
 | Vevea-Hedges step-function selection model | `allmeta/shared/selmodel.js` | no selection-model engine |
 | Robust Variance Estimation (CR2, Hedges-Tipton-Johnson) | `allmeta/shared/rve.js` | no cluster-robust / dependent-effects |
 | UWLS / multiplicative-heterogeneity pooling | `allmeta/shared/uwls.js` | additive RE only; advanced-stats prefers UWLS for observational |
