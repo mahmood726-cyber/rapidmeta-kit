@@ -7,6 +7,18 @@ real (grep of `template/assets/vendor/`), the source is named, and the R-verifie
 experimental flag is checked. Experimental engines must carry an **"Experimental"**
 badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`).
 
+## DONE 2026-06-13 (P3 batch — Rücker limit-MA + Begg-Mazumdar)
+- **Limit meta-analysis** (`limit-ma.js` + panel): engine extracted verbatim from
+  the allmeta limit-ma HTML app; metasens::limitmeta parity to 1e-12 (limit,
+  seLimit, beta_r, G², tau2 all exact). Panel shows the small-study-adjusted OR
+  vs RE, the radial slope, and G². Binary, k≥3, sensitivity-only.
+- **Begg-Mazumdar** rank test added to funnel-diagnostics (Kendall τ-b exact vs
+  metafor::ranktest); now a 4-test battery (Egger, Peters, Begg, trim-and-fill)
+  + PET-PEESE. Harbord/Thompson-Sharp NOT ported — only named in the source
+  prose, never coded there.
+- Tests: +2 (limit-MA metasens anchor, Begg τ anchor); smoke harness mounts 7
+  panels + exercises funnel Begg/trim-fill.
+
 ## DONE 2026-06-13 (P2 batch — trim-and-fill upgrade, multiplicative NMA, multilevel REML)
 - **Trim-and-fill** upgraded: `trimfill.js` (iterative Duval-Tweedie L0, metafor
   parity 1e-7) vendored; `funnel-diagnostics.js` now delegates to `AlmTrimFill`
@@ -86,8 +98,8 @@ badge at point of display and never headline (allmeta `EXPERIMENTAL-METHODS.md`)
 - ~~Three-level (multilevel) REML MA~~ — **DONE 2026-06-13** `multilevel-reml.js` + `multilevel-reml-panel.js` (paste-input; kit has no nested data model; metafor parity on Konstantopoulos 2011 to 1e-5)
 - Location-scale meta-regression (models τ², not just mean) — `allmeta/shared/location-scale.js` — **DEFERRED**: needs per-study moderator + scale design matrices (X, Z) the kit doesn't carry; would require a matrix-paste UI. Engine vendorable when a moderator data model exists.
 - ~~Iterative Duval-Tweedie L0 trim-and-fill~~ — **DONE 2026-06-13** `trimfill.js`; funnel-diagnostics now delegates to it (metafor `trimfill` L0 parity to 1e-7, FE k0=5 / DL k0=4 anchors). Replaced the simplified L0.
-- Rücker limit meta-analysis (shrunken small-study-adjusted estimate) — `allmeta/limit-ma` — **TODO (HTML-app extraction)**: engine embedded in `limit-ma/index.html`, not a clean `shared/*.js`. Fits yi/vi; next batch.
-- Extended pub-bias battery (Harbord, Begg, Thompson-Sharp) — `allmeta/pubbias-tests` — **TODO (HTML-app extraction)**: add to funnel-diagnostics battery; next batch.
+- ~~Rücker limit meta-analysis (shrunken small-study-adjusted estimate)~~ — **DONE 2026-06-13** `limit-ma.js` (extracted verbatim from `limit-ma/index.html`) + `limit-ma-panel.js`; metasens::limitmeta parity to 1e-12 (limit=0.411998, G²=0.313521).
+- Extended pub-bias battery — `allmeta/pubbias-tests` — **PARTIAL DONE 2026-06-13**: added **Begg-Mazumdar** rank test to funnel-diagnostics (Kendall τ-b = metafor::ranktest exactly, 0.4319297483313; p is the source's normal approximation). NOTE: the allmeta source app only *names* Harbord/Thompson-Sharp in prose — they are NOT implemented as code there, so they were not ported (would be net-new, not a port).
 - ~~Multiplicative-heterogeneity NMA (network UWLS)~~ — **DONE 2026-06-13** `multiplicative-nma.js` + `multiplicative-nma-panel.js` (NMA-conditional auto-panel, AIC additive-vs-multiplicative; netmeta FE/Q parity + √φ invariants)
 - Additive component-NMA (CNMA) — `allmeta/shared/cnma-receptor.js` — **DEFERRED**: needs a component-design matrix (which treatments contain which components) the kit doesn't model; niche.
 - Design-by-treatment global inconsistency (complete node-split panel) — `allmeta/nma-inconsistency` — **TODO (HTML-app extraction, NMA-only)**: kit already has node-split (`nma-consistency.js`); this adds the global design-by-treatment test.

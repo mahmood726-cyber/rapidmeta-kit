@@ -231,6 +231,46 @@ def test_multiplicative_nma_invariants():
     assert out["badOk"] is False  # disconnected design fails closed
 
 
+def test_limit_ma_matches_metasens():
+    # Rücker limit meta-analysis vs metasens::limitmeta(method.adjust='beta0') on
+    # the allmeta limit-tiny fixture (10 studies). Anchor from limit-ma/tests.
+    out = _node(r"""
+        const L = require('./template/assets/vendor/limit-ma.js');
+        const csv=[['S01',0.55,0.08],['S02',0.48,0.10],['S03',0.70,0.15],['S04',0.60,0.09],
+          ['S05',0.30,0.07],['S06',0.75,0.20],['S07',0.52,0.08],['S08',0.65,0.12],
+          ['S09',0.45,0.17],['S10',0.58,0.10]];
+        const rows=csv.map(r=>({te:r[1],se:r[2]}));
+        const o=L.limitMA(rows);
+        console.log(JSON.stringify({limit:o.limit, seLimit:o.seLimit, beta_r:o.beta_r,
+          G2:o.G_squared, tau2:o.tau2}));
+    """)
+    assert abs(out["limit"] - 0.411998010092) < 1e-9
+    assert abs(out["seLimit"] - 0.088792115893) < 1e-9
+    assert abs(out["beta_r"] - 0.204805826788) < 1e-9
+    assert abs(out["G2"] - 0.313520932541) < 1e-9
+    assert abs(out["tau2"] - 0.007231869266) < 1e-9
+
+
+def test_begg_mazumdar_rank_test_tau_matches_metafor():
+    # Begg-Mazumdar studentized rank correlation in funnel-diagnostics. Kendall
+    # tau-b matches metafor::ranktest exactly (0.4319297483313) on the pb-tiny
+    # fixture; the p-value is a normal approximation (the source JS reports the
+    # same ~0.082 the kit does), so we assert tau exactly and p as non-significant.
+    out = _node(r"""
+        global.window = global;
+        global.document = { readyState:'complete', addEventListener(){} };
+        require('./template/assets/vendor/_panel-helper.js');
+        require('./template/assets/vendor/funnel-diagnostics.js');
+        const pts=[[0.55,0.08],[0.48,0.10],[0.70,0.15],[0.60,0.09],[0.30,0.07],
+          [0.75,0.20],[0.52,0.08],[0.65,0.12],[0.45,0.17],[0.58,0.10]]
+          .map(r=>({yi:r[0], vi:r[1]*r[1]}));
+        const b = global.FunnelDiagnostics.beggMazumdar(pts);
+        console.log(JSON.stringify({tau:b.tau, p:b.p}));
+    """)
+    assert abs(out["tau"] - 0.4319297483313) < 1e-9
+    assert 0.05 < out["p"] < 0.12  # non-significant; normal-approx p
+
+
 def test_rare_events_conditional_exact_cmel():
     out = _node(r"""
         const M = require('./template/assets/vendor/rare-events-glmm.js');

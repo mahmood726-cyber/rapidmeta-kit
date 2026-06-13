@@ -86,6 +86,43 @@
     return wlsReg(yi, xi, wi);
   }
 
+  // Begg-Mazumdar studentized rank-correlation test (Begg & Mazumdar 1994;
+  // = metafor::ranktest). Kendall tau-b between the studentized residual
+  // t*_i = (t_i − θ̂_FE)/√(v_i − v*) and v_i; tie-corrected. Extracted verbatim
+  // from allmeta/pubbias-tests (verified vs metafor: tau=0.4319297483313,
+  // p=0.08668084494669 on the pb-tiny fixture). Adds a rank-based test to the
+  // regression-based Egger/Peters already here.
+  function beggMazumdar(points) {
+    var n = points.length;
+    if (n < 4) return null;
+    var v = points.map(function (p) { return p.vi; });
+    var te = points.map(function (p) { return p.yi; });
+    var sumInvV = v.reduce(function (a, b) { return a + 1 / b; }, 0);
+    var vStar = 1 / sumInvV;
+    var thetaHat = te.reduce(function (a, t, i) { return a + t / v[i]; }, 0) / sumInvV;
+    var pairs = [];
+    for (var i = 0; i < n; i++) {
+      var diff = v[i] - vStar;
+      if (diff > 1e-12) pairs.push({ tStar: (te[i] - thetaHat) / Math.sqrt(diff), v: v[i] });
+    }
+    var m = pairs.length;
+    if (m < 2) return null;
+    var concordant = 0, discordant = 0, tiedX = 0, tiedY = 0;
+    for (var a = 0; a < m; a++) for (var b = a + 1; b < m; b++) {
+      var dx = pairs[a].tStar - pairs[b].tStar, dy = pairs[a].v - pairs[b].v;
+      if (dx === 0 && dy === 0) { /* tied both */ }
+      else if (dx === 0) tiedX++;
+      else if (dy === 0) tiedY++;
+      else if (dx * dy > 0) concordant++;
+      else discordant++;
+    }
+    var n0 = m * (m - 1) / 2;
+    var tau = (concordant - discordant) / Math.sqrt((n0 - tiedX) * (n0 - tiedY));
+    var varTau = (2 * (2 * m + 5)) / (9 * m * (m - 1));
+    var z = tau / Math.sqrt(varTau);
+    return { tau: tau, z: z, p: 2 * (1 - normalCDF(Math.abs(z))) };
+  }
+
   // Pool log-OR via DL random effects
   function poolDL(points) {
     if (!points || points.length < 2) return null;
@@ -201,6 +238,7 @@
     const positives = [];
     if (results.egger && results.egger.p_alpha < 0.10) positives.push('Egger (p=' + fmt(results.egger.p_alpha, 3) + ')');
     if (results.peters && results.peters.p_alpha < 0.10) positives.push("Peters (p=" + fmt(results.peters.p_alpha, 3) + ')');
+    if (results.begg && results.begg.p < 0.10) positives.push('Begg (p=' + fmt(results.begg.p, 3) + ')');
     if (results.tnf && results.tnf.L0 >= 2) positives.push('Trim-and-fill (L₀=' + results.tnf.L0 + ')');
 
     let tone, toneBg, toneBorder, verdict;
@@ -236,6 +274,11 @@
         'p=' + fmt(results.peters.p_alpha, 3),
         'α̂ = ' + fmt(results.peters.alpha, 3));
     }
+    if (results.begg) {
+      html += cell('Begg-Mazumdar (rank)',
+        'p=' + fmt(results.begg.p, 3),
+        'Kendall τ = ' + fmt(results.begg.tau, 3));
+    }
     if (results.tnf) {
       const cur = results.tnf.pool_with_imputed;
       const sub = results.tnf.L0 === 0
@@ -256,6 +299,7 @@
           + '<strong>Egger 1997:</strong> regression of t<sub>i</sub> = y<sub>i</sub>/√v<sub>i</sub> on 1/√v<sub>i</sub>; '
           + 'intercept α≠0 ⇒ small-study effect. Best for SMD/MD; biased on OR scale (Peters 2006).<br>'
           + '<strong>Peters 2006:</strong> regression of y<sub>i</sub> on 1/N with sample-size-based weights — recommended by Cochrane v6.5 §13.3.5 for binary outcomes.<br>'
+          + '<strong>Begg-Mazumdar 1994:</strong> rank-correlation test (Kendall τ-b, = metafor::ranktest) between the studentized effect residual and its variance; a non-parametric complement to the regression tests, but low-powered for k&lt;10.<br>'
           + '<strong>Trim-and-fill:</strong> Duval–Tweedie iterative R₀ estimator; mirrors L₀ "missing" extreme studies and re-pools (sensitivity, never primary; advanced-stats.md).<br>'
           + '<strong>PET-PEESE (Stanley-Doucouliagos 2014):</strong> conditional small-study-effect adjustment — PET (effect~SE, WLS) gives the bias-adjusted effect at SE=0; if PET rejects H₀ (t<sub>k-2</sub>, α=0.10) switch to PEESE (effect~SE²). The adjusted OR is a sensitivity estimate, not the primary result; power is poor for k<10.<br>'
           + '<strong>Verdict rule:</strong> Egger/Peters p<0.10 OR L₀≥2 ⇒ flag; ≥2 flags ⇒ asymmetry suspected.'
@@ -277,6 +321,7 @@
     const results = {
       egger: eggerTest(points),
       peters: petersTest(points, trials),
+      begg: beggMazumdar(points),
       tnf: trimAndFill(points),
       petpeese: petPeese(points),
     };
@@ -284,6 +329,7 @@
     const positives = [];
     if (results.egger && results.egger.p_alpha < 0.10) positives.push('Egger');
     if (results.peters && results.peters.p_alpha < 0.10) positives.push('Peters');
+    if (results.begg && results.begg.p < 0.10) positives.push('Begg');
     if (results.tnf && results.tnf.L0 >= 2) positives.push('TnF L₀≥2');
     const summary = positives.length === 0
       ? '✓ no asymmetry · k=' + trials.length
@@ -316,6 +362,6 @@
     }
   }
 
-  global.FunnelDiagnostics = { render };
+  global.FunnelDiagnostics = { render, beggMazumdar };
   bootstrap();
 })(typeof window !== 'undefined' ? window : this);
