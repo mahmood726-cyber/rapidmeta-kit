@@ -96,41 +96,30 @@ def test_invalid_id_with_explicit_source_url_builds(tmp_path):
     assert r.returncode == 0, r.stderr
 
 
-def _live_cdn_sri(url):
-    """sha384-<base64> of the live CDN file (decompressed, as the browser checks
-    SRI), or None if the network is unavailable."""
-    import urllib.request, hashlib, base64
-    try:
-        req = urllib.request.Request(url, headers={"Accept-Encoding": "identity"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = r.read()
-    except Exception:
-        return None
-    return "sha384-" + base64.b64encode(hashlib.sha384(data).digest()).decode()
-
-
-def test_cloned_dashboard_plotly_sri_matches_live_cdn(tmp_path):
-    # A clone must load Plotly from the CDN with an integrity hash and NEVER a bare
-    # local `assets/plotly.min.js` (clones ship standalone -> a local ref 404s).
-    # SELF-VERIFYING: rather than assert a hard-coded hash (which silently rots if
-    # the CDN ever republishes), fetch the live file and assert the dashboard's
-    # declared SRI equals what the CDN actually serves. This catches both a stale
-    # template hash and real CDN drift, in whatever environment runs the test.
-    import re, pytest
+def test_cloned_dashboard_bundles_local_plotly(tmp_path):
+    # OFFLINE-FIRST CONTRACT (commit d8c7e1e "template loads bundled Plotly"):
+    # the dashboard must load Plotly from the bundled LOCAL copy, never a CDN
+    # script tag. clone.py copies template/assets/ next to the output, so
+    # `assets/plotly.min.js` must (a) be referenced in the HTML and (b) actually
+    # ship in the emitted bundle. No network is touched (the project is "fully
+    # offline — no external CDN"). Replaces the old live-CDN-SRI test, which
+    # asserted the inverse of the project's now-deliberate offline design.
+    import re
     r, out = _run_clone(_build_config([{"nct": "NCT01234567", "name": "M",
                         "tE": 5, "tN": 100, "cE": 10, "cN": 100}]), tmp_path)
     assert r.returncode == 0, r.stderr
     html = out.read_text(encoding="utf-8")
-    assert 'src="assets/plotly.min.js"' not in html, "bare local plotly ref would 404 standalone"
-    m = re.search(r'src="(https://cdn\.plot\.ly/plotly-[\d.]+\.min\.js)"[^>]*integrity="(sha384-[^"]+)"', html)
-    assert m, "Plotly must load from the CDN with an integrity hash"
-    url, declared = m.group(1), m.group(2)
-    live = _live_cdn_sri(url)
-    if live is None:
-        pytest.skip("CDN unreachable; cannot verify SRI online")
-    assert declared == live, (
-        f"Plotly SRI MISMATCH: clone declares {declared} but {url} now hashes to "
-        f"{live}. Update the template integrity to the live value (or vendor Plotly).")
+    # (a) loads the bundled local Plotly
+    assert 'src="assets/plotly.min.js"' in html, "dashboard must load the bundled local Plotly"
+    # (b) no CDN *script tag*. Assert on the actual loader, not a bare substring:
+    #     the Content-Security-Policy <meta> legitimately names cdn.plot.ly in its
+    #     allowlist, so a substring check would false-positive on a correct build.
+    assert not re.search(r'<script[^>]+src="https://cdn\.plot\.ly', html), \
+        "offline build must not load Plotly from the CDN"
+    # (c) the referenced local asset actually ships next to the output
+    plotly = out.parent / "assets" / "plotly.min.js"
+    assert plotly.exists(), "assets/plotly.min.js must be copied into the output bundle"
+    assert plotly.stat().st_size > 100_000, "bundled plotly.min.js looks truncated/empty"
 
 
 def test_condition_slash_fails_closed(tmp_path):

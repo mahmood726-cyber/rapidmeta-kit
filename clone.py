@@ -23,7 +23,7 @@ trials.
 Exit codes: 0 = built, 2 = bad config (message says what to fix).
 """
 from __future__ import annotations
-import argparse, html, json, re, sys, io
+import argparse, html, json, math, re, sys, io
 from pathlib import Path
 
 # Guard the UTF-8 stdout shim: under pytest capture (no/odd .buffer) an
@@ -73,7 +73,8 @@ def _replace_exactly(src: str, old: str, new: str, what: str, n: int = 1) -> str
 # Backslash and angle brackets break the template-literal / regex-replacement
 # contexts the same way. Fail closed: medical names have apostrophe-free
 # canonical forms ("Crohn disease", "Alzheimer disease") that are safe here.
-_SWAP_UNSAFE = {"'": "apostrophe (')", "\\": "backslash (\\)", "<": "<", ">": ">"}
+_SWAP_UNSAFE = {"'": "apostrophe (')", "\\": "backslash (\\)", "<": "<", ">": ">",
+                '"': 'double-quote (")'}
 # `condition` (unlike drug/drug_lower) is ALSO stamped into JS regex literals,
 # where a forward slash closes the regex -> SyntaxError (build still exits 0).
 # So slash is unsafe in condition specifically. Use "or"/"and" instead
@@ -92,6 +93,20 @@ def _validate_trial_values(i: int, t: dict):
     never produces a green build (matches the finerenone repo's
     test_no_impossible_counts / test_data_integrity regression class)."""
     nct = t.get("nct", f"#{i+1}")
+    # Fail CLOSED on a present-but-wrong-type numeric field. _num() returns None
+    # for both "absent" and "present but a string/bool", and every range check
+    # below is gated on `is not None` — so without this gate a string like
+    # tE:"99999" (or a bool) silently SKIPS all integrity checks and then renders
+    # bare into the JS literal (injection / impossible 2x2 / invalid JS). Permit
+    # absent/null (k not in t or value is None); reject only present non-numbers.
+    _NUMERIC_FIELDS = ("tE", "tN", "cE", "cN", "publishedHR", "hrLCI", "hrUCI",
+                       "year", "pubHR", "pubHR_LCI", "pubHR_UCI")
+    for k in _NUMERIC_FIELDS:
+        if k in t and t[k] is not None and _num(t[k]) is None:
+            die(f"trial {i+1} ({nct}): {k}={t[k]!r} must be a number "
+                f"(got {type(t[k]).__name__}). Numeric trial fields are stamped "
+                f"as bare JS literals; a string/bool here ships a malformed or "
+                f"JS-breaking dashboard.")
     tE, tN, cE, cN = (_num(t.get(k)) for k in ("tE", "tN", "cE", "cN"))
     for label, n in (("tN", tN), ("cN", cN)):
         if n is not None and n < 0:
@@ -143,17 +158,28 @@ def render_outcome(o):
     for k in ("tE", "cE", "matchScore", "effect", "lci", "uci", "md", "se",
               "pubHR", "pubHR_LCI", "pubHR_UCI"):
         if k in o and o[k] is not None:
-            parts.append(f"{k}: {o[k]}")
+            parts.append(f"{k}: {_jsnum(o[k])}")
     if "estimandType" in o:
         parts.append(f"estimandType: '{js_escape(o['estimandType'])}'")
     return "{ " + ", ".join(parts) + " }"
 
 
 def _jsnum(v):
-    """Render a numeric-or-null field for the JS literal."""
+    """Render a numeric-or-null field for the JS literal. Fail CLOSED on a
+    non-numeric or non-finite value: these are stamped BARE into the JS object
+    literal, so a string would inject arbitrary JS (`tE: 1});alert(1)//`), a
+    bool would emit invalid `True`/`False`, and inf/nan would emit non-JS
+    `inf`/`nan`. repr() (not str()) is used so floats round-trip exactly."""
     if v is None:
         return "null"
-    return str(v)
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        die(f"numeric trial field must be a number or null, got {v!r} "
+            f"(a string/other type here is stamped into the JS literal and "
+            f"would inject code or break the dashboard).")
+    if isinstance(v, float) and not math.isfinite(v):
+        die(f"numeric trial field must be finite, got {v!r} "
+            f"(inf/nan is not valid JS).")
+    return repr(v)
 
 
 # Trial IDs are typed evidence fields: a registry ID must resolve to its OWN
@@ -181,8 +207,8 @@ def _registry_url(trial_id):
 
 def render_trial_entry(t, default_group):
     head = (
-        f"name: '{js_escape(t['name'])}', pmid: '{t.get('pmid','') or ''}', "
-        f"phase: '{t.get('phase','III')}', year: {t.get('year',2024)}, "
+        f"name: '{js_escape(t['name'])}', pmid: '{js_escape(t.get('pmid','') or '')}', "
+        f"phase: '{js_escape(t.get('phase','III'))}', year: {_jsnum(t.get('year',2024))}, "
         f"tE: {_jsnum(t.get('tE'))}, tN: {_jsnum(t.get('tN'))}, "
         f"cE: {_jsnum(t.get('cE'))}, cN: {_jsnum(t.get('cN'))}, "
         f"group: '{js_escape(t.get('group', default_group))}', "
@@ -611,9 +637,23 @@ def main():
     import shutil
     master_assets = HERE / "template" / "assets"
     out_assets = out_path.parent / "assets"
-    if master_assets.exists() and not out_assets.exists():
-        shutil.copytree(master_assets, out_assets)
-        print(f"  copied assets/ -> {out_assets} (shared by all dashboards here)")
+    if master_assets.exists():
+        # Idempotent refresh (dirs_exist_ok, Python 3.8+): completes a partial
+        # earlier copy and propagates master upgrades (e.g. a security-patched
+        # plotly) into a pre-existing shared output/assets — the old
+        # `not out_assets.exists()` short-circuit left stale/incomplete dirs.
+        shutil.copytree(master_assets, out_assets, dirs_exist_ok=True)
+        print(f"  synced assets/ -> {out_assets} (shared by all dashboards here)")
+
+    # Fail CLOSED if the emitted HTML references an asset that did not land next
+    # to the output: otherwise the dashboard 404s that panel offline with no
+    # build-time signal (the silent-broken-build / missing-asset bug class).
+    _refs = sorted(set(re.findall(r'(?:src|href)="(?:\./)?(assets/[^"?#]+)', src)))
+    _missing = [rel for rel in _refs if not (out_path.parent / rel).exists()]
+    if _missing:
+        die(f"referenced asset(s) not present next to the output: {_missing}. "
+            f"The dashboard would 404 these offline. Add them to "
+            f"template/assets/ or remove the reference from the template.")
 
     # Report
     residual = len(re.findall(BASE_DRUG_LOWER, src, re.I))

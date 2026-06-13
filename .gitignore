@@ -5,9 +5,15 @@ output/
 # Python
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Node (build-time minifier deps; never part of the shipped offline kit)
+node_modules/
 
 # Dev/scratch helpers
 _*.py
+sentinel-findings.md
+sentinel-findings.jsonl
 
 # Editors / OS
 .vscode/

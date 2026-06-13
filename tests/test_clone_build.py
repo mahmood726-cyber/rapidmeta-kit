@@ -35,6 +35,28 @@ def test_bundled_examples_build(cfg_name, tmp_path):
     assert (out.parent / "assets" / "plotly.min.js").exists()
 
 
+def test_every_referenced_asset_ships_in_bundle(tmp_path):
+    # OFFLINE GUARD: every src=/href="assets/..." the template emits must (a) land
+    # in the output bundle and (b) be present in template/assets (so fresh clones
+    # ship it). Catches a template ref whose backing file was deleted/untracked ->
+    # a runtime 404 offline. Previously only plotly.min.js (1 of ~68) was checked.
+    import re
+    out = tmp_path / "dash.html"
+    res = run_clone([str(CONFIGS / "example_minimal.json"), "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text(encoding="utf-8")
+    # quote-agnostic so a single-quoted ref in a future template edit isn't missed
+    refs = sorted(set(re.findall(r'(?:src|href)=["\'](assets/[^"\'?#]+)["\']', html)))
+    assert len(refs) > 10, "expected many bundled asset refs; regex/template drift?"
+    out_dir = out.parent
+    missing = [r for r in refs if not (out_dir / r).exists()]
+    assert not missing, f"template references assets missing from the output bundle: {missing}"
+    # Source-side: the same files must exist under template/assets (not just on the
+    # build machine), so fresh clones ship them.
+    src_missing = [r for r in refs if not (REPO_ROOT / "template" / r).exists()]
+    assert not src_missing, f"template references assets absent from template/: {src_missing}"
+
+
 def test_finerenone_tokens_stamped(tmp_path):
     out = tmp_path / "fin.html"
     res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
