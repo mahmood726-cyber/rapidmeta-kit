@@ -167,6 +167,70 @@ def test_rare_events_glmm_direction_T_less_than_C():
     assert out["theta"] < 0
 
 
+def test_trimfill_iterative_l0_fe_and_dl_anchors():
+    # Duval-Tweedie iterative L0 vs metafor::trimfill (estimator="L0"); anchor from
+    # allmeta hub/shared/tests/trimfill-parity.spec.mjs. Needs the FE/DL pool from
+    # _alm-stats-shim.js (method:'FE' -> tau2=0).
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_alm-stats-shim.js');
+        const T = require('./template/assets/vendor/trimfill.js');
+        const Y=[0.05,0.08,0.12,0.20,0.55,0.62,0.85,1.10,1.35,1.60];
+        const S=[0.08,0.09,0.10,0.12,0.30,0.33,0.40,0.48,0.55,0.62];
+        const V=S.map(x=>x*x);
+        const fe=T.trimAndFill(Y,V,{method:'FE'});
+        const dl=T.trimAndFill(Y,V,{method:'DL'});
+        const feR=T.trimAndFill(Y.map(x=>-x),V,{method:'FE'});
+        console.log(JSON.stringify({fe_k0:fe.k0, fe_side:fe.side, fe_mu:fe.mu, fe_tau2:fe.tau2,
+          dl_k0:dl.k0, dl_mu:dl.mu, dl_tau2:dl.tau2, feR_side:feR.side, feR_mu:feR.mu}));
+    """)
+    assert out["fe_k0"] == 5 and out["fe_side"] == "left"
+    assert abs(out["fe_mu"] - 0.10795809) < 1e-6 and abs(out["fe_tau2"]) < 1e-8
+    assert out["dl_k0"] == 4
+    assert abs(out["dl_mu"] - 0.17956014) < 1e-6 and abs(out["dl_tau2"] - 0.07327144) < 1e-6
+    assert out["feR_side"] == "right" and abs(out["feR_mu"] - (-0.10795809)) < 1e-6
+
+
+def test_multilevel_reml_matches_metafor_konstantopoulos():
+    # Three-level REML vs metafor::rma.mv on dat.konstantopoulos2011 (56 effects,
+    # 11 districts). Anchor from allmeta multilevel-reml-parity.spec.mjs.
+    out = _node(r"""
+        const fs = require('fs');
+        const ML = require('./template/assets/vendor/multilevel-reml.js');
+        const KON = JSON.parse(fs.readFileSync('./tests/_kon_data.json','utf-8'))
+          .map(r => ({ cluster:r.district, y:r.yi, v:r.vi }));
+        const f = ML.fit(KON);
+        console.log(JSON.stringify({k:f.k, nC:f.nClusters, mu:f.mu, se:f.se,
+          s2B:f.sigma2Between, s2W:f.sigma2Within, ll:f.logLik}));
+    """)
+    assert out["k"] == 56 and out["nC"] == 11
+    assert abs(out["mu"] - 0.1847131637) < 1e-5
+    assert abs(out["se"] - 0.0845559188) < 1e-5
+    assert abs(out["s2B"] - 0.0650619443) < 1e-5
+    assert abs(out["s2W"] - 0.0327365170) < 1e-5
+    assert abs(out["ll"] - (-7.9587240337)) < 1e-4
+
+
+def test_multiplicative_nma_invariants():
+    # Multiplicative-heterogeneity NMA: point estimates == FE, SE == SE_FE*sqrt(phi),
+    # phi == Q/df, reference == 0; fails closed on a disconnected design.
+    out = _node(r"""
+        const M = require('./template/assets/vendor/multiplicative-nma.js');
+        const rows=[{trtA:'A',trtB:'B',yi:0.50,sei:0.20},{trtA:'A',trtB:'C',yi:0.80,sei:0.25},{trtA:'B',trtB:'C',yi:0.40,sei:0.30}];
+        const r=M.fit(rows,['A','B','C']);
+        const bad=M.fit([{trtA:'A',trtB:'B',yi:0.2,sei:0.2},{trtA:'C',trtB:'D',yi:0.3,sei:0.2}],['A','B','C','D']);
+        console.log(JSON.stringify({ok:r.ok, phi:r.phi, df:r.df,
+          Bse:r.effects.B.se, BseFE:r.effects.B.seFE,
+          refEst:r.effects.A.estimate, refSe:r.effects.A.se,
+          prefer:r.prefer, badOk:bad.ok}));
+    """)
+    assert out["ok"] is True
+    assert abs(out["Bse"] - out["BseFE"] * (out["phi"] ** 0.5)) < 1e-9
+    assert out["refEst"] == 0 and out["refSe"] == 0
+    assert out["prefer"] in ("multiplicative", "additive", "comparable")
+    assert out["badOk"] is False  # disconnected design fails closed
+
+
 def test_rare_events_conditional_exact_cmel():
     out = _node(r"""
         const M = require('./template/assets/vendor/rare-events-glmm.js');

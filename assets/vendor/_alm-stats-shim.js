@@ -70,20 +70,23 @@
     q = p - 0.5; r = q * q;
     return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
   }
-  // DerSimonian-Laird random-effects pool — used only as the selmodel ML start.
+  // Pool used by trimfill.js (FE + DL) and as the selmodel ML start. Honors
+  // opts.method: 'FE' -> τ²=0 (fixed effect); anything else -> DerSimonian-Laird
+  // random effects. z-based CIs (metafor's default for FE and DL).
   function pool(yi, vi, opts) {
     opts = opts || {};
+    var method = opts.method || 'DL';
     var k = yi.length, i, w, sw = 0, swy = 0;
     for (i = 0; i < k; i++) { w = 1 / vi[i]; sw += w; swy += w * yi[i]; }
     var muFE = swy / sw, Q = 0;
     for (i = 0; i < k; i++) Q += (yi[i] - muFE) * (yi[i] - muFE) / vi[i];
     var sw2 = 0; for (i = 0; i < k; i++) sw2 += 1 / (vi[i] * vi[i]);
     var c = sw - sw2 / sw, df = k - 1;
-    var tau2 = c > 0 ? Math.max(0, (Q - df) / c) : 0;
+    var tau2 = (method === 'FE') ? 0 : (c > 0 ? Math.max(0, (Q - df) / c) : 0);
     var sw3 = 0, swy3 = 0;
     for (i = 0; i < k; i++) { w = 1 / (vi[i] + tau2); sw3 += w; swy3 += w * yi[i]; }
-    var mu = swy3 / sw3;
-    return { mu: mu, tau2: tau2, se: Math.sqrt(1 / sw3), Q: Q, k: k };
+    var mu = swy3 / sw3, se = Math.sqrt(1 / sw3);
+    return { mu: mu, tau2: tau2, se: se, ciLo: mu - 1.959963984540054 * se, ciHi: mu + 1.959963984540054 * se, Q: Q, k: k };
   }
 
   global.AlmMaCore = global.AlmMaCore || { _qt: qt, _qnorm: _qnorm, pool: pool };

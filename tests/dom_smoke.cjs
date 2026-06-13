@@ -51,10 +51,16 @@ require(V + 'uwls.js');
 require(V + 'selmodel.js');
 require(V + 'rve.js');
 require(V + 'rare-events-glmm.js');
+require(V + 'trimfill.js');
+require(V + 'multiplicative-nma.js');
+require(V + 'multilevel-reml.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
 require(V + 'rve-panel.js');
+require(V + 'multiplicative-nma-panel.js');
+require(V + 'multilevel-reml-panel.js');
+require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
 // Shape mirrors the kit's realData (tE/tN/cE/cN per trial).
@@ -69,6 +75,16 @@ global.window.RapidMeta = {
     t4: { name: 'Trial D', tE: 16, tN: 150, cE: 9,  cN: 150, year: 2021 },
     t5: { name: 'Trial E', tE: 6,  tN: 300, cE: 0,  cN: 305, year: 2022 }, // zero cell
   },
+};
+// NMA scenario so the multiplicative-NMA panel (NMA-conditional) mounts: a
+// 3-treatment triangle whose edges reference the realData trials above.
+global.window.NMA_CONFIG = {
+  treatments: ['A', 'B', 'C'],
+  comparisons: [
+    { t1: 'A', t2: 'B', trials: ['t1', 't2'] },
+    { t1: 'A', t2: 'C', trials: ['t3', 't4'] },
+    { t1: 'B', t2: 'C', trials: ['t5'] },
+  ],
 };
 
 // ---- Drive each panel's render() --------------------------------------------
@@ -87,11 +103,30 @@ function check(name, fn) {
 const PANEL_ID = {
   UWLSPanel: 'uwls-panel', SelModelPanel: 'selmodel-panel',
   RareEventsPanel: 'rare-events-panel', RVEPanel: 'rve-panel',
+  MultiplicativeNMAPanel: 'multiplicative-nma-panel', MultilevelREMLPanel: 'multilevel-reml-panel',
 };
-['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel'].forEach((p) => {
+['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
+ 'MultiplicativeNMAPanel', 'MultilevelREMLPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
+
+// Multilevel-REML paste-tool: parseRows + a real fit on clustered input.
+const mp = global.window.MultilevelREMLPanel.parseRows('D1, 0.31, 0.07\nD1, 0.22, 0.09\nD2, 0.45, 0.08\nD2, 0.38, 0.10\nD3, 0.12, 0.06');
+if (mp.rows.length !== 5) fails.push('Multilevel.parseRows: expected 5 rows, got ' + mp.rows.length);
+if (mp.errors.length) fails.push('Multilevel.parseRows: unexpected errors ' + JSON.stringify(mp.errors));
+try {
+  const f = global.window.AlmMultilevelREML.fit(mp.rows);
+  if (!(isFinite(f.mu) && f.sigma2Between >= 0 && f.sigma2Within >= 0)) fails.push('Multilevel fit: non-finite/negative variance');
+} catch (e) { fails.push('Multilevel fit threw ' + e); }
+
+// Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
+const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
+if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
+
+// Funnel diagnostics must still mount with the AlmTrimFill delegation active.
+check('FunnelDiagnostics', () => global.window.FunnelDiagnostics.render());
+if (!registry['funnel-diagnostics-panel']) fails.push('FunnelDiagnostics: panel did not mount');
 
 // RVE parseRows pure-function contract (clustered input).
 const pr = global.window.RVEPanel.parseRows('S1, 0.4, 0.11\nS1, 0.5, 0.13\nS2, 0.3, 0.09\nS2, 0.35, 0.10');
@@ -110,4 +145,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 4 panels mounted + RVE parse/fit verified');
+console.log('SMOKE OK: 6 panels mounted + RVE/multilevel parse/fit + NMA buildRows verified');

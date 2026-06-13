@@ -115,6 +115,17 @@
   // Iterative L0 estimator (Duval-Tweedie 2000)
   function trimAndFill(points) {
     if (points.length < 3) return null;
+    // Prefer the R-verified iterative Duval-Tweedie L0 engine (AlmTrimFill,
+    // matches metafor::trimfill to ~1e-7) when it's loaded; the block below is a
+    // simplified fallback kept only for standalone use.
+    if (global.AlmTrimFill) {
+      const yi = points.map(p => p.yi), vi = points.map(p => p.vi);
+      const r = global.AlmTrimFill.trimAndFill(yi, vi, { method: 'DL' });
+      if (r) return {
+        L0: r.k0, sideTrim: r.side,
+        pool_with_imputed: { OR: Math.exp(r.mu), ci_low: Math.exp(r.ciLo), ci_high: Math.exp(r.ciHi), k: r.kOrig + r.k0 },
+      };
+    }
     const pool = poolDL(points);
     if (!pool) return null;
     // Side: which tail is suspected of suppression? Determined by sign of
