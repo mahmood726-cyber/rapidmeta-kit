@@ -6245,7 +6245,7 @@ const ContinuousMDEngine = {
             hksjUCI = pMD + tCritHKSJ * hksjSE;
         }
 
-        // Prediction interval (Higgins 2009, t_{k-2}). NaN for k < 3.
+        // Prediction interval (Cochrane Handbook v6.5 §10.10.4.3, t_{k-1}). NaN for k < 2.
         const piSE = Math.sqrt(tau2 + pSE * pSE);
         // PI df = k-1 per Cochrane Handbook v6.5 §10.10.4.3 (RevMan default).
         const tCritPI = (k >= 2) ? tQuantile(1 - (1 - confLevel) / 2, k - 1) : NaN;
@@ -31610,6 +31610,11 @@ const AnalysisEngine = {
 
 
                 const zCritHR = normalQuantile(1 - (1 - confLevel) / 2);
+                // A published HR confidence interval is (essentially always) a 95% CI,
+                // so its SE = (logUCI − logLCI)/(2·1.96) REGARDLESS of the dashboard's
+                // chosen output confidence level. Using zCritHR here would mis-derive
+                // every study's variance (and hence τ²/I²/HKSJ/PI) whenever confLevel≠0.95.
+                const Z95_HR = 1.959963985;
 
 
 
@@ -31645,7 +31650,7 @@ const AnalysisEngine = {
                         const logEff = Math.log(t.data.pubHR);
 
 
-                        const se = (Math.log(t.data.pubHR_UCI) - Math.log(t.data.pubHR_LCI)) / (2 * zCritHR);
+                        const se = (Math.log(t.data.pubHR_UCI) - Math.log(t.data.pubHR_LCI)) / (2 * (t.data.pubHR_ci_z ?? Z95_HR));
 
 
                         const vi = se * se;
@@ -41846,10 +41851,10 @@ except ImportError:
                 const jsUCI = Math.log(parseFloat(r.uci) || 1);
 
 
-                const jsTau2 = parseFloat(r.tau2) ?? 0;
+                const jsTau2 = Number.isFinite(parseFloat(r.tau2)) ? parseFloat(r.tau2) : 0;
 
 
-                const jsI2 = parseFloat(r.i2) ?? 0;
+                const jsI2 = Number.isFinite(parseFloat(r.i2)) ? parseFloat(r.i2) : 0;
 
 
 
@@ -44324,6 +44329,7 @@ except ImportError:
   <script src="assets/vendor/single-arm-forest.js" defer></script>
   <script src="assets/vendor/single-arm-influence.js" defer></script>
   <script src="assets/vendor/nma-league-continuous.js" defer></script>
+  <script src="assets/vendor/poth.js" defer></script>
   <script src="assets/vendor/nma-sucra.js" defer></script>
   <script src="assets/vendor/fagan-nomogram.js" defer></script>
   <script src="assets/vendor/dose-spline.js" defer></script>

@@ -22,7 +22,8 @@
  *   { k_used, mu_log, mu, ci_lo, ci_hi, pi_lo, pi_hi, tau2, Q, I2, perStudy: [...] }
  *
  * Conventions: Cochrane Handbook v6.5 (Nov 2024 §10.10.4.3) — PI uses t_{k-1};
- * HKSJ floor = max(1, Q/(k-1)); zero-cell Haldane 0.5 only when ≥1 cell is 0.
+ * HKSJ floor = max(1, q*) where q* is the RE-weighted statistic
+ * (1/df)·Σ wRE_i·(y_i−muRE)²; zero-cell Haldane 0.5 only when ≥1 cell is 0.
  */
 (function (global) {
   'use strict';
@@ -149,8 +150,15 @@
     const muRE = yi.reduce((s, y, i) => s + wRE[i] * y, 0) / sumWRE;
     const seMu = Math.sqrt(1 / sumWRE);
 
-    // HKSJ floor + scaling
-    const hksjFactor = Math.max(1, Q / df);
+    // HKSJ floor + scaling. The Hartung-Knapp-Sidik-Jonkman statistic uses
+    // RANDOM-effects weights and the RE pooled mean — q* = (1/df)·Σ wRE_i·(y_i−muRE)²
+    // — NOT the fixed-effect Q/df. Using FE Q/df overstates the multiplier whenever
+    // tau2>0 (CIs come out ~3x too wide vs metafor test="knha"). Floored at
+    // max(1, q*) per the HKSJ-floor rule; matches the bit-exact in-page computeCore.
+    let qStar = 0;
+    for (let i = 0; i < k; i++) { qStar += wRE[i] * Math.pow(yi[i] - muRE, 2); }
+    qStar /= df;
+    const hksjFactor = Math.max(1, qStar);
     const seMuHKSJ = seMu * Math.sqrt(hksjFactor);
 
     const tCi = tCrit975(df);
