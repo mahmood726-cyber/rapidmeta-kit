@@ -599,3 +599,39 @@ def test_multivariate_ma_matches_metafor_rma_mv_berkey1998():
     assert abs(out["rho"] - 0.4567653812) < 1e-4
     assert abs(out["ll"] - 3.7518022064) < 1e-4
     assert out["threw"] is True                          # k<2 fails closed (G unidentifiable)
+
+
+def test_evalue_matches_evalue_r_package():
+    """evalue.js (vendored verbatim from allmeta/shared) = the E-value (VanderWeele &
+    Ding 2017, Ann Intern Med 167:268-274): the minimum risk-ratio-scale association an
+    unmeasured confounder needs with BOTH treatment and outcome to explain away the
+    observed effect (point) or shift the near-null CI bound to 1. Anchored to
+    evalue-parity.spec.mjs vs the EValue R package: RR=2.0 [1.5,2.7] -> E=3.414214,
+    CI 2.366025; RR=0.6 [0.4,0.9] -> E=2.720759, CI 1.462475; OR=2.0 common -> E=2.179580,
+    CI 1.749392 (approx RR sqrt(OR)=1.414214); HR=1.6 common -> E=2.112944, CI 1.525531."""
+    out = _node(r"""
+        const E = require('./template/assets/vendor/evalue.js');
+        const rrPos = E.eValues('RR', 2.0, 1.5, 2.7);
+        const rrNeg = E.eValues('RR', 0.6, 0.4, 0.9);
+        const or = E.eValues('OR', 2.0, 1.5, 2.7, {rare:false});
+        const hr = E.eValues('HR', 1.6, 1.2, 2.1, {rare:false});
+        // a CI that crosses the null -> CI E-value = 1 (near-null bound below 1 for RR>1)
+        const cross = E.eValues('RR', 1.3, 0.9, 1.8);
+        console.log(JSON.stringify({
+          rrPosPoint:rrPos.point, rrPosCI:rrPos.ci,
+          rrNegPoint:rrNeg.point, rrNegCI:rrNeg.ci,
+          orPoint:or.point, orCI:or.ci, orRR:or.rr.point,
+          hrPoint:hr.point, hrCI:hr.ci, crossCI:cross.ci, eNull:E.eValue(1.0)
+        }));
+    """)
+    assert abs(out["rrPosPoint"] - 3.414214) < 1e-5
+    assert abs(out["rrPosCI"] - 2.366025) < 1e-5
+    assert abs(out["rrNegPoint"] - 2.720759) < 1e-5
+    assert abs(out["rrNegCI"] - 1.462475) < 1e-5
+    assert abs(out["orPoint"] - 2.179580) < 1e-5
+    assert abs(out["orCI"] - 1.749392) < 1e-5
+    assert abs(out["orRR"] - 1.414214) < 1e-5             # OR -> sqrt(OR) common-outcome map
+    assert abs(out["hrPoint"] - 2.112944) < 1e-5
+    assert abs(out["hrCI"] - 1.525531) < 1e-5
+    assert out["crossCI"] == 1                            # CI crossing the null -> E-value 1
+    assert out["eNull"] == 1                              # E-value at the null RR=1 is exactly 1

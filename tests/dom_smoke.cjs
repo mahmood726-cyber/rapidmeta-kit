@@ -63,6 +63,7 @@ require(V + 'experimental-ma.js');
 require(V + 'bma-tau.js');
 require(V + 'transportability-v1.js');
 require(V + 'multivariate-ma.js');
+require(V + 'evalue.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -78,6 +79,7 @@ require(V + 'experimental-ma-panel.js');
 require(V + 'bma-tau-panel.js');
 require(V + 'transportability-v1-panel.js');
 require(V + 'multivariate-ma-panel.js');
+require(V + 'evalue-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -128,12 +130,13 @@ const PANEL_ID = {
   BMATauPanel: 'bma-tau-panel',
   TransportabilityV1Panel: 'transportability-v1-panel',
   MultivariateMAPanel: 'multivariate-ma-panel',
+  EValuePanel: 'evalue-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
  'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel', 'RoBMAPanel',
  'ExperimentalMAPanel', 'BMATauPanel',
- 'TransportabilityV1Panel', 'MultivariateMAPanel'].forEach((p) => {
+ 'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -196,4 +199,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 15 panels mounted + RVE/multilevel/transport/multivariate parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate verified');
+console.log('SMOKE OK: 16 panels mounted + RVE/multilevel/transport/multivariate parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value verified');
