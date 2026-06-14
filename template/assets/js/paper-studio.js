@@ -779,6 +779,13 @@
     return function (el, res, opts) { return PS.renderSynthesisFigure ? PS.renderSynthesisFigure(kind, el, res, opts) : false; };
   }
   function num(v) { var n = Number(v); return (v === "" || v == null || !isFinite(n)) ? null : n; }
+  // Resolve a figure's annotation opt: false = hidden, a non-empty string =
+  // writer override, undefined = the renderer's auto default note.
+  function annOpt(fs) {
+    if (!fs) return undefined;
+    if (fs.annOff) return false;
+    return (fs.annotation && String(fs.annotation).trim()) ? String(fs.annotation) : undefined;
+  }
   // Registry of mounted figures so x-range + export can address any of them.
   PS._figs = PS._figs || {};
 
@@ -789,6 +796,16 @@
     if (!slot) return false;
     figState = figState || {};
     var v = function (x) { return (x == null || x === "") ? "" : x; };
+    // Annotation editor only for the Synthēsis-styled figures that carry a callout.
+    var annKinds = { forest: 1, funnel: 1, leaveOneOut: 1, cumulative: 1, labbe: 1 };
+    var annRow = (annKinds[kind] && PS.isSynthesisTheme && PS.isSynthesisTheme())
+      ? '<div class="fig-controls fig-ann-controls">' +
+        '<span class="fig-controls-label">Annotation</span>' +
+        '<input type="text" class="fig-ann" data-figid="' + figId + '" placeholder="(blank = default note)" value="' + esc(v(figState.annotation)) + '" aria-label="figure annotation text">' +
+        '<label class="fig-ann-off-lbl"><input type="checkbox" class="fig-ann-off" data-figid="' + figId + '"' + (figState.annOff ? ' checked' : '') + '> hide note</label>' +
+        '<button type="button" data-figaction="apply" data-figid="' + figId + '">Apply</button>' +
+        '</div>'
+      : '';
     slot.innerHTML =
       '<details class="fig-controls-wrap no-clean-pdf"><summary>Adjust plot ▾ <span class="fig-opt">optional</span></summary>' +
       '<div class="fig-controls">' +
@@ -798,10 +815,10 @@
       '<button type="button" data-figaction="apply" data-figid="' + figId + '">Apply</button>' +
       '<button type="button" data-figaction="reset" data-figid="' + figId + '">Auto</button>' +
       '<span class="fig-controls-note">Leave on Auto unless the plot looks squashed.</span>' +
-      '</div></details>' +
+      '</div>' + annRow + '</details>' +
       '<div class="ps-figbox" id="' + slotId + '-box" data-figid="' + figId + '"></div>';
     var box = document.getElementById(slotId + "-box");
-    var ok = rendererFor(kind)(box, res, { xMin: num(figState.xMin), xMax: num(figState.xMax), label: label });
+    var ok = rendererFor(kind)(box, res, { xMin: num(figState.xMin), xMax: num(figState.xMax), label: label, annotation: annOpt(figState) });
     PS._figs[figId] = { kind: kind, box: box, res: res, figState: figState, label: label || "" };
     return ok;
   };
@@ -825,8 +842,13 @@
       fs.xMin = mn ? mn.value : ""; fs.xMax = mx ? mx.value : "";
       if (num(fs.xMin) != null && num(fs.xMax) != null && num(fs.xMin) >= num(fs.xMax)) { PS.toast("X-axis min must be less than max."); return; }
     }
+    // Annotation editor (Synthēsis figures): persist the writer's note + hide flag.
+    var annEl = document.querySelector('.fig-ann[data-figid="' + figId + '"]');
+    var offEl = document.querySelector('.fig-ann-off[data-figid="' + figId + '"]');
+    if (annEl) fs.annotation = annEl.value;
+    if (offEl) fs.annOff = !!offEl.checked;
     PS.save();
-    rendererFor(f.kind)(f.box, f.res, { xMin: num(fs.xMin), xMax: num(fs.xMax), label: f.label });
+    rendererFor(f.kind)(f.box, f.res, { xMin: num(fs.xMin), xMax: num(fs.xMax), label: f.label, annotation: annOpt(fs) });
     if (reset) { var a = document.querySelector('.fig-x[data-figid="' + figId + '"][data-b="min"]'), b = document.querySelector('.fig-x[data-figid="' + figId + '"][data-b="max"]'); if (a) a.value = ""; if (b) b.value = ""; }
   };
 
@@ -984,9 +1006,8 @@
     else ensurePlaceholder("#robPaperSlot", "riskOfBias", "Risk-of-bias summary appears here once you complete the Extraction → RoB step.");
     // Optional Synthēsis diagnostics (auto-drawn from results; placeholders otherwise).
     var synOK = PS.isSynthesisTheme && PS.isSynthesisTheme() && res && res.plotData;
-    var labbeBox = document.getElementById("labbePaperSlot");
-    if (synOK && labbeBox && PS.renderSynthesisFigure("labbe", labbeBox, res, {})) markFig("labbePlot", true);
-    else ensurePlaceholder("#labbePaperSlot", "labbePlot", "The L'Abbé plot appears here once your trials have event counts in both arms.");
+    var labbeOK = synOK && PS.renderOwnFig("labbe", "labbePaperSlot", res, primaryLabel);
+    if (!labbeOK) ensurePlaceholder("#labbePaperSlot", "labbePlot", "The L'Abbé plot appears here once your trials have event counts in both arms.");
     var looOK = synOK && PS.renderOwnFig("leaveOneOut", "leaveOneOutPaperSlot", res, primaryLabel);
     if (!looOK) ensurePlaceholder("#leaveOneOutPaperSlot", "leaveOneOutPlot", "Leave-one-out analysis appears here once your analysis has ≥3 studies.");
     var cumOK = synOK && PS.renderOwnFig("cumulative", "cumulativePaperSlot", res, primaryLabel);

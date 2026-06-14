@@ -407,6 +407,9 @@ body.tips-hidden .section-example { display: none !important; }
 .fig-controls-wrap > summary { cursor: pointer; font-size: 0.76rem; color: var(--paper-muted); margin-bottom: 0.3rem; }
 .fig-controls-wrap .fig-opt { font-size: 0.66rem; background: #eef2f7; color: #64748b; border-radius: 999px; padding: 0.05rem 0.4rem; }
 .fig-controls-note { flex: 1 1 100%; font-size: 0.7rem; color: var(--paper-muted); }
+.fig-ann-controls { border-top: 1px dashed var(--paper-border); padding-top: 0.4rem; }
+.fig-ann-controls .fig-ann { flex: 1 1 18rem; min-width: 12rem; padding: 0.2rem 0.4rem; border: 1px solid var(--paper-border); border-radius: 6px; font-size: 0.78rem; }
+.fig-ann-off-lbl { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.74rem; }
 .readiness-honesty { font-size: 0.72rem; color: #94a3b8; line-height: 1.45; margin: 0.6rem 0 0; border-top: 1px solid #334155; padding-top: 0.5rem; }
 .tutor-copy-btn { width: 100%; margin-top: 0.5rem; font-size: 0.76rem; font-weight: 700; padding: 0.5rem; border-radius: 0.6rem; background: #1e293b; color: #cbd5e1; border: 1px solid #475569; cursor: pointer; }
 .tutor-copy-btn:hover { background: #334155; color: #fff; }
