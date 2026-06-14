@@ -759,3 +759,31 @@ def test_multi_outcome_ma_matches_metafor_rma_mv_unknown_rho_within():
     assert abs(out["hTau"][0] - 0.41719197) < 1e-3
     assert abs(out["hTau"][1] - 0.26834579) < 1e-3
     assert abs(out["hRho"] - (-0.65445236)) < 1e-2
+
+
+def test_location_scale_matches_metafor_bcg_anchor():
+    """Location-scale ML meta-regression vs metafor::rma(yi, vi, mods=~ablat,
+    scale=~ablat, link="log", method="ML") on dat.bcg (the engine's own
+    location-scale-parity oracle):
+      beta=(0.3773050505,-0.0328872237) SE=(0.1011467804,0.0033708894)
+      alpha=(-6.1660890350,0.0215854747) SE=(6.6766755594,0.1288608723)
+      logLik=-6.9485391888."""
+    out = _node(r"""
+        const M = require('./template/assets/vendor/location-scale.js');
+        const ABLAT=[44,55,42,52,13,44,19,13,27,42,18,33,33];
+        const YI=[-0.9386941409,-1.6661907290,-1.3862943611,-1.4564435493,-0.2191410857,-0.9581220408,-1.6337758382,0.0120206015,-0.4717460358,-1.4012101393,-0.3408496464,0.4466346823,-0.0173418739];
+        const VI=[0.3571249523,0.2081323937,0.4334130781,0.0203144130,0.0519517773,0.0099052655,0.2270096752,0.0040069620,0.0569771240,0.0754217263,0.0125251338,0.5341621725,0.0716351173];
+        const X=ABLAT.map(a=>[1,a]), Z=ABLAT.map(a=>[1,a]);
+        const f=M.fit(YI,VI,X,Z);
+        console.log(JSON.stringify({b:f.beta,bse:f.betaSE,a:f.alpha,ase:f.alphaSE,ll:f.logLik,k:f.k}));
+    """)
+    assert out["k"] == 13
+    assert abs(out["b"][0] - 0.3773050505) < 1e-4
+    assert abs(out["b"][1] - (-0.0328872237)) < 1e-5
+    assert abs(out["bse"][0] - 0.1011467804) < 1e-4
+    assert abs(out["bse"][1] - 0.0033708894) < 1e-5
+    assert abs(out["a"][0] - (-6.1660890350)) < 1e-3
+    assert abs(out["a"][1] - 0.0215854747) < 1e-4
+    assert abs(out["ase"][0] - 6.6766755594) < 1e-2
+    assert abs(out["ase"][1] - 0.1288608723) < 1e-3
+    assert abs(out["ll"] - (-6.9485391888)) < 1e-4

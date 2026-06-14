@@ -67,6 +67,7 @@ require(V + 'evalue.js');
 require(V + 'nma-meta-regression.js');
 require(V + 'personalised-te.js');
 require(V + 'multi-outcome-ma.js');
+require(V + 'location-scale.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -86,6 +87,7 @@ require(V + 'evalue-panel.js');
 require(V + 'nma-meta-regression-panel.js');
 require(V + 'personalised-te-panel.js');
 require(V + 'multi-outcome-ma-panel.js');
+require(V + 'location-scale-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -140,13 +142,15 @@ const PANEL_ID = {
   NmaMetaRegPanel: 'nma-meta-regression-panel',
   PersonalisedTEPanel: 'personalised-te-panel',
   MultiOutcomeMAPanel: 'multi-outcome-ma-panel',
+  LocationScalePanel: 'location-scale-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
  'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel', 'RoBMAPanel',
  'ExperimentalMAPanel', 'BMATauPanel',
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
- 'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel'].forEach((p) => {
+ 'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
+ 'LocationScalePanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -210,6 +214,21 @@ try {
   if (!(ff.ok && isFinite(ff.mu[0]) && isFinite(ff.mu[1]) && isFinite(ff.rho_between))) fails.push('MultiOutcomeMA fit: not ok / non-finite');
 } catch (e) { fails.push('MultiOutcomeMA fit threw ' + e); }
 
+// Location-scale paste-tool: parseRows + a real fit (mean+scale moderator).
+const ls = global.window.LocationScalePanel.parseRows(
+  '-0.94, 0.598, 44, 44\n-1.67, 0.456, 55, 55\n-1.39, 0.658, 42, 42\n-1.46, 0.143, 52, 52\n-0.22, 0.228, 13, 13');
+if (ls.rows.length !== 5) fails.push('LocationScale.parseRows: expected 5 rows, got ' + ls.rows.length);
+if (ls.errors.length) fails.push('LocationScale.parseRows: unexpected errors ' + JSON.stringify(ls.errors));
+try {
+  const yi = ls.rows.map(r => r.y), vi = ls.rows.map(r => r.se * r.se);
+  const X = ls.rows.map(r => [1, r.x]), Z = ls.rows.map(r => [1, r.z]);
+  const lf = global.window.AlmLocationScale.fit(yi, vi, X, Z);
+  if (!(isFinite(lf.beta[0]) && isFinite(lf.alpha[0]) && lf.tau2.every(isFinite))) fails.push('LocationScale fit: non-finite beta/alpha/tau2');
+} catch (e) { fails.push('LocationScale fit threw ' + e); }
+// Fail-closed: a row missing the zMod column must be rejected by parseRows.
+const lsBad = global.window.LocationScalePanel.parseRows('-0.94, 0.598, 44');
+if (!(lsBad.rows.length === 0 && lsBad.errors.length === 1)) fails.push('LocationScale.parseRows: 3-column row should fail closed');
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -245,4 +264,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 19 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome verified');
+console.log('SMOKE OK: 20 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale verified');
