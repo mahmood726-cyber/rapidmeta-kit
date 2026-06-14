@@ -627,6 +627,10 @@
       "If only the flattering studies get published, what happens to a meta-analysis? Researchers obtained all 74 antidepressant trials registered with the US drug regulator (the FDA). Almost every positive trial was published; most negative ones were not, or were written up to look positive. When the missing trials were put back in, the apparent benefit shrank by about a third. That gap between what was run and what you can see is exactly what a funnel plot is trying to expose.",
       "The studies you cannot see can change the answer.",
       "Turner et al., New England Journal of Medicine 2008;358:252-260.");
+    html += caseStudy("the drug that worked — until the hidden trials appeared",
+      "How far can missing data bend a result? When the antidepressant reboxetine was in use, the published trials made it look effective. Then investigators tracked down the unpublished data — and found that nearly three-quarters of all the patient data had never been released. Once every patient was counted, reboxetine was no better than a dummy pill for benefit, and worse for side effects. The published slice told one story; the whole told the opposite. A funnel plot drawn only on what reached print can look perfectly tidy and still be pointing the wrong way.",
+      "Symmetry in what you can see is no proof of what you cannot.",
+      "Eyding et al., BMJ 2010;341:c4737. (Evidence Reversal course, Module on publication bias.)");
 
     /* optional visual diagnostics + robustness — Synthēsis figures, auto-drawn */
     html += '<h3>Visual diagnostics &amp; robustness (optional)</h3>';
