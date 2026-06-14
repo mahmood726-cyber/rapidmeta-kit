@@ -92,6 +92,120 @@ def test_default_annotation_voice_and_toggle():
     assert out["customApplied"] is True        # writer can override the text
 
 
+# Richer prelude: adds publication years + RoB-2 domain arrays to the 4 trials.
+PRELUDE_FULL = r"""
+global.window = {};
+const fs = require('fs');
+eval(fs.readFileSync('template/assets/js/paper-figures-synthesis.js','utf8'));
+const PS = global.window.PaperStudio;
+function mk(name,or_,lo,hi,tE,tN,cE,cN,year){
+  const logOR=Math.log(or_), se=(Math.log(hi)-Math.log(lo))/(2*1.959964);
+  return {id:name,name,year,logOR,se,vi:se*se,tE,tN,cE,cN,rob:['some','some','some','some','some']};
+}
+const res = {isContinuous:false,confLevel:95,or:3.40,lci:2.89,uci:3.99,
+  piLCI:2.61,piUCI:4.42,k:4,effectMeasure:'Odds ratio',tau2:0,
+  plotData:[
+    mk('ORAL Solo',4.08,2.53,6.59,144,241,32,120,2012),
+    mk('RA-BEAM',3.41,2.62,4.45,339,487,196,488,2017),
+    mk('SELECT-NEXT',3.17,2.15,4.67,141,221,79,221,2018),
+    mk('FINCH 1',3.29,2.49,4.35,364,475,237,475,2021)]};
+"""
+
+
+def test_synthesis_labbe_reproduces_pdf_figure2():
+    out = _node(PRELUDE_FULL + r"""
+        const svg = PS.synthesisLabbeSVG(res, {});
+        const T = svg.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');  // tspan-joined text
+        console.log(JSON.stringify({
+          bubbles: (svg.match(/<circle/g)||[]).length === 4,
+          green: svg.includes('#2f7d34'),
+          lineOfNoEffect: svg.includes('line of no effect (y = x)'),
+          impliedCurve: svg.includes('implied by pooled OR 3.40'),
+          allLabels: ['ORAL Solo','RA-BEAM','SELECT-NEXT','FINCH 1'].every(s=>svg.includes(s)),
+          annotation: T.includes('Every trial lies above the line of no effect'),
+          axes: svg.includes('comparator arm') && svg.includes('treatment arm')
+        }));
+    """)
+    for k, v in out.items():
+        assert v is True, f"L'Abbé check failed: {k}"
+
+
+def test_synthesis_rob_traffic_light():
+    out = _node(PRELUDE_FULL + r"""
+        const svg = PS.synthesisRobSVG(res, {});
+        console.log(JSON.stringify({
+          domainHeaders: ['Randomisation','Deviations','Missing','Measurement','Selective','Overall'].every(s=>svg.includes(s)),
+          legend: svg.includes('Low') && svg.includes('Some concerns') && svg.includes('High'),
+          circles: (svg.match(/<circle/g)||[]).length === (4*6 + 3),  // grid 4 rows x 6 cols + 3 legend
+          amber: svg.includes('#d9a235'),
+          someSymbol: svg.includes('>−<')  // minus glyph in some-concerns cells
+        }));
+    """)
+    for k, v in out.items():
+        assert v is True, f"RoB check failed: {k}"
+
+
+def test_synthesis_leave_one_out_repool_matches_pdf():
+    """The DL re-pool reproduces the PDF's published leave-one-out ORs
+    (3.32 / 3.39 / 3.45 / 3.45) — validates the internal re-pooler."""
+    out = _node(PRELUDE_FULL + r"""
+        const items = res.plotData.map(d=>({y:d.logOR, v:d.vi}));
+        // replicate the generator's per-omission DL re-pool
+        const z=1.959964, effs=[];
+        for (let i=0;i<items.length;i++){
+          const sub=items.filter((_,j)=>j!==i);
+          let sw=0,swy=0,sw2=0; sub.forEach(d=>{const w=1/d.v;sw+=w;swy+=w*d.y;sw2+=w*w;});
+          const muF=swy/sw, Q=sub.reduce((a,d)=>a+(1/d.v)*(d.y-muF)*(d.y-muF),0);
+          const C=sw-sw2/sw, tau2=Math.max(0,(Q-(sub.length-1))/C);
+          let rw=0,rwy=0; sub.forEach(d=>{const w=1/(d.v+tau2);rw+=w;rwy+=w*d.y;});
+          effs.push(Math.exp(rwy/rw));
+        }
+        const svg = PS.synthesisLeaveOneOutSVG(res, {});
+        const T = svg.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+        console.log(JSON.stringify({effs, hasOmitLabels: svg.includes('Omitting ORAL Solo'),
+          refBand: svg.includes('all trials 3.40'), annotation: T.includes('no single trial drives the result')}));
+    """)
+    pdf = [3.32, 3.39, 3.45, 3.45]
+    for got, exp in zip(out["effs"], pdf):
+        assert abs(got - exp) < 0.02, f"leave-one-out OR {got} != PDF {exp}"
+    assert out["hasOmitLabels"] and out["refBand"] and out["annotation"]
+
+
+def test_synthesis_cumulative_by_year_converges():
+    """Cumulative pool is built in publication-year order and ends at the
+    all-trials estimate (PDF Figure 5: 4.08 → … → 3.40)."""
+    out = _node(PRELUDE_FULL + r"""
+        const svg = PS.synthesisCumulativeSVG(res, {});
+        const T = svg.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+        console.log(JSON.stringify({
+          orderedLabels: svg.indexOf('+ ORAL Solo (2012)') < svg.indexOf('+ FINCH 1 (2021)'),
+          firstIsOral: svg.includes('+ ORAL Solo (2012)'),
+          refCurrent: svg.includes('current 3.40'),
+          annotation: T.includes('settled at 3.40')
+        }));
+    """)
+    for k, v in out.items():
+        assert v is True, f"cumulative check failed: {k}"
+
+
+def test_synthesis_funnel_and_dispatch():
+    out = _node(PRELUDE_FULL + r"""
+        const f = PS.synthesisFunnelSVG(res, {});
+        const kinds = ['forest','labbe','rob','leaveOneOut','cumulative','funnel']
+          .map(k => PS.synthesisFigureSVG(k, res, {}).startsWith('<svg'));
+        console.log(JSON.stringify({
+          triangle: f.includes('<polygon'),
+          seAxis: f.includes('Standard error'),
+          pooledLine: f.includes('stroke-dasharray'),
+          annotation: f.includes('underpowered'),
+          allKindsRender: kinds.every(Boolean),
+          unknownKindEmpty: PS.synthesisFigureSVG('bogus', res, {}) === ''
+        }));
+    """)
+    for k, v in out.items():
+        assert v is True, f"funnel/dispatch check failed: {k}"
+
+
 def test_continuous_measure_uses_linear_axis_null_zero():
     """Mean-difference outcomes get a linear axis with the no-effect line at 0."""
     out = _node(r"""
