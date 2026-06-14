@@ -505,22 +505,22 @@
     /* abstract */
     html += '<h2>Abstract</h2>';
     html += helper("The abstract is a short summary (about 150 words) of the whole paper. Write it <em>last</em>: the Methods and Results sentences here are already filled from your analysis; you add the Background and the Conclusion.");
-    html += box("studentText.abstractBackground", "Background", "[Condition] is important because...", "~2-3 sentences",
+    html += '<p class="abs-structured"><strong>Background.</strong> ' + box("studentText.abstractBackground", "Background", "[Condition] is important because...", "~2-3 sentences",
       "One or two sentences on why this health problem matters — who it affects and what can go wrong for these patients.",
-      "This condition affects many people and can lead to serious harm over time. Current treatments help some patients, but important questions about benefit remain, which is why this question matters.");
+      "This condition affects many people and can lead to serious harm over time. Current treatments help some patients, but important questions about benefit remain, which is why this question matters.") + '</p>';
     html += example("Chronic kidney disease in adults with type 2 diabetes is common and progressive; many patients develop heart failure or die from cardiovascular causes despite standard care.",
       "This disease is very common and serious.");
-    html += box("studentText.abstractObjective", "Objective", "This short review aimed to assess whether...", "1 sentence",
+    html += '<p class="abs-structured"><strong>Objective.</strong> ' + box("studentText.abstractObjective", "Objective", "This short review aimed to assess whether...", "1 sentence",
       "State the question in one sentence: did the intervention help, for this outcome, in this population?",
-      "This short review aimed to assess whether the intervention improves the main outcome compared with the comparator in this population.");
+      "This short review aimed to assess whether the intervention improves the main outcome compared with the comparator in this population.") + '</p>';
     html += example("We assessed whether finerenone reduces cardiovascular events compared with placebo in adults with CKD and type 2 diabetes.",
       "We looked at whether the drug works.");
     html += '<p><strong>Methods.</strong> A rapid systematic review and ' + esc(a.model).toLowerCase() +
       ' meta-analysis combined ' + auto("analysis.kStudies") + ' studies (' + auto("analysis.totalParticipants") + ' participants) for ' + auto("pico.primaryOutcome", "the primary outcome") + '.</p>';
     html += '<p><strong>Results.</strong> ' + abstractResultsProse() + '</p>';
-    html += box("studentText.abstractConclusion", "Conclusion", "In patients with... the findings suggest... however this should be interpreted cautiously because...", "~2-3 sentences",
+    html += '<p class="abs-structured"><strong>Conclusion.</strong> ' + box("studentText.abstractConclusion", "Conclusion", "In patients with... the findings suggest... however this should be interpreted cautiously because...", "~2-3 sentences",
       "Answer your question in 1–2 sentences, then add a caution. Match the verb to your GRADE certainty and avoid “proves”.",
-      "Taken together, the findings suggest the intervention may offer a modest benefit for this outcome. This should be read with caution because the certainty of the evidence is limited and only a small number of studies contributed.");
+      "Taken together, the findings suggest the intervention may offer a modest benefit for this outcome. This should be read with caution because the certainty of the evidence is limited and only a small number of studies contributed.") + '</p>';
     html += example("In adults with CKD and type 2 diabetes, finerenone probably reduces cardiovascular events by a modest amount; certainty is moderate, so the size of the benefit remains uncertain.",
       "Finerenone works and reduces heart problems.");
 
