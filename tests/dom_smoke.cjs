@@ -62,6 +62,7 @@ require(V + 'robma.js');
 require(V + 'experimental-ma.js');
 require(V + 'bma-tau.js');
 require(V + 'transportability-v1.js');
+require(V + 'multivariate-ma.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -76,6 +77,7 @@ require(V + 'robma-panel.js');
 require(V + 'experimental-ma-panel.js');
 require(V + 'bma-tau-panel.js');
 require(V + 'transportability-v1-panel.js');
+require(V + 'multivariate-ma-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -125,12 +127,13 @@ const PANEL_ID = {
   ExperimentalMAPanel: 'experimental-ma-panel',
   BMATauPanel: 'bma-tau-panel',
   TransportabilityV1Panel: 'transportability-v1-panel',
+  MultivariateMAPanel: 'multivariate-ma-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
  'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel', 'RoBMAPanel',
  'ExperimentalMAPanel', 'BMATauPanel',
- 'TransportabilityV1Panel'].forEach((p) => {
+ 'TransportabilityV1Panel', 'MultivariateMAPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -155,6 +158,18 @@ try {
   const flat = global.window.AlmTransport.transport({ studies: [{ est: -0.2, se: 0.1, x: 5 }, { est: -0.1, se: 0.1, x: 5 }, { est: 0, se: 0.1, x: 5 }], target: 7 });
   if (flat.ok) fails.push('Transport: constant modifier should fail closed');
 } catch (e) { fails.push('Transport fit threw ' + e); }
+
+// Multivariate-MA paste-tool: parseRows + a real joint fit on 2-outcome rows.
+const mv = global.window.MultivariateMAPanel.parseRows(
+  'T1, -0.32, 0.47, 0.0030, 0.0075, 0.0030\nT2, -0.60, 0.20, 0.0009, 0.0057, 0.0009\nT3, -0.12, 0.40, 0.0007, 0.0021, 0.0007\nT4, -0.31, 0.26, 0.0009, 0.0029, 0.0009\nT5, -0.39, 0.56, 0.0072, 0.0148, 0.0072');
+if (mv.rows.length !== 5) fails.push('Multivariate.parseRows: expected 5 rows, got ' + mv.rows.length);
+if (mv.errors.length) fails.push('Multivariate.parseRows: unexpected errors ' + JSON.stringify(mv.errors));
+try {
+  const f = global.window.AlmMultivariate.fit(mv.rows);
+  if (!(f.k === 5 && f.m === 2 && isFinite(f.mu[0]) && isFinite(f.mu[1]) && isFinite(f.rho))) fails.push('Multivariate fit: non-finite / wrong shape');
+} catch (e) { fails.push('Multivariate fit threw ' + e); }
+// k<2 must fail closed (between-study G unidentifiable).
+try { global.window.AlmMultivariate.fit([mv.rows[0]]); fails.push('Multivariate: k<2 should throw'); } catch (e) { /* expected */ }
 
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
@@ -181,4 +196,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 14 panels mounted + RVE/multilevel/transport parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability verified');
+console.log('SMOKE OK: 15 panels mounted + RVE/multilevel/transport/multivariate parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate verified');

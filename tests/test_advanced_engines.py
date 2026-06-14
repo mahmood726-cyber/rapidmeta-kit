@@ -563,3 +563,39 @@ def test_transportability_v1_predicts_target_population_effect():
     assert out["few"] is False                           # <3 studies fails closed
     assert out["flat"] is False                          # constant modifier fails closed
     assert out["noTarget"] is False                      # missing target fails closed
+
+
+def test_multivariate_ma_matches_metafor_rma_mv_berkey1998():
+    """multivariate-ma.js (vendored verbatim from allmeta/shared) = multivariate /
+    multiple-outcome MA matching metafor::rma.mv(yi, V, mods=~outcome-1,
+    random=~outcome|trial, struct="UN", method="REML"). Anchored to
+    multivariate-ma-parity.spec.mjs on dat.berkey1998 (5 periodontal trials, 2
+    correlated outcomes AL & PD, ordered [AL, PD] to match metafor's alphabetical
+    factor levels): mu=(-0.3567543553, 0.3567947972), SE=(0.0817510871,
+    0.0597050546), G diag tau2=(0.0311744793, 0.0121786270), between-study
+    rho=0.4567653812, REML logLik=3.7518022064. mu by GLS; unstructured G by
+    Cholesky-parameterised Nelder-Mead REML (tolerance 1e-5 for the optimiser)."""
+    out = _node(r"""
+        const M = require('./template/assets/vendor/multivariate-ma.js');
+        const PD_y=[0.47,0.20,0.40,0.26,0.56], PD_v=[0.0075,0.0057,0.0021,0.0029,0.0148];
+        const AL_y=[-0.32,-0.60,-0.12,-0.31,-0.39], AL_v=[0.0030,0.0009,0.0007,0.0009,0.0072];
+        const COV=[0.0030,0.0009,0.0007,0.0009,0.0072];
+        const studies=PD_y.map((_,t)=>({y:[AL_y[t],PD_y[t]], S:[[AL_v[t],COV[t]],[COV[t],PD_v[t]]]}));
+        const f = M.fit(studies);
+        let threw = false;
+        try { M.fit([studies[0]]); } catch (e) { threw = true; }  // k<2 must throw
+        console.log(JSON.stringify({
+          k:f.k, m:f.m, mu0:f.mu[0], mu1:f.mu[1], se0:f.muSE[0], se1:f.muSE[1],
+          G00:f.G[0][0], G11:f.G[1][1], rho:f.rho, ll:f.logLik, threw
+        }));
+    """)
+    assert out["k"] == 5 and out["m"] == 2
+    assert abs(out["mu0"] - (-0.3567543553)) < 1e-5
+    assert abs(out["mu1"] - 0.3567947972) < 1e-5
+    assert abs(out["se0"] - 0.0817510871) < 1e-5
+    assert abs(out["se1"] - 0.0597050546) < 1e-5
+    assert abs(out["G00"] - 0.0311744793) < 1e-5
+    assert abs(out["G11"] - 0.0121786270) < 1e-5
+    assert abs(out["rho"] - 0.4567653812) < 1e-4
+    assert abs(out["ll"] - 3.7518022064) < 1e-4
+    assert out["threw"] is True                          # k<2 fails closed (G unidentifiable)
