@@ -26,7 +26,10 @@
       forestPlot: { available: false, caption: "" },
       riskOfBias: { available: false, caption: "" },
       gradeTable: { available: false, caption: "" },
-      funnelPlot: { available: false, caption: "" }
+      funnelPlot: { available: false, caption: "" },
+      labbePlot: { available: false, caption: "" },
+      leaveOneOutPlot: { available: false, caption: "" },
+      cumulativePlot: { available: false, caption: "" }
     },
     outcomes: [],        // additional (secondary) outcomes the student writes on
     _seededOutcomes: false,
@@ -559,6 +562,16 @@
       "The studies you cannot see can change the answer.",
       "Turner et al., New England Journal of Medicine 2008;358:252-260.");
 
+    /* optional visual diagnostics + robustness — Synthēsis figures, auto-drawn */
+    html += '<h3>Visual diagnostics &amp; robustness (optional)</h3>';
+    html += helper("These figures are drawn automatically from your results in the Synthēsis style. The L'Abbé plot shows each trial's event rate in the two arms; leave-one-out and cumulative plots check whether the pooled result is stable. They are most useful when you have several trials; with only a few, describe what you see but read them cautiously.");
+    html += figureCard(7, "L'Abbé plot — per-arm event proportions", ["effect_size"], "labbePaperSlot", "figures.labbePlot.caption",
+      "Each bubble is one trial; bubbles above the diagonal had more events in the treatment arm. The trials cluster on one side, which suggests...");
+    html += figureCard(8, "Leave-one-out sensitivity analysis", [], "leaveOneOutPaperSlot", "figures.leaveOneOutPlot.caption",
+      "Removing any single trial leaves the pooled estimate between ___ and ___, so no one trial drives the result / the result depends on ___.");
+    html += figureCard(9, "Cumulative meta-analysis", [], "cumulativePaperSlot", "figures.cumulativePlot.caption",
+      "As trials accumulated over time the pooled estimate moved toward ___ and the interval narrowed, which suggests the evidence has / has not stabilised.");
+
     /* discussion */
     html += '<h2>Discussion</h2>';
     html += helper("The discussion is where you say what it all <em>means</em>. Work through it in order: (1) the main finding, (2) why it matters, (3) how it fits other evidence, (4) strengths, (5) limitations, (6) a careful conclusion. One short paragraph each.");
@@ -757,7 +770,14 @@
   function nonEmpty(sel) { var e = document.querySelector(sel); return e && (e.children.length > 0 || (e.innerText || "").trim().length > 0); }
 
   // ---- our own forest/funnel (legible, with prediction interval + x-range) ----
-  var FIGMAP = { forest: "forestPlot", funnel: "funnelPlot" };
+  var FIGMAP = { forest: "forestPlot", funnel: "funnelPlot", labbe: "labbePlot", leaveOneOut: "leaveOneOutPlot", cumulative: "cumulativePlot" };
+  // Renderer for a figure kind: forest/funnel keep their Plotly-fallback paths;
+  // the Synthēsis-only kinds (labbe/leaveOneOut/cumulative/rob) draw bespoke SVG.
+  function rendererFor(kind) {
+    if (kind === "forest") return PS.renderForest;
+    if (kind === "funnel") return PS.renderFunnel;
+    return function (el, res, opts) { return PS.renderSynthesisFigure ? PS.renderSynthesisFigure(kind, el, res, opts) : false; };
+  }
   function num(v) { var n = Number(v); return (v === "" || v == null || !isFinite(n)) ? null : n; }
   // Registry of mounted figures so x-range + export can address any of them.
   PS._figs = PS._figs || {};
@@ -781,14 +801,14 @@
       '</div></details>' +
       '<div class="ps-figbox" id="' + slotId + '-box" data-figid="' + figId + '"></div>';
     var box = document.getElementById(slotId + "-box");
-    var ok = (kind === "forest" ? PS.renderForest : PS.renderFunnel)(box, res, { xMin: num(figState.xMin), xMax: num(figState.xMax), label: label });
+    var ok = rendererFor(kind)(box, res, { xMin: num(figState.xMin), xMax: num(figState.xMax), label: label });
     PS._figs[figId] = { kind: kind, box: box, res: res, figState: figState, label: label || "" };
     return ok;
   };
 
   // Back-compat wrapper for the primary forest/funnel (figId === kind).
   PS.renderOwnFig = function (kind, slotId, res, label) {
-    if (!res || !(kind === "forest" ? PS.renderForest : PS.renderFunnel)) return false;
+    if (!res || !rendererFor(kind)) return false;
     var ok = PS.mountFig(kind, kind, slotId, res, PS.state.figures[FIGMAP[kind]], label);
     markFig(FIGMAP[kind], !!ok);
     return ok;
@@ -806,7 +826,7 @@
       if (num(fs.xMin) != null && num(fs.xMax) != null && num(fs.xMin) >= num(fs.xMax)) { PS.toast("X-axis min must be less than max."); return; }
     }
     PS.save();
-    (f.kind === "forest" ? PS.renderForest : PS.renderFunnel)(f.box, f.res, { xMin: num(fs.xMin), xMax: num(fs.xMax), label: f.label });
+    rendererFor(f.kind)(f.box, f.res, { xMin: num(fs.xMin), xMax: num(fs.xMax), label: f.label });
     if (reset) { var a = document.querySelector('.fig-x[data-figid="' + figId + '"][data-b="min"]'), b = document.querySelector('.fig-x[data-figid="' + figId + '"][data-b="max"]'); if (a) a.value = ""; if (b) b.value = ""; }
   };
 
@@ -954,9 +974,23 @@
     var sof = document.querySelector("#sof-body");
     if (sof && sof.closest("table") && nonEmpty("#sof-body")) fallbackClone(sof.closest("table"), document.querySelector("#gradePaperSlot"), "gradeTable");
     else PS.cloneVisual("#grade-profile-container", "#gradePaperSlot", "gradeTable", 820, 300);
-    // Risk-of-bias: clone the real host RoB bar chart if present (review fix).
-    if (nonEmpty("#plot-rob-bar")) PS.cloneVisual("#plot-rob-bar", "#robPaperSlot", "riskOfBias", 760, 320);
+    // Risk-of-bias: in the Synthēsis theme draw our own RoB-2 traffic-light grid
+    // from the results' per-study rob arrays; else clone the host RoB bar; else placeholder.
+    var robSlot = document.getElementById("robPaperSlot");
+    var robOk = (PS.isSynthesisTheme && PS.isSynthesisTheme() && res && res.plotData && robSlot)
+      ? PS.renderSynthesisFigure("rob", robSlot, res, {}) : false;
+    if (robOk) markFig("riskOfBias", true);
+    else if (nonEmpty("#plot-rob-bar")) PS.cloneVisual("#plot-rob-bar", "#robPaperSlot", "riskOfBias", 760, 320);
     else ensurePlaceholder("#robPaperSlot", "riskOfBias", "Risk-of-bias summary appears here once you complete the Extraction → RoB step.");
+    // Optional Synthēsis diagnostics (auto-drawn from results; placeholders otherwise).
+    var synOK = PS.isSynthesisTheme && PS.isSynthesisTheme() && res && res.plotData;
+    var labbeBox = document.getElementById("labbePaperSlot");
+    if (synOK && labbeBox && PS.renderSynthesisFigure("labbe", labbeBox, res, {})) markFig("labbePlot", true);
+    else ensurePlaceholder("#labbePaperSlot", "labbePlot", "The L'Abbé plot appears here once your trials have event counts in both arms.");
+    var looOK = synOK && PS.renderOwnFig("leaveOneOut", "leaveOneOutPaperSlot", res, primaryLabel);
+    if (!looOK) ensurePlaceholder("#leaveOneOutPaperSlot", "leaveOneOutPlot", "Leave-one-out analysis appears here once your analysis has ≥3 studies.");
+    var cumOK = synOK && PS.renderOwnFig("cumulative", "cumulativePaperSlot", res, primaryLabel);
+    if (!cumOK) ensurePlaceholder("#cumulativePaperSlot", "cumulativePlot", "Cumulative meta-analysis appears here once your analysis has ≥2 studies with years.");
     ensurePlaceholder("#studyTablePaperSlot", "studyCharacteristics", "Add a brief characteristics summary, or paste the included-studies table here.");
     // Done when results exist (our plots render from results), and PRISMA is present.
     return !!res && (nonEmpty("#prisma-flow-container") || nonEmpty("#prismaFlowContainer"));

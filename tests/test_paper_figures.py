@@ -188,6 +188,24 @@ def test_synthesis_cumulative_by_year_converges():
         assert v is True, f"cumulative check failed: {k}"
 
 
+def test_render_helper_writes_svg_into_element():
+    """renderSynthesisFigure injects the SVG into el.innerHTML and returns true;
+    a bogus kind returns false and leaves the element untouched (the render path
+    Paper Studio's mountFig depends on)."""
+    out = _node(PRELUDE_FULL + r"""
+        const el = { innerHTML: '' };
+        const ok = PS.renderSynthesisFigure('forest', el, res, {});
+        const elBad = { innerHTML: 'X' };
+        const bad = PS.renderSynthesisFigure('bogus', elBad, res, {});
+        console.log(JSON.stringify({
+          ok, wrote: el.innerHTML.startsWith('<svg'),
+          bad, untouched: elBad.innerHTML === 'X'
+        }));
+    """)
+    assert out["ok"] is True and out["wrote"] is True
+    assert out["bad"] is False and out["untouched"] is True
+
+
 def test_synthesis_funnel_and_dispatch():
     out = _node(PRELUDE_FULL + r"""
         const f = PS.synthesisFunnelSVG(res, {});

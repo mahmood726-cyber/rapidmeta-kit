@@ -127,7 +127,11 @@
 
   PS.renderFunnel = function (el, res, opts) {
     opts = opts || {};
-    if (!window.Plotly || !el || !res || !(res.plotData && res.plotData.length)) return false;
+    if (!el || !res || !(res.plotData && res.plotData.length)) return false;
+    if (PS.isSynthesisTheme && PS.isSynthesisTheme() && PS.synthesisFunnelSVG) {
+      if (PS.renderSynthesisFigure("funnel", el, res, opts)) return true;
+    }
+    if (!window.Plotly) return false;
     var cont = !!res.isContinuous, pd = res.plotData;
     var xs = [], ys = [], txt = [];
     pd.forEach(function (d) {
