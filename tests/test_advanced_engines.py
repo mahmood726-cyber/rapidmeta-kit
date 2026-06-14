@@ -385,6 +385,24 @@ def test_nma_analyze_disconnected_refuses_consistency():
     assert "DISCONNECTED" in out["overall"]
 
 
+def test_nma_triangulation_real_doac_warfarin_star():
+    # REAL network: the pivotal atrial-fibrillation DOAC trials are ALL
+    # warfarin-anchored -- ARISTOTLE (apixaban), ROCKET-AF (rivaroxaban),
+    # RE-LY (dabigatran), ENGAGE-AF (edoxaban) vs warfarin -- with NO
+    # DOAC-vs-DOAC head-to-head RCT. The network is therefore a STAR centred on
+    # warfarin: connected, no closed loop, so consistency CANNOT be tested and
+    # all DOAC-vs-DOAC contrasts are indirect. The guard must say exactly that.
+    out = _classify(
+        "{treatments:['warfarin','apixaban','rivaroxaban','dabigatran','edoxaban'],"
+        "comparisons:["
+        "{t1:'warfarin',t2:'apixaban'},{t1:'warfarin',t2:'rivaroxaban'},"
+        "{t1:'warfarin',t2:'dabigatran'},{t1:'warfarin',t2:'edoxaban'}]}"
+    )
+    assert out["kind"] == "star" and out["isStar"] is True
+    assert out["hasLoop"] is False and out["disconnected"] is False
+    assert out["reference"] == "warfarin"
+
+
 def test_rare_events_conditional_exact_cmel():
     out = _node(r"""
         const M = require('./template/assets/vendor/rare-events-glmm.js');
