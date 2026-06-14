@@ -713,3 +713,49 @@ def test_personalised_te_shrinkage_matches_metafor_blup():
     assert out["predBasis"] == "subgroup-shrunk"           # observed subgroup -> EB posterior
     assert out["missBasis"] == "overall-fallback"          # unobserved subgroup -> overall
     assert out["fewOk"] is False                           # <2 rows fails closed
+
+
+def test_multi_outcome_ma_matches_metafor_rma_mv_unknown_rho_within():
+    """multi-outcome-ma.js (vendored verbatim from allmeta/shared) = bivariate
+    (multi-outcome) RE MA when the WITHIN-study correlation is unknown (Riley 2007),
+    matching metafor::rma.mv(~out-1, V, random=~out|study, struct="UN") with the
+    assumed within-study correlation baked into V. Anchored to
+    multi-outcome-ma-parity.spec.mjs. Case 1 (8-study example, one outcome missing
+    in two studies, tau->0): mu=[-0.27367058,-0.37536381], se=[0.04523136,0.05280141].
+    Case 2 (heterogeneous, interior rho_between): mu=[0.30375631,0.38962708],
+    se=[0.15542561,0.10901039], tau=[0.41719197,0.26834579], rho=-0.65445236.
+    This is the unknown-rho_within complement to the kit's multivariate-ma engine
+    (which needs the full known within-study covariance)."""
+    out = _node(r"""
+        const M = require('./template/assets/vendor/multi-outcome-ma.js');
+        const NA=NaN;
+        const bv=(se,rw)=>{const V=[[NaN,NaN],[NaN,NaN]];if(isFinite(se[0]))V[0][0]=se[0]*se[0];if(isFinite(se[1]))V[1][1]=se[1]*se[1];if(isFinite(se[0])&&isFinite(se[1])){V[0][1]=rw*se[0]*se[1];V[1][0]=V[0][1];}return V;};
+        const raw=[['T1',-0.30,0.12,-0.40,0.15],['T2',-0.22,0.10,-0.35,0.12],['T3',-0.45,0.18,-0.55,0.20],
+                   ['T4',-0.18,0.09,-0.28,0.11],['T5',-0.50,0.20,NA,NA],['T6',-0.25,0.11,-0.32,0.13],
+                   ['T7',-0.38,0.15,-0.48,0.17],['T8',NA,NA,-0.42,0.16]];
+        const studies=raw.map(r=>({label:r[0],y:[r[1],r[3]],se:[r[2],r[4]],V:bv([r[2],r[4]],0.5)}));
+        const e=M.fitBivariate(studies,{rhoWithin:0.5});
+        const y1=[0.10,0.80,-0.20,0.55,0.40,-0.30,0.90,0.20], y2=[0.50,0.20,0.60,-0.10,0.85,0.30,0.15,0.70];
+        const s1=[0.14,0.12,0.15,0.13,0.16,0.14,0.12,0.15], s2=[0.16,0.13,0.17,0.14,0.18,0.15,0.13,0.16];
+        const st2=y1.map((_,i)=>({label:'T'+i,y:[y1[i],y2[i]],se:[s1[i],s2[i]],V:bv([s1[i],s2[i]],0.5)}));
+        const h=M.fitBivariate(st2,{rhoWithin:0.5});
+        console.log(JSON.stringify({
+          eMu:e.mu, eSe:[Math.sqrt(e.cov[0][0]),Math.sqrt(e.cov[1][1])],
+          hMu:h.mu, hSe:[Math.sqrt(h.cov[0][0]),Math.sqrt(h.cov[1][1])],
+          hTau:[Math.sqrt(h.Sigma_RE[0][0]),Math.sqrt(h.Sigma_RE[1][1])], hRho:h.rho_between, ok:e.ok
+        }));
+    """)
+    assert out["ok"] is True
+    # Case 1: pooled means + SEs (drive inference) match metafor exactly.
+    assert abs(out["eMu"][0] - (-0.27367058)) < 1e-5
+    assert abs(out["eMu"][1] - (-0.37536381)) < 1e-5
+    assert abs(out["eSe"][0] - 0.04523136) < 1e-5
+    assert abs(out["eSe"][1] - 0.05280141) < 1e-5
+    # Case 2: interior rho_between — mu/se/tau/rho at the documented grid tolerances.
+    assert abs(out["hMu"][0] - 0.30375631) < 1e-4
+    assert abs(out["hMu"][1] - 0.38962708) < 1e-4
+    assert abs(out["hSe"][0] - 0.15542561) < 1e-3
+    assert abs(out["hSe"][1] - 0.10901039) < 1e-3
+    assert abs(out["hTau"][0] - 0.41719197) < 1e-3
+    assert abs(out["hTau"][1] - 0.26834579) < 1e-3
+    assert abs(out["hRho"] - (-0.65445236)) < 1e-2

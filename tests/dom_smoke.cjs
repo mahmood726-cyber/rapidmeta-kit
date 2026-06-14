@@ -66,6 +66,7 @@ require(V + 'multivariate-ma.js');
 require(V + 'evalue.js');
 require(V + 'nma-meta-regression.js');
 require(V + 'personalised-te.js');
+require(V + 'multi-outcome-ma.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -84,6 +85,7 @@ require(V + 'multivariate-ma-panel.js');
 require(V + 'evalue-panel.js');
 require(V + 'nma-meta-regression-panel.js');
 require(V + 'personalised-te-panel.js');
+require(V + 'multi-outcome-ma-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -137,13 +139,14 @@ const PANEL_ID = {
   EValuePanel: 'evalue-panel',
   NmaMetaRegPanel: 'nma-meta-regression-panel',
   PersonalisedTEPanel: 'personalised-te-panel',
+  MultiOutcomeMAPanel: 'multi-outcome-ma-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
  'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel', 'RoBMAPanel',
  'ExperimentalMAPanel', 'BMATauPanel',
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
- 'NmaMetaRegPanel', 'PersonalisedTEPanel'].forEach((p) => {
+ 'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -195,6 +198,18 @@ try {
   if (one.ok) fails.push('PersonalisedTE: <2 rows should fail closed');
 } catch (e) { fails.push('PersonalisedTE fit threw ' + e); }
 
+// Multi-outcome-MA paste-tool: parseRows (incl. a missing-outcome row) + a real
+// bivariate fit with an assumed within-study correlation.
+const moma = global.window.MultiOutcomeMAPanel.parseRows(
+  'T1, -0.30, 0.12, -0.40, 0.15\nT2, -0.22, 0.10, -0.35, 0.12\nT3, -0.45, 0.18, -0.55, 0.20\nT4, -0.18, 0.09, -0.28, 0.11\nT5, -0.50, 0.20, NA, NA');
+if (moma.rows.length !== 5) fails.push('MultiOutcomeMA.parseRows: expected 5 rows, got ' + moma.rows.length);
+if (moma.errors.length) fails.push('MultiOutcomeMA.parseRows: unexpected errors ' + JSON.stringify(moma.errors));
+if (!(Number.isNaN(moma.rows[4].y[1]) && Number.isNaN(moma.rows[4].se[1]))) fails.push('MultiOutcomeMA.parseRows: missing outcome should be NaN');
+try {
+  const ff = global.window.AlmMultiOutcome.fitBivariate(moma.rows, { rhoWithin: 0.5 });
+  if (!(ff.ok && isFinite(ff.mu[0]) && isFinite(ff.mu[1]) && isFinite(ff.rho_between))) fails.push('MultiOutcomeMA fit: not ok / non-finite');
+} catch (e) { fails.push('MultiOutcomeMA fit threw ' + e); }
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -230,4 +245,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 18 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE verified');
+console.log('SMOKE OK: 19 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome verified');
