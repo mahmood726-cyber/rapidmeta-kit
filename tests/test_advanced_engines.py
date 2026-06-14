@@ -991,3 +991,158 @@ def test_everything_model_gamma_ref_zero_and_reduces_to_re_pool():
     assert abs(out["gammaRef"]) < 1e-12
     # (b) single period + outcome reduces to the RE-IV pool exactly
     assert abs(out["muO"] - out["rePool"]) < 1e-9
+
+
+def test_location_scale_auto_derived_design_matches_direct_fit():
+    """AUTO-EXTRACTION contract for the location-scale panel: the moderator it
+    derives from the dashboard's binary trials (publication year, standardised),
+    with X = Z = [1, m], must yield a finite, well-formed location+scale fit that
+    EXACTLY matches a direct AlmLocationScale.fit on the same X/Z matrices -- the
+    panel's auto path introduces no hidden drift vs the (metafor-validated)
+    engine. Complements test_location_scale_matches_metafor_bcg_anchor."""
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_panel-helper.js');
+        require('./template/assets/vendor/location-scale.js');
+        require('./template/assets/vendor/location-scale-panel.js');
+        global.window.RapidMeta = { realData: {
+          t1:{name:'A',tE:24,tN:200,cE:12,cN:200,year:2018},
+          t2:{name:'B',tE:34,tN:250,cE:22,cN:250,year:2019},
+          t3:{name:'C',tE:20,tN:180,cE:10,cN:182,year:2020},
+          t4:{name:'D',tE:16,tN:150,cE:9, cN:150,year:2021},
+          t5:{name:'E',tE:6, tN:300,cE:0, cN:305,year:2022} } };
+        const P = global.PanelHelper, LS = global.window.LocationScalePanel;
+        const auto = LS.autoFit(P);
+        const trials = P.extractBinaryTrials(P.getRealData());
+        const mod = LS.autoModerator(trials);
+        const k = mod.m.length, mean = mod.m.reduce((a,b)=>a+b,0)/k;
+        let s2=0; mod.m.forEach(x=>{s2+=(x-mean)*(x-mean);}); const sd=Math.sqrt(s2/k);
+        const ms = mod.m.map(x=>(x-mean)/sd);
+        const rows = LS.logORrows(trials);
+        const yi = rows.map(r=>r.te), vi = rows.map(r=>r.se*r.se);
+        const X = trials.map((_,i)=>[1,ms[i]]), Z = trials.map((_,i)=>[1,ms[i]]);
+        const direct = global.window.AlmLocationScale.fit(yi, vi, X, Z);
+        console.log(JSON.stringify({
+          autoOk: !!auto, k: auto ? auto.k : 0, label: auto ? auto.modLabel : '',
+          finite: auto ? [auto.f.beta[0],auto.f.beta[1],auto.f.alpha[0],auto.f.alpha[1]].every(isFinite) : false,
+          db0: auto ? Math.abs(direct.beta[0]-auto.f.beta[0]) : 9,
+          db1: auto ? Math.abs(direct.beta[1]-auto.f.beta[1]) : 9,
+          da0: auto ? Math.abs(direct.alpha[0]-auto.f.alpha[0]) : 9,
+          da1: auto ? Math.abs(direct.alpha[1]-auto.f.alpha[1]) : 9
+        }));
+    """)
+    assert out["autoOk"] is True and out["k"] == 5
+    assert "year" in out["label"]
+    assert out["finite"] is True
+    assert out["db0"] < 1e-9 and out["db1"] < 1e-9
+    assert out["da0"] < 1e-9 and out["da1"] < 1e-9
+
+
+def test_spec_collapse_buildspecs_auto_generates_multiverse_no_collapse():
+    """AUTO-EXTRACTION contract for the spec-collapse panel: mapping the
+    dashboard's binary trials to per-study {est, se} log-OR rows and calling
+    AlmSpecCollapse.buildSpecs GENERATES the full multiverse (the 36-spec grid),
+    and the corrected weighted-likelihood interval is NOT narrower than the naive
+    IV-RE pool (variance >= naive). Confirms the auto path drives the same engine
+    the python-anchored test_spec_collapse covers, on this dataset."""
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_alm-stats-shim.js');
+        require('./template/assets/vendor/trimfill.js');
+        require('./template/assets/vendor/_panel-helper.js');
+        require('./template/assets/vendor/spec-collapse.js');
+        require('./template/assets/vendor/spec-collapse-panel.js');
+        global.window.RapidMeta = { realData: {
+          t1:{name:'A',tE:24,tN:200,cE:12,cN:200,year:2018},
+          t2:{name:'B',tE:34,tN:250,cE:22,cN:250,year:2019},
+          t3:{name:'C',tE:20,tN:180,cE:10,cN:182,year:2020},
+          t4:{name:'D',tE:16,tN:150,cE:9, cN:150,year:2021},
+          t5:{name:'E',tE:6, tN:300,cE:0, cN:305,year:2022} } };
+        const P = global.PanelHelper, SC = global.window.SpecCollapsePanel;
+        const a = SC.autoAggregate(P);
+        console.log(JSON.stringify({
+          ok: !!a, nSpecs: a ? a.specs.length : 0, k: a ? a.k : 0,
+          wlVar: a ? a.wl.var : 0, nvVar: a ? a.nv.var : 0,
+          notNarrower: a ? (a.wl.var >= a.nv.var - 1e-12) : false,
+          finite: a ? (isFinite(a.wl.ciLo) && isFinite(a.wl.ciHi)) : false
+        }));
+    """)
+    assert out["ok"] is True and out["k"] == 5
+    assert out["nSpecs"] >= 2
+    assert out["nSpecs"] == 36
+    assert out["notNarrower"] is True
+    assert out["nvVar"] < out["wlVar"]
+    assert out["finite"] is True
+
+
+def test_benefit_risk_auto_seeded_reproducible_and_evpi_nonneg():
+    """AUTO-EXTRACTION contract for the benefit-risk panel (EXPERIMENTAL,
+    illustrative MCDA, no R oracle): criteria = the trials' >=2 registered outcomes
+    (allOutcomes), treatments = Intervention/Comparator, equal weights. The seeded
+    PRNG makes two runs produce an IDENTICAL ranking + EVPI, and EVPI >= 0
+    (E[max V] - max E[V] is non-negative by construction)."""
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_panel-helper.js');
+        require('./template/assets/vendor/benefit-risk-v1.js');
+        require('./template/assets/vendor/benefit-risk-v1-panel.js');
+        global.window.RapidMeta = { realData: {
+          t1:{name:'A',tE:24,tN:200,cE:12,cN:200,
+              allOutcomes:[{shortLabel:'MACE',title:'adverse event',tE:24,cE:12},{shortLabel:'CVD',title:'cardiovascular death',effect:0.70,lci:0.58,uci:0.86}]},
+          t2:{name:'B',tE:34,tN:250,cE:22,cN:250,
+              allOutcomes:[{shortLabel:'MACE',title:'adverse event',tE:34,cE:22},{shortLabel:'CVD',title:'cardiovascular death',effect:0.66,lci:0.54,uci:0.82}]},
+          t3:{name:'C',tE:20,tN:180,cE:10,cN:182,
+              allOutcomes:[{shortLabel:'MACE',title:'adverse event',tE:20,cE:10},{shortLabel:'CVD',title:'cardiovascular death',effect:0.75,lci:0.60,uci:0.94}]} } };
+        const P = global.PanelHelper, BR = global.window.BenefitRiskV1Panel;
+        const a1 = BR.autoAnalyze(P), a2 = BR.autoAnalyze(P);
+        console.log(JSON.stringify({
+          ok: !!(a1 && a2), nOut: a1 ? a1.nOutcomes : 0,
+          evpiNonNeg: a1 ? (a1.r.evpi >= 0) : false,
+          rank1: a1 ? a1.r.smaa.map(s=>s.name).join('|') : '',
+          rank2: a2 ? a2.r.smaa.map(s=>s.name).join('|') : '',
+          evpiSame: (a1 && a2) ? Math.abs(a1.r.evpi - a2.r.evpi) : 9
+        }));
+    """)
+    assert out["ok"] is True
+    assert out["nOut"] >= 2
+    assert out["evpiNonNeg"] is True
+    assert out["rank1"] == out["rank2"]
+    assert out["evpiSame"] < 1e-15
+
+
+def test_multi_outcome_nma_auto_extracts_from_nma_config_and_outcomes():
+    """AUTO-EXTRACTION contract for the multi-outcome NMA panel (EXPERIMENTAL, no R
+    oracle): given an NMA_CONFIG network AND >=2 outcomes (outcome 1 = each trial's
+    primary log-OR, outcome 2 = a second registered outcome), the auto fit is ok,
+    K=2, with finite per-treatment leagues for BOTH outcomes; and a non-NMA
+    dashboard fails closed to the paste-input fallback (autoFit -> null).
+    Complements test_multi_outcome_nma_reduces_to_single_outcome_when_uncorrelated."""
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_panel-helper.js');
+        require('./template/assets/vendor/multi-outcome-nma.js');
+        require('./template/assets/vendor/multi-outcome-nma-panel.js');
+        global.window.RapidMeta = { realData: {
+          t1:{name:'A',tE:24,tN:200,cE:12,cN:200,allOutcomes:[{shortLabel:'MACE',tE:24,cE:12},{shortLabel:'CVD',effect:0.70,lci:0.58,uci:0.86}]},
+          t2:{name:'B',tE:34,tN:250,cE:22,cN:250,allOutcomes:[{shortLabel:'MACE',tE:34,cE:22},{shortLabel:'CVD',effect:0.66,lci:0.54,uci:0.82}]},
+          t3:{name:'C',tE:20,tN:180,cE:10,cN:182,allOutcomes:[{shortLabel:'MACE',tE:20,cE:10},{shortLabel:'CVD',effect:0.75,lci:0.60,uci:0.94}]},
+          t4:{name:'D',tE:16,tN:150,cE:9, cN:150,allOutcomes:[{shortLabel:'MACE',tE:16,cE:9},{shortLabel:'CVD',md:83,se:21}]},
+          t5:{name:'E',tE:6, tN:300,cE:0, cN:305,allOutcomes:[{shortLabel:'MACE',tE:6,cE:0},{shortLabel:'CVD',md:80,se:22}]} } };
+        global.window.NMA_CONFIG = { treatments:['A','B','C'], comparisons:[
+          {t1:'A',t2:'B',trials:['t1','t2']},{t1:'A',t2:'C',trials:['t3','t4']},{t1:'B',t2:'C',trials:['t5']} ] };
+        const P = global.PanelHelper, MN = global.window.MultiOutcomeNMAPanel;
+        const a = MN.autoFit(P, 0.5);
+        let finite = false, ref = '';
+        if (a) { ref = a.f.reference; finite = a.f.treatments.every(tr => tr===ref
+          || (isFinite(a.f.effects[0][tr].estimate) && isFinite(a.f.effects[1][tr].estimate))); }
+        const savedCfg = global.window.NMA_CONFIG; global.window.NMA_CONFIG = undefined;
+        const noNma = MN.autoFit(P, 0.5); global.window.NMA_CONFIG = savedCfg;
+        console.log(JSON.stringify({
+          ok: a ? a.f.ok : false, K: a ? a.f.K : 0, ns: a ? a.f.n_studies : 0,
+          finite: finite, noNmaNull: noNma === null
+        }));
+    """)
+    assert out["ok"] is True and out["K"] == 2
+    assert out["ns"] >= 2
+    assert out["finite"] is True
+    assert out["noNmaNull"] is True

@@ -1,9 +1,10 @@
 /* spec-collapse-panel.js — correct inference for multiverse / many-analyst
  * meta-analysis (Spec-Collapse Atlas; weighted-likelihood aggregator).
  *
- * Engine: AlmSpecCollapse.weightedLikelihood / .naiveIvre (vendored verbatim
- * from allmeta/shared/spec-collapse.js; cross-checked vs the Python engine
- * tests/test_spec_collapse.py, validated vs metafor across 473 Cochrane reviews).
+ * Engine: AlmSpecCollapse.buildSpecs / .weightedLikelihood / .naiveIvre (vendored
+ * verbatim from allmeta/shared/spec-collapse.js; cross-checked vs the Python
+ * engine tests/test_spec_collapse.py, validated vs metafor across 473 Cochrane
+ * reviews).
  *
  * A multiverse MA runs MANY analytic specifications on ONE dataset. Inverse-
  * variance pooling those spec estimates as if they were independent studies
@@ -13,15 +14,20 @@
  * t-mixture of the per-spec likelihoods), whose variance by the law of total
  * variance is within + between — never narrower than a single spec.
  *
- * The kit carries no spec curve, so this is a PASTE-INPUT tool. It NEVER reads
- * or fabricates dashboard data — computes only on explicit user input.
+ * AUTO-MOUNT: the dashboard's own effect set IS the dataset. The panel maps the
+ * binary trials to per-study {est, se} log-OR rows, runs AlmSpecCollapse.buildSpecs
+ * to GENERATE the full 36-spec multiverse (3 τ² estimators × 2 CI methods × 3
+ * outlier rules × {raw, trim-fill}) on THIS data, then reports the corrected
+ * weighted-likelihood summary against the naive IV-RE pool — showing how far the
+ * naive CI collapses below the truth. Auto-mounts when k≥3. NEUTRAL surface — a
+ * specification-robustness diagnostic. The paste-input (your own spec curve)
+ * remains available as an "or paste your own data" fallback.
  *
- * Input format (one spec per line):  estimate, se[, k]
+ * Paste-input format (one spec per line):  estimate, se[, k]
  *   e.g.  -0.40, 0.1732, 8
  * "estimate" and "se" are one specification's pooled effect and its SE; the
  * optional "k" (number of primary studies, default 8) sets the t-mixture df.
- * The panel reports BOTH the naive IV-RE pool (to expose the collapse) and the
- * correct weighted-likelihood interval. Needs ≥2 specs.
+ * Needs ≥2 specs.
  */
 (function (global) {
   'use strict';
@@ -48,8 +54,47 @@
     return { rows, errors };
   }
 
-  function compute(P, resultEl, text) {
+  // Per-study log-OR + se from the dashboard's binary trials, in the {est, se}
+  // shape that AlmSpecCollapse.buildSpecs expects for its `studies` argument.
+  function studyRows(trials) {
+    return trials.map(t => {
+      let ai = t.ai, ci = t.ci, n1 = t.n1i, n2 = t.n2i;
+      if (ai === 0 || ci === 0 || ai === n1 || ci === n2) { ai += 0.5; ci += 0.5; n1 += 1; n2 += 1; }
+      const a = ai, b = n1 - ai, c = ci, d = n2 - ci;
+      return { est: Math.log((a * d) / (b * c)), se: Math.sqrt(1 / a + 1 / b + 1 / c + 1 / d) };
+    });
+  }
+
+  function cell(P, label, value, sub, tone) {
+    const border = tone === 'bad' ? '#7f1d1d' : (tone === 'good' ? '#14532d' : '#1e293b');
+    return '<div style="background:#0b1220;border:1px solid ' + border + ';border-radius:6px;padding:6px 8px;">'
+      + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+      + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
+      + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
+  }
+
+  // Render a weighted-likelihood (wl) vs naive IV-RE (nv) comparison into an
+  // element, given the number of specs/sources. `header` prefixes the meta line.
+  function renderResult(P, resultEl, wl, nv, nSpecs, header) {
     const fmt = P.fmt;
+    const collapse = wl.var > 0 ? Math.sqrt(wl.var / nv.var) : NaN;
+    const flip = nv.verdict === 'robust' && wl.verdict === 'fragile';
+    resultEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">'
+      + (header || '') + nSpecs + ' specifications · weighted-likelihood (correct) vs naive IV-RE pool (collapses)</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;">'
+      + cell(P, 'Weighted-likelihood θ', fmt(wl.theta, 3), '95% CI ' + fmt(wl.ciLo, 3) + ' – ' + fmt(wl.ciHi, 3) + ' (' + wl.verdict + ')', wl.verdict === 'fragile' ? null : 'good')
+      + cell(P, 'Total variance', fmt(wl.var, 4), 'within ' + fmt(wl.within, 4) + ' + between ' + fmt(wl.between, 4))
+      + cell(P, 'Naive IV-RE pool θ', fmt(nv.theta, 3), '95% CI ' + fmt(nv.ciLo, 3) + ' – ' + fmt(nv.ciHi, 3) + ' (' + nv.verdict + ')', 'bad')
+      + cell(P, 'CI collapse factor', isFinite(collapse) ? fmt(collapse, 1) + '×' : 'n/a', 'naive CI is ~this much too narrow', 'bad')
+      + '</div>'
+      + '<div style="font-size:10.5px;color:' + (flip ? '#fbbf24' : '#64748b') + ';margin-top:8px;line-height:1.5;">'
+      + (flip
+        ? '<strong>False robustness detected:</strong> the naive IV-RE pool reads <em>robust</em> but the correct weighted-likelihood interval is <em>fragile</em> — the apparent robustness is an artefact of pooling specs from one dataset.'
+        : '<strong>Use the weighted-likelihood interval.</strong> The naive IV-RE pool is shown only to expose how far it collapses — never report it as the multiverse summary.')
+      + '</div>';
+  }
+
+  function compute(P, resultEl, text) {
     const parsed = parseRows(text);
     if (parsed.errors.length) {
       resultEl.innerHTML = '<div style="background:#3a0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 10px;border-radius:6px;font-size:11px;">⚠ '
@@ -70,31 +115,31 @@
       return;
     }
     if (!wl || !isFinite(wl.ciLo) || !isFinite(wl.ciHi)) { resultEl.innerHTML = '<div style="color:#fca5a5;font-size:11px;">Weighted-likelihood interval did not invert on this input.</div>'; return; }
-    function cell(label, value, sub, tone) {
-      const border = tone === 'bad' ? '#7f1d1d' : (tone === 'good' ? '#14532d' : '#1e293b');
-      return '<div style="background:#0b1220;border:1px solid ' + border + ';border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
-        + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
-        + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
-    }
-    const collapse = wl.var > 0 ? Math.sqrt(wl.var / nv.var) : NaN;
-    const flip = nv.verdict === 'robust' && wl.verdict === 'fragile';
-    resultEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">'
-      + parsed.rows.length + ' specifications · weighted-likelihood (correct) vs naive IV-RE pool (collapses)</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;">'
-      + cell('Weighted-likelihood θ', fmt(wl.theta, 3), '95% CI ' + fmt(wl.ciLo, 3) + ' – ' + fmt(wl.ciHi, 3) + ' (' + wl.verdict + ')', wl.verdict === 'fragile' ? null : 'good')
-      + cell('Total variance', fmt(wl.var, 4), 'within ' + fmt(wl.within, 4) + ' + between ' + fmt(wl.between, 4))
-      + cell('Naive IV-RE pool θ', fmt(nv.theta, 3), '95% CI ' + fmt(nv.ciLo, 3) + ' – ' + fmt(nv.ciHi, 3) + ' (' + nv.verdict + ')', 'bad')
-      + cell('CI collapse factor', isFinite(collapse) ? fmt(collapse, 1) + '×' : 'n/a', 'naive CI is ~this much too narrow', 'bad')
-      + '</div>'
-      + '<div style="font-size:10.5px;color:' + (flip ? '#fbbf24' : '#64748b') + ';margin-top:8px;line-height:1.5;">'
-      + (flip
-        ? '<strong>False robustness detected:</strong> the naive IV-RE pool reads <em>robust</em> but the correct weighted-likelihood interval is <em>fragile</em> — the apparent robustness is an artefact of pooling specs from one dataset.'
-        : '<strong>Use the weighted-likelihood interval.</strong> The naive IV-RE pool is shown only to expose how far it collapses — never report it as the multiverse summary.')
-      + '</div>';
+    renderResult(P, resultEl, wl, nv, parsed.rows.length, '');
   }
 
-  function buildNode(P) {
+  // ---- AUTO-EXTRACTION: build the multiverse from THIS dashboard's data -------
+  // Returns { specs, wl, nv, k } on success, or null when the precondition fails
+  // (k<3, missing AlmMaCore/AlmTrimFill, or a non-invertible interval).
+  function autoAggregate(P) {
+    if (!global.AlmMaCore || !global.AlmTrimFill) return null; // buildSpecs deps
+    const rd = P.getRealData();
+    if (!rd) return null;
+    const trials = P.extractBinaryTrials(rd);
+    if (trials.length < 3) return null;            // k >= 3
+    const studies = studyRows(trials);
+    let specs, wl, nv;
+    try {
+      specs = global.AlmSpecCollapse.buildSpecs(studies);
+      if (!specs || specs.length < 2) return null;
+      wl = global.AlmSpecCollapse.weightedLikelihood(specs);
+      nv = global.AlmSpecCollapse.naiveIvre(specs);
+    } catch (e) { return null; }
+    if (!wl || !isFinite(wl.ciLo) || !isFinite(wl.ciHi) || !nv || !isFinite(nv.ciLo)) return null;
+    return { specs, wl, nv, k: trials.length };
+  }
+
+  function buildPasteNode(P) {
     const wrap = document.createElement('div');
     wrap.innerHTML = '<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">'
       + 'Multiverse / many-analyst summary — the <strong>weighted-likelihood</strong> aggregator that does NOT collapse the CI. '
@@ -139,14 +184,50 @@
     return wrap;
   }
 
+  function buildPasteDetails(P) {
+    const det = document.createElement('details');
+    det.style.cssText = 'margin-top:10px;border-top:1px solid #1e293b;padding-top:8px;';
+    const sum = document.createElement('summary');
+    sum.textContent = 'or paste your own spec curve (estimate, se[, k])';
+    sum.style.cssText = 'cursor:pointer;color:#7dd3fc;font-size:11px;';
+    det.appendChild(sum);
+    det.appendChild(buildPasteNode(P));
+    return det;
+  }
+
+  function buildAutoNode(P, auto) {
+    const wrap = document.createElement('div');
+    const intro = document.createElement('div');
+    intro.style.cssText = 'font-size:11px;color:#cbd5e1;margin-bottom:8px;';
+    intro.innerHTML = 'Auto-generated multiverse on this dashboard\'s <strong>' + auto.k + ' trials</strong> (log-OR): '
+      + auto.specs.length + ' specifications across τ²-estimator × CI-method × outlier-rule × trim-fill. '
+      + 'The corrected weighted-likelihood summary vs the naive IV-RE pool exposes the CI collapse.';
+    wrap.appendChild(intro);
+    const result = document.createElement('div');
+    wrap.appendChild(result);
+    renderResult(P, result, auto.wl, auto.nv, auto.specs.length, '');
+    wrap.appendChild(buildPasteDetails(P));
+    return wrap;
+  }
+
   function render() {
     const P = global.PanelHelper;
     if (!P || !global.AlmSpecCollapse) return false;
     if (document.getElementById('spec-collapse-panel')) return true;
+    const auto = autoAggregate(P);
+    let summary, bodyNode;
+    if (auto) {
+      const collapse = auto.wl.var > 0 ? Math.sqrt(auto.wl.var / auto.nv.var) : NaN;
+      summary = 'Auto multiverse on ' + auto.k + ' trials (' + auto.specs.length + ' specs): naive CI collapses '
+        + (isFinite(collapse) ? P.fmt(collapse, 1) + '×' : 'n/a') + ' vs weighted-likelihood';
+      bodyNode = buildAutoNode(P, auto);
+    } else {
+      summary = 'Weighted-likelihood summary for multiverse / many-analyst MA (no CI collapse) — paste your own data';
+      bodyNode = buildPasteNode(P);
+    }
     const panel = P.buildCollapsiblePanel({
       id: 'spec-collapse-panel', badge: 'Multiverse spec-collapse aggregator',
-      summary: 'Weighted-likelihood summary for multiverse / many-analyst MA (no CI collapse) — paste-input tool',
-      bodyNode: buildNode(P), storageKey: STORAGE_KEY,
+      summary, bodyNode, storageKey: STORAGE_KEY,
     });
     P.insertAfterRBadge(panel);
     return true;
@@ -160,6 +241,6 @@
     else setTimeout(tick, 1450);
   }
 
-  global.SpecCollapsePanel = { render, parseRows };
+  global.SpecCollapsePanel = { render, parseRows, studyRows, autoAggregate };
   bootstrap();
 })(typeof window !== 'undefined' ? window : this);

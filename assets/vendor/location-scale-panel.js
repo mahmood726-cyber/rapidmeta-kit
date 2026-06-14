@@ -8,11 +8,17 @@
  * assumes one residual τ²; here residual heterogeneity itself depends on a scale
  * moderator. Location β is GLS; scale α is ML (Nelder-Mead).
  *
- * The kit's primary data model is one effect per trial with no moderators, so
- * this is a PASTE-INPUT tool. It NEVER reads or fabricates data from the
- * dashboard — computes only on explicit user input.
+ * AUTO-MOUNT: the panel first tries to derive a single study-level moderator m
+ * from the dashboard's own binary trials — preferring publication `year` (when it
+ * varies across ≥3 distinct values) else log(total N) — standardises it, and fits
+ * the location-scale model with X = Z = [1, m]. The location slope answers "does
+ * the effect change with the moderator?"; the scale slope answers "does
+ * between-study heterogeneity change with it?". Auto-mounts only when k≥5 AND m
+ * varies; otherwise the manual paste-input tool is shown as the panel body. The
+ * paste-input remains available as an "or paste your own data" fallback in either
+ * case. NEUTRAL surface — a structural diagnostic, not a headline estimand.
  *
- * Input format (one study per line):  yi, sei, xMod, zMod
+ * Paste-input format (one study per line):  yi, sei, xMod, zMod
  *   e.g.  -0.94, 0.598, 44, 44
  * yi/sei are the effect and its standard error (vi = sei²); xMod enters the MEAN
  * model (location), zMod enters the SCALE model (heterogeneity). Both designs get
@@ -41,8 +47,75 @@
     return { rows, errors };
   }
 
-  function compute(P, resultEl, text) {
+  // Per-study log-OR + se from the dashboard's binary trials (kit's logORrows).
+  function logORrows(trials) {
+    return trials.map(t => {
+      let ai = t.ai, ci = t.ci, n1 = t.n1i, n2 = t.n2i;
+      if (ai === 0 || ci === 0 || ai === n1 || ci === n2) { ai += 0.5; ci += 0.5; n1 += 1; n2 += 1; }
+      const a = ai, b = n1 - ai, c = ci, d = n2 - ci;
+      return { te: Math.log((a * d) / (b * c)), se: Math.sqrt(1 / a + 1 / b + 1 / c + 1 / d) };
+    });
+  }
+
+  // Build the auto study-level moderator m: prefer year (≥3 distinct values), else
+  // log(total N) = log(n1i + n2i). Returns { m:[...], label, varies } or null.
+  function autoModerator(trials) {
+    const k = trials.length;
+    const years = trials.map(t => (t.year != null ? Number(t.year) : NaN));
+    const yearsOk = years.every(isFinite);
+    const distinctYears = yearsOk ? new Set(years).size : 0;
+    if (yearsOk && distinctYears >= 3) {
+      return { m: years, label: 'publication year', varies: true };
+    }
+    const logN = trials.map(t => Math.log(t.n1i + t.n2i));
+    const variesN = new Set(logN.map(v => v.toFixed(6))).size >= 2;
+    return { m: logN, label: 'log(total N)', varies: variesN };
+  }
+
+  function standardise(v) {
+    const k = v.length, mean = v.reduce((a, b) => a + b, 0) / k;
+    let s2 = 0; v.forEach(x => { s2 += (x - mean) * (x - mean); });
+    const sd = Math.sqrt(s2 / k);
+    if (!(sd > 0)) return null;
+    return v.map(x => (x - mean) / sd);
+  }
+
+  function _phi(x) { // standard normal CDF (Abramowitz-Stegun)
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989422804014327 * Math.exp(-x * x / 2);
+    let p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return x > 0 ? 1 - p : p;
+  }
+
+  function cell(label, value, sub) {
+    return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
+      + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+      + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
+      + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
+  }
+
+  // Render the fit summary for an AlmLocationScale.fit result into an element.
+  function renderFit(P, resultEl, f, modLabel, header) {
     const fmt = P.fmt;
+    const zc = 1.959963984540054;
+    const t2 = f.tau2;
+    const t2min = Math.min.apply(null, t2), t2max = Math.max.apply(null, t2);
+    const locZ = isFinite(f.betaSE[1]) && f.betaSE[1] > 0 ? f.beta[1] / f.betaSE[1] : NaN;
+    const locP = isFinite(locZ) ? 2 * (1 - _phi(Math.abs(locZ))) : NaN;
+    const scaleZ = isFinite(f.alphaSE[1]) && f.alphaSE[1] > 0 ? f.alpha[1] / f.alphaSE[1] : NaN;
+    const scaleP = isFinite(scaleZ) ? 2 * (1 - _phi(Math.abs(scaleZ))) : NaN;
+    resultEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">'
+      + (header || '') + f.k + ' studies · ML logLik = ' + fmt(f.logLik, 3) + ' · location β + scale α (log link)</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">'
+      + cell('Location intercept β₀', fmt(f.beta[0], 3), '95% CI ' + fmt(f.beta[0] - zc * f.betaSE[0], 3) + ' – ' + fmt(f.beta[0] + zc * f.betaSE[0], 3))
+      + cell('Location slope β₁' + (modLabel ? ' (' + modLabel + ')' : ' (xMod)'), fmt(f.beta[1], 4), 'SE ' + fmt(f.betaSE[1], 4) + (isFinite(locP) ? ' · p = ' + fmt(locP, 3) + (locP < 0.05 ? ' (effect varies)' : '') : ''))
+      + cell('Scale intercept α₀', fmt(f.alpha[0], 3), 'log τ² at moderator = 0')
+      + cell('Scale slope α₁' + (modLabel ? ' (' + modLabel + ')' : ' (zMod)'), fmt(f.alpha[1], 4), 'SE ' + fmt(f.alphaSE[1], 4) + ' · p = ' + (isFinite(scaleP) ? fmt(scaleP, 3) : 'n/a') + (isFinite(scaleP) && scaleP < 0.05 ? ' (τ² varies)' : ''))
+      + cell('τ²_i range', fmt(t2min, 4) + ' – ' + fmt(t2max, 4), 'per-study residual heterogeneity')
+      + '</div>';
+  }
+
+  function compute(P, resultEl, text) {
     const parsed = parseRows(text);
     if (parsed.errors.length) {
       resultEl.innerHTML = '<div style="background:#3a0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 10px;border-radius:6px;font-size:11px;">⚠ '
@@ -64,36 +137,12 @@
     try { f = global.AlmLocationScale.fit(yi, vi, X, Z); }
     catch (e) { resultEl.innerHTML = '<div style="background:#3a0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 10px;border-radius:6px;font-size:11px;">Computation failed: ' + P.escapeHtml(String(e.message || e)) + '</div>'; return; }
     if (!f || !isFinite(f.beta[0]) || !isFinite(f.alpha[0])) { resultEl.innerHTML = '<div style="color:#fca5a5;font-size:11px;">ML did not converge on this input.</div>'; return; }
-    const zc = 1.959963984540054;
-    function cell(label, value, sub) {
-      return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
-        + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
-        + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
-    }
-    const t2 = f.tau2;
-    const t2min = Math.min.apply(null, t2), t2max = Math.max.apply(null, t2);
-    const scaleZ = isFinite(f.alphaSE[1]) && f.alphaSE[1] > 0 ? f.alpha[1] / f.alphaSE[1] : NaN;
-    const scaleP = isFinite(scaleZ) ? 2 * (1 - _phi(Math.abs(scaleZ))) : NaN;
-    resultEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">'
-      + f.k + ' studies · ML logLik = ' + fmt(f.logLik, 3) + ' · location β + scale α (log link)</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;">'
-      + cell('Location intercept β₀', fmt(f.beta[0], 3), '95% CI ' + fmt(f.beta[0] - zc * f.betaSE[0], 3) + ' – ' + fmt(f.beta[0] + zc * f.betaSE[0], 3))
-      + cell('Location slope β₁ (xMod)', fmt(f.beta[1], 4), 'SE ' + fmt(f.betaSE[1], 4))
-      + cell('Scale intercept α₀', fmt(f.alpha[0], 3), 'log τ² at zMod = 0')
-      + cell('Scale slope α₁ (zMod)', fmt(f.alpha[1], 4), 'p = ' + (isFinite(scaleP) ? fmt(scaleP, 3) : 'n/a') + (isFinite(scaleP) && scaleP < 0.05 ? ' (τ² varies)' : ''))
-      + cell('τ²_i range', fmt(t2min, 4) + ' – ' + fmt(t2max, 4), 'per-study residual heterogeneity')
-      + '</div>';
+    renderFit(P, resultEl, f, null, null);
   }
 
-  function _phi(x) { // standard normal CDF (Abramowitz-Stegun)
-    const t = 1 / (1 + 0.2316419 * Math.abs(x));
-    const d = 0.3989422804014327 * Math.exp(-x * x / 2);
-    let p = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-    return x > 0 ? 1 - p : p;
-  }
-
-  function buildNode(P) {
+  // Build the manual paste-input node (used as the panel body when auto fails,
+  // and as the "or paste your own data" <details> fallback when auto succeeds).
+  function buildPasteNode(P) {
     const wrap = document.createElement('div');
     wrap.innerHTML = '<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">'
       + 'Location-scale meta-regression — model the <strong>mean effect AND τ²</strong> on moderators (Viechtbauer-López 2022). '
@@ -136,14 +185,80 @@
     return wrap;
   }
 
+  // Wrap the paste-input in a collapsed <details> ("or paste your own data").
+  function buildPasteDetails(P) {
+    const det = document.createElement('details');
+    det.style.cssText = 'margin-top:10px;border-top:1px solid #1e293b;padding-top:8px;';
+    const sum = document.createElement('summary');
+    sum.textContent = 'or paste your own (yi, sei, xMod, zMod) data';
+    sum.style.cssText = 'cursor:pointer;color:#7dd3fc;font-size:11px;';
+    det.appendChild(sum);
+    det.appendChild(buildPasteNode(P));
+    return det;
+  }
+
+  // ---- AUTO-EXTRACTION: derive m from the dashboard's binary trials ----------
+  // Returns { f, modLabel, k } on success, or null when the precondition fails
+  // (k<5, m constant, or the engine doesn't converge).
+  function autoFit(P) {
+    const rd = P.getRealData();
+    if (!rd) return null;
+    const trials = P.extractBinaryTrials(rd);
+    if (trials.length < 5) return null;            // k >= 5
+    const mod = autoModerator(trials);
+    if (!mod || !mod.varies) return null;          // moderator must vary
+    const ms = standardise(mod.m);
+    if (!ms) return null;
+    const rows = logORrows(trials);
+    const yi = rows.map(r => r.te);
+    const vi = rows.map(r => r.se * r.se);
+    const X = trials.map((_, i) => [1, ms[i]]);
+    const Z = trials.map((_, i) => [1, ms[i]]);
+    let f;
+    try { f = global.AlmLocationScale.fit(yi, vi, X, Z); } catch (e) { return null; }
+    if (!f || !isFinite(f.beta[0]) || !isFinite(f.beta[1]) || !isFinite(f.alpha[0]) || !isFinite(f.alpha[1])) return null;
+    return { f, modLabel: mod.label + ' (standardised)', k: trials.length };
+  }
+
+  function buildAutoNode(P, auto) {
+    const wrap = document.createElement('div');
+    const intro = document.createElement('div');
+    intro.style.cssText = 'font-size:11px;color:#cbd5e1;margin-bottom:8px;';
+    intro.innerHTML = 'Auto-derived from the dashboard\'s ' + auto.k + ' binary trials. Per-study log-OR is regressed on a single '
+      + 'standardised moderator (<strong>' + P.escapeHtml(auto.modLabel) + '</strong>) in BOTH the mean (location) and the heterogeneity (scale) models.';
+    wrap.appendChild(intro);
+    const result = document.createElement('div');
+    wrap.appendChild(result);
+    renderFit(P, result, auto.f, auto.modLabel, '');
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.innerHTML = '<strong>Location-scale model (Viechtbauer-López 2022; metafor scale=~z, link=log):</strong> the residual τ²_i = exp(α₀ + α₁·mᵢ) '
+      + 'is allowed to depend on the moderator. The <em>location slope β₁</em> asks whether the effect changes with the moderator; the '
+      + '<em>scale slope α₁</em> asks whether between-study heterogeneity itself changes with it. A single auto-chosen moderator (publication year '
+      + 'if it varies across ≥3 values, else log total N) drives both models — for a bespoke moderator use the paste-input below. '
+      + 'A structural diagnostic; report alongside, not instead of, the primary pooled effect.';
+    wrap.appendChild(note);
+    wrap.appendChild(buildPasteDetails(P));
+    return wrap;
+  }
+
   function render() {
     const P = global.PanelHelper;
     if (!P || !global.AlmLocationScale) return false;
     if (document.getElementById('location-scale-panel')) return true;
+    const auto = autoFit(P);
+    let summary, bodyNode;
+    if (auto) {
+      summary = 'Auto location-scale on ' + auto.k + ' trials (' + auto.modLabel.replace(' (standardised)', '')
+        + '): location β₁=' + P.fmt(auto.f.beta[1], 3) + ', scale α₁=' + P.fmt(auto.f.alpha[1], 3);
+      bodyNode = buildAutoNode(P, auto);
+    } else {
+      summary = 'Meta-regression that also models τ² on a moderator (Viechtbauer-López) — paste your own data';
+      bodyNode = buildPasteNode(P);
+    }
     const panel = P.buildCollapsiblePanel({
       id: 'location-scale-panel', badge: 'Location-scale meta-regression',
-      summary: 'Meta-regression that also models τ² on a moderator (Viechtbauer-López) — paste-input tool',
-      bodyNode: buildNode(P), storageKey: STORAGE_KEY,
+      summary, bodyNode, storageKey: STORAGE_KEY,
     });
     P.insertAfterRBadge(panel);
     return true;
@@ -157,6 +272,6 @@
     else setTimeout(tick, 1350);
   }
 
-  global.LocationScalePanel = { render, parseRows };
+  global.LocationScalePanel = { render, parseRows, autoModerator, autoFit, logORrows };
   bootstrap();
 })(typeof window !== 'undefined' ? window : this);

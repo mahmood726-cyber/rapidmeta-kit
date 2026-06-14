@@ -72,6 +72,7 @@ require(V + 'cnma-receptor.js');
 require(V + 'spec-collapse.js');
 require(V + 'transported-nma-v1.js');
 require(V + 'multi-outcome-nma.js');
+require(V + 'benefit-risk-v1.js');
 require(V + 'cross-network-synthesis.js');
 require(V + 'everything-model.js');
 require(V + 'uwls-panel.js');
@@ -98,6 +99,7 @@ require(V + 'cnma-receptor-panel.js');
 require(V + 'spec-collapse-panel.js');
 require(V + 'transported-nma-v1-panel.js');
 require(V + 'multi-outcome-nma-panel.js');
+require(V + 'benefit-risk-v1-panel.js');
 require(V + 'cross-network-synthesis-panel.js');
 require(V + 'everything-model-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
@@ -108,12 +110,27 @@ global.window.RapidMeta = {
   // Varied positive log-ORs (a spread of one-sided p-values so the selection
   // model is identifiable) plus one control-zero cell so the rare-events panel
   // also mounts — exercises all four panels on a single realistic dataset.
+  // Each trial carries a SECOND registered outcome (allOutcomes: a primary MACE
+  // binary outcome echoing the trial-level cells + a CVD outcome with a relative
+  // effect) so the multi-outcome panels (benefit-risk MCDA, multi-outcome NMA)
+  // can auto-mount. extractBinaryTrials ignores allOutcomes, so the binary panels
+  // are unaffected.
   realData: {
-    t1: { name: 'Trial A', tE: 24, tN: 200, cE: 12, cN: 200, year: 2018 },
-    t2: { name: 'Trial B', tE: 34, tN: 250, cE: 22, cN: 250, year: 2019 },
-    t3: { name: 'Trial C', tE: 20, tN: 180, cE: 10, cN: 182, year: 2020 },
-    t4: { name: 'Trial D', tE: 16, tN: 150, cE: 9,  cN: 150, year: 2021 },
-    t5: { name: 'Trial E', tE: 6,  tN: 300, cE: 0,  cN: 305, year: 2022 }, // zero cell
+    t1: { name: 'Trial A', tE: 24, tN: 200, cE: 12, cN: 200, year: 2018,
+          allOutcomes: [ { shortLabel: 'MACE', title: 'major adverse cardiac event', tE: 24, cE: 12 },
+                         { shortLabel: 'CVD', title: 'cardiovascular death', effect: 0.70, lci: 0.58, uci: 0.86, estimandType: 'RR' } ] },
+    t2: { name: 'Trial B', tE: 34, tN: 250, cE: 22, cN: 250, year: 2019,
+          allOutcomes: [ { shortLabel: 'MACE', title: 'major adverse cardiac event', tE: 34, cE: 22 },
+                         { shortLabel: 'CVD', title: 'cardiovascular death', effect: 0.66, lci: 0.54, uci: 0.82, estimandType: 'RR' } ] },
+    t3: { name: 'Trial C', tE: 20, tN: 180, cE: 10, cN: 182, year: 2020,
+          allOutcomes: [ { shortLabel: 'MACE', title: 'major adverse cardiac event', tE: 20, cE: 10 },
+                         { shortLabel: 'CVD', title: 'cardiovascular death', effect: 0.75, lci: 0.60, uci: 0.94, estimandType: 'RR' } ] },
+    t4: { name: 'Trial D', tE: 16, tN: 150, cE: 9,  cN: 150, year: 2021,
+          allOutcomes: [ { shortLabel: 'MACE', title: 'major adverse cardiac event', tE: 16, cE: 9 },
+                         { shortLabel: 'CVD', title: 'cardiovascular death', effect: 0.80, lci: 0.62, uci: 1.02, estimandType: 'RR' } ] },
+    t5: { name: 'Trial E', tE: 6,  tN: 300, cE: 0,  cN: 305, year: 2022, // zero cell
+          allOutcomes: [ { shortLabel: 'MACE', title: 'major adverse cardiac event', tE: 6, cE: 0 },
+                         { shortLabel: 'CVD', title: 'cardiovascular death', effect: 0.85, lci: 0.55, uci: 1.30, estimandType: 'RR' } ] },
   },
 };
 // NMA scenario so the multiplicative-NMA panel (NMA-conditional) mounts: a
@@ -159,6 +176,7 @@ const PANEL_ID = {
   SpecCollapsePanel: 'spec-collapse-panel',
   TransportedNMAV1Panel: 'transported-nma-v1-panel',
   MultiOutcomeNMAPanel: 'multi-outcome-nma-panel',
+  BenefitRiskV1Panel: 'benefit-risk-v1-panel',
   CrossNetworkSynthesisPanel: 'cross-network-synthesis-panel',
   EverythingModelPanel: 'everything-model-panel',
 };
@@ -169,7 +187,7 @@ const PANEL_ID = {
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
  'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
  'LocationScalePanel', 'CnmaReceptorPanel', 'SpecCollapsePanel',
- 'TransportedNMAV1Panel', 'MultiOutcomeNMAPanel',
+ 'TransportedNMAV1Panel', 'MultiOutcomeNMAPanel', 'BenefitRiskV1Panel',
  'CrossNetworkSynthesisPanel', 'EverythingModelPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
@@ -380,6 +398,78 @@ try {
 const emBad = global.window.EverythingModelPanel.parseRows('S1, 2018, mortality, low, -0.40');
 if (!(emBad.rows.length === 0 && emBad.errors.length === 1)) fails.push('Everything.parseRows: 5-column row should fail closed');
 
+// ---- AUTO-EXTRACTION paths for the 4 converted panels -----------------------
+// location-scale: auto-derive a moderator from the binary trials and fit; the
+// auto X/Z fit must be finite and EQUAL a direct AlmLocationScale.fit on the same
+// matrices (no hidden drift between the panel's helper and the engine).
+{
+  const P = global.PanelHelper;
+  const auto = global.window.LocationScalePanel.autoFit(P);
+  if (!auto) fails.push('LocationScale.autoFit: expected an auto fit on 5 trials with a varying moderator, got null');
+  else {
+    if (!(isFinite(auto.f.beta[0]) && isFinite(auto.f.beta[1]) && isFinite(auto.f.alpha[0]) && isFinite(auto.f.alpha[1])))
+      fails.push('LocationScale.autoFit: location/scale coefs not all finite');
+    if (auto.k !== 5) fails.push('LocationScale.autoFit: expected k=5, got ' + auto.k);
+    // reconstruct the exact X/Z the panel built and fit directly -> must match.
+    const trials = P.extractBinaryTrials(P.getRealData());
+    const mod = global.window.LocationScalePanel.autoModerator(trials);
+    const k = mod.m.length, mean = mod.m.reduce((a, b) => a + b, 0) / k;
+    let s2 = 0; mod.m.forEach(x => { s2 += (x - mean) * (x - mean); }); const sd = Math.sqrt(s2 / k);
+    const ms = mod.m.map(x => (x - mean) / sd);
+    const rows = global.window.LocationScalePanel.logORrows(trials);
+    const yi = rows.map(r => r.te), vi = rows.map(r => r.se * r.se);
+    const X = trials.map((_, i) => [1, ms[i]]), Z = trials.map((_, i) => [1, ms[i]]);
+    const direct = global.window.AlmLocationScale.fit(yi, vi, X, Z);
+    if (!(Math.abs(direct.beta[0] - auto.f.beta[0]) < 1e-9 && Math.abs(direct.beta[1] - auto.f.beta[1]) < 1e-9
+          && Math.abs(direct.alpha[0] - auto.f.alpha[0]) < 1e-9 && Math.abs(direct.alpha[1] - auto.f.alpha[1]) < 1e-9))
+      fails.push('LocationScale.autoFit: panel auto-fit does not match a direct AlmLocationScale.fit on the same X/Z');
+  }
+}
+
+// spec-collapse: auto-build the multiverse from THIS dataset; >=2 specs and the
+// corrected weighted-likelihood interval must NOT be narrower than the naive pool.
+{
+  const P = global.PanelHelper;
+  const a = global.window.SpecCollapsePanel.autoAggregate(P);
+  if (!a) fails.push('SpecCollapse.autoAggregate: expected an auto multiverse on 5 trials, got null');
+  else {
+    if (!(a.specs.length >= 2)) fails.push('SpecCollapse.autoAggregate: expected >=2 specs, got ' + a.specs.length);
+    if (!(a.wl.var >= a.nv.var - 1e-12)) fails.push('SpecCollapse.autoAggregate: weighted-likelihood var should NOT be narrower than the naive pool');
+    if (!(isFinite(a.wl.ciLo) && isFinite(a.wl.ciHi))) fails.push('SpecCollapse.autoAggregate: WL interval not finite');
+  }
+}
+
+// benefit-risk: auto MCDA on the trials' >=2 outcomes; seeded reproducibility
+// (two runs identical ranking + EVPI) and EVPI >= 0.
+{
+  const P = global.PanelHelper;
+  const a1 = global.window.BenefitRiskV1Panel.autoAnalyze(P);
+  const a2 = global.window.BenefitRiskV1Panel.autoAnalyze(P);
+  if (!a1 || !a2) fails.push('BenefitRisk.autoAnalyze: expected an auto MCDA on >=2 outcomes, got null');
+  else {
+    if (!(a1.r.evpi >= 0)) fails.push('BenefitRisk.autoAnalyze: EVPI must be >= 0');
+    const r1 = a1.r.smaa.map(s => s.name).join('|'), r2 = a2.r.smaa.map(s => s.name).join('|');
+    if (r1 !== r2 || Math.abs(a1.r.evpi - a2.r.evpi) > 1e-15)
+      fails.push('BenefitRisk.autoAnalyze: seeded PRNG should make two runs identical (ranking + EVPI)');
+    if (a1.nOutcomes < 2) fails.push('BenefitRisk.autoAnalyze: expected >=2 outcomes, got ' + a1.nOutcomes);
+  }
+}
+
+// multi-outcome NMA: requires NMA_CONFIG + >=2 outcomes; auto fit must be ok with
+// finite leagues for both outcomes, and reduce sensibly (n_studies>=2).
+{
+  const P = global.PanelHelper;
+  const a = global.window.MultiOutcomeNMAPanel.autoFit(P, 0.5);
+  if (!a) fails.push('MultiOutcomeNMA.autoFit: expected an auto fit on the NMA network with 2 outcomes, got null');
+  else {
+    if (!(a.f.ok && a.f.K === 2 && a.f.n_studies >= 2)) fails.push('MultiOutcomeNMA.autoFit: not ok / wrong shape');
+    const ref = a.f.reference;
+    const finite = a.f.treatments.every(tr => tr === ref
+      || (isFinite(a.f.effects[0][tr].estimate) && isFinite(a.f.effects[1][tr].estimate)));
+    if (!finite) fails.push('MultiOutcomeNMA.autoFit: a per-treatment league estimate is non-finite');
+  }
+}
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -415,4 +505,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 26 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma/multi-outcome-nma/cross-network/everything-model parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA + MultiOutcomeNMA + CrossNetwork + EverythingModel verified');
+console.log('SMOKE OK: 27 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma/multi-outcome-nma/benefit-risk/cross-network/everything-model parse/fit + AUTO-extraction (location-scale/spec-collapse/benefit-risk/multi-outcome-nma) + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA + MultiOutcomeNMA + BenefitRisk + CrossNetwork + EverythingModel verified');
