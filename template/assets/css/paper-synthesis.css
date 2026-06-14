@@ -193,6 +193,22 @@
 #paperCanvas.paper-synthesis.paper-mode-preview .student-editable:focus {
   background: #fff; box-shadow: inset 0 -2px 0 var(--syn-green-lt); outline: none;
 }
+/* keyboard focus keeps a visible outline (the underline alone is too quiet) */
+#paperCanvas.paper-synthesis.paper-mode-preview .student-writing-box:focus-visible,
+#paperCanvas.paper-synthesis.paper-mode-preview .student-editable:focus-visible {
+  outline: 2px solid var(--syn-green); outline-offset: 2px;
+}
+/* guide tab + orientation in the Synthēsis green palette */
+#paperCanvas.paper-synthesis.paper-mode-preview .section-guide-tab {
+  color: var(--syn-green); background: var(--syn-wash); border-color: #cdddc6;
+}
+#paperCanvas.paper-synthesis.paper-mode-preview .section-guide-tab:hover,
+#paperCanvas.paper-synthesis.paper-mode-preview .section-guide-tab[aria-expanded="true"] {
+  background: var(--syn-green); color: #fff;
+}
+#paperCanvas.paper-synthesis.paper-mode-preview .no-clean-pdf.guide-open {
+  border-left-color: var(--syn-green-lt); background: #fbfdfa;
+}
 
 /* ---- print / clean-PDF: A4 measure, running head on every page ---- */
 @media print {

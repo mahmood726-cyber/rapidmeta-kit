@@ -387,12 +387,78 @@
     return t;
   }
 
+  // The 3-step orientation: most newcomers are intimidated and do not realise
+  // RapidMeta already did the search/screening/stats. Visible while writing in
+  // BOTH modes; never exported (.export-clean-pdf hides .paper-orientation).
+  function orientationBanner() {
+    return '<aside class="paper-orientation" role="note">' +
+      '<button type="button" class="orient-dismiss" data-action="dismiss-orientation" aria-label="Dismiss orientation">Got it ✕</button>' +
+      '<p class="orient-lead"><strong>You are nearly there.</strong> RapidMeta already did the search, the screening and the statistics. To finish your paper you only do three things:</p>' +
+      '<ol class="orient-steps">' +
+      '<li><span class="orient-num">1</span> <strong>Check the included articles</strong> are the right ones.</li>' +
+      '<li><span class="orient-num">2</span> <strong>Check the data extraction</strong> looks correct.</li>' +
+      '<li><span class="orient-num">3</span> <strong>Write the paper</strong> — click any highlighted text and type. Hover the <span class="orient-chip">ⓘ guide</span> beside each section for examples, the data to use, and short stories.</li>' +
+      '</ol></aside>';
+  }
+
+  // Per-section "what data goes here" — the peek shown on the gutter guide tab.
+  var SECTION_GUIDE_HINTS = {
+    "background": "Why the question matters + the gap your review fills (2–3 sentences).",
+    "methods": "Databases searched, inclusion criteria, the pooling model (e.g. REML + Hartung-Knapp), and the RoB tool.",
+    "results": "Pooled effect + 95% CI, number of studies & participants, I²/τ², and the prediction interval.",
+    "heterogeneity": "I², τ², the prediction interval, and a plain reason the studies might differ.",
+    "risk of bias": "The main bias concern and how it could change the result.",
+    "certainty of evidence": "The GRADE rating and which domain(s) it was downgraded for.",
+    "discussion": "Main finding, how it fits other evidence, strengths, limitations, a careful conclusion.",
+    "references": "One reference per line; check each against PubMed/Crossref."
+  };
+
+  // Build the gutter "guide" tabs: in Page view each section heading gets a quiet
+  // ⓘ tab. Hover/focus shows a one-line peek (CSS); clicking pins that section's
+  // guidance (its hidden examples/stories/data, revealed inline) — keyboard- and
+  // touch-friendly, never exported. Idempotent (skips headings already tabbed).
+  PS.buildSectionGuides = function () {
+    var canvas = document.getElementById("paperCanvas");
+    if (!canvas) return;
+    var heads = canvas.querySelectorAll("h2");
+    heads.forEach(function (h2) {
+      if (h2.classList.contains("no-clean-pdf")) return;     // skip helper-only headings
+      if (h2.dataset.guided === "1") return;                  // idempotent
+      h2.dataset.guided = "1";
+      var key = (h2.textContent || "").trim().toLowerCase();
+      var hint = SECTION_GUIDE_HINTS[key] || "Examples, the data to use, and short stories for this section.";
+      var tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "section-guide-tab no-clean-pdf";
+      tab.setAttribute("aria-expanded", "false");
+      tab.setAttribute("data-action", "toggle-guide");
+      tab.innerHTML = 'ⓘ guide<span class="guide-peek" role="tooltip">' + esc(hint) + '</span>';
+      h2.insertBefore(tab, h2.firstChild);
+    });
+  };
+
+  // Reveal / hide a section's guidance (the .no-clean-pdf siblings between this
+  // <h2> and the next) by toggling .guide-open on them + the tab.
+  PS.toggleSectionGuide = function (tab) {
+    var h2 = tab.closest("h2"); if (!h2) return;
+    var open = tab.getAttribute("aria-expanded") !== "true";
+    tab.setAttribute("aria-expanded", open ? "true" : "false");
+    var node = h2.nextElementSibling;
+    while (node && node.tagName !== "H2") {
+      if (node.classList && node.classList.contains("no-clean-pdf")) {
+        node.classList.toggle("guide-open", open);
+      }
+      node = node.nextElementSibling;
+    }
+  };
+
   PS.render = function () {
     var a = PS.state.analysis, p = PS.state.pico;
     var emEst = (a.effectMeasure ? a.effectMeasure + " " : "") + auto("analysis.effectEstimate");
     var ciTxt = auto("analysis.ciLower") + " to " + auto("analysis.ciUpper") + " (" + auto("analysis.confLevel", "95") + "% CI)";
     var html = "";
 
+    html += orientationBanner();
     html += onboardingCard();
     html += glossaryCard();
 
@@ -668,6 +734,7 @@
     if (canvas) canvas.innerHTML = html;
     PS.updateProtocolLink();
     PS.buildWizard();
+    PS.buildSectionGuides();
   };
 
   // Show a clickable "Open protocol page" link only when the field holds a real http(s) URL.
@@ -1616,6 +1683,12 @@
         if (figBtn) { e.preventDefault(); PS.applyFigRange(figBtn.dataset.figid, figBtn.dataset.figaction === "reset"); return; }
         var act = e.target.closest("[data-action]");
         if (!act) return;
+        if (act.dataset.action === "toggle-guide") { e.preventDefault(); PS.toggleSectionGuide(act); return; }
+        else if (act.dataset.action === "dismiss-orientation") {
+          e.preventDefault();
+          var ob = act.closest(".paper-orientation"); if (ob) ob.remove();
+          return;
+        }
         if (act.dataset.action === "build-refs") { e.preventDefault(); PS.buildReferences(); }
         else if (act.dataset.action === "use-example") {
           e.preventDefault();
