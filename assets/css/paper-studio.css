@@ -594,6 +594,16 @@ figcaption { font-size: 0.95rem; color: var(--paper-muted); border-top: 1px soli
 }
 .export-clean-pdf .paper-orientation { display: none !important; }
 
+/* ---- structured abstract: run-in bold section labels (Background/Objective/
+   Conclusion match Methods/Results); the writing box flows inline after the
+   label in page view + export. ---- */
+.abs-structured { margin: 0.45rem 0; }
+.abs-structured > strong { margin-right: 0.3rem; }
+#paperCanvas.paper-mode-preview .abs-structured .student-writing-box,
+#paperCanvas.paper-mode-preview .abs-structured .student-editable,
+.export-clean-pdf .abs-structured .student-writing-box,
+.export-clean-pdf .abs-structured .student-editable { display: inline; }
+
 /* ---- gutter "guide" tab: a quiet ⓘ marker per section in PAGE VIEW only ----
    hover/focus shows a one-line peek; click pins the section's guidance below. */
 .section-guide-tab { display: none; }
