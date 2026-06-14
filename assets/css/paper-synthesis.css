@@ -174,6 +174,26 @@
 #paperCanvas.paper-synthesis .student-writing-box:focus,
 #paperCanvas.paper-synthesis .student-editable:focus { background: #fff; border-color: var(--syn-green); }
 
+/* ---- WYSIWYG "edit on the page" — Synthēsis preview/page mode ----
+   In the clean page view the editable text reads as part of the typeset paper
+   (serif, no form box). A quiet green tint on hover and a green underline on
+   focus signal what can be edited, so the writer feels they are editing a
+   finished PDF. Higher specificity (two classes on #paperCanvas) so it wins over
+   the dashed-box rule above. */
+#paperCanvas.paper-synthesis.paper-mode-preview .student-writing-box,
+#paperCanvas.paper-synthesis.paper-mode-preview .student-editable {
+  background: transparent; border: none; color: var(--syn-ink);
+  font-family: var(--syn-serif);
+}
+#paperCanvas.paper-synthesis.paper-mode-preview .student-writing-box:hover,
+#paperCanvas.paper-synthesis.paper-mode-preview .student-editable:hover {
+  background: rgba(5, 79, 22, 0.055); cursor: text;
+}
+#paperCanvas.paper-synthesis.paper-mode-preview .student-writing-box:focus,
+#paperCanvas.paper-synthesis.paper-mode-preview .student-editable:focus {
+  background: #fff; box-shadow: inset 0 -2px 0 var(--syn-green-lt); outline: none;
+}
+
 /* ---- print / clean-PDF: A4 measure, running head on every page ---- */
 @media print {
   #paperCanvas.paper-synthesis { font-size: 11pt; max-width: 100%; }

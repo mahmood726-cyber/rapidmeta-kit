@@ -545,17 +545,27 @@ figcaption { font-size: 0.95rem; color: var(--paper-muted); border-top: 1px soli
 }
 .author-transparency strong { color: #14532d; }
 
-/* ---- preview mode: hide scaffolding on the canvas ---- */
-#paperCanvas.paper-mode-preview .student-task-label,
-#paperCanvas.paper-mode-preview .word-target,
-#paperCanvas.paper-mode-preview .figure-learning-row,
-#paperCanvas.paper-mode-preview .author-transparency.working-only { display: none !important; }
+/* ---- preview / page mode: the WYSIWYG "edit on the typeset page" surface ----
+   The writer sees only the clean paper (every teaching-scaffold element is
+   hidden) but the text stays editable (contenteditable is left on), so it feels
+   like editing a finished PDF rather than filling in a form. */
+#paperCanvas.paper-mode-preview .no-clean-pdf { display: none !important; }
 #paperCanvas.paper-mode-preview .student-writing-box,
 #paperCanvas.paper-mode-preview .student-editable {
-  background: transparent; border: none; padding: 0;
+  background: transparent; border: none; padding: 0 2px; border-radius: 3px;
+  transition: background 0.15s, box-shadow 0.15s;
 }
+/* Empty fields stay clickable with a quiet placeholder (instead of vanishing) so
+   the writer can fill them directly on the page; the export path still strips
+   any still-empty field via the .export-clean-pdf rules below. */
 #paperCanvas.paper-mode-preview .student-writing-box:empty,
-#paperCanvas.paper-mode-preview .student-editable:empty { display: none; }
+#paperCanvas.paper-mode-preview .student-editable:empty {
+  display: inline-block; min-width: 10ch;
+}
+#paperCanvas.paper-mode-preview .student-writing-box:empty::before,
+#paperCanvas.paper-mode-preview .student-editable:empty::before {
+  content: attr(data-placeholder); color: #b9b9b1; font-style: italic; font-weight: 400;
+}
 
 /* ---- responsive ---- */
 @media (max-width: 1024px) {
