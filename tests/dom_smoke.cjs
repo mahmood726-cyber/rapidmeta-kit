@@ -70,6 +70,7 @@ require(V + 'multi-outcome-ma.js');
 require(V + 'location-scale.js');
 require(V + 'cnma-receptor.js');
 require(V + 'spec-collapse.js');
+require(V + 'transported-nma-v1.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -92,6 +93,7 @@ require(V + 'multi-outcome-ma-panel.js');
 require(V + 'location-scale-panel.js');
 require(V + 'cnma-receptor-panel.js');
 require(V + 'spec-collapse-panel.js');
+require(V + 'transported-nma-v1-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -149,6 +151,7 @@ const PANEL_ID = {
   LocationScalePanel: 'location-scale-panel',
   CnmaReceptorPanel: 'cnma-receptor-panel',
   SpecCollapsePanel: 'spec-collapse-panel',
+  TransportedNMAV1Panel: 'transported-nma-v1-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
@@ -156,7 +159,8 @@ const PANEL_ID = {
  'ExperimentalMAPanel', 'BMATauPanel',
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
  'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
- 'LocationScalePanel', 'CnmaReceptorPanel', 'SpecCollapsePanel'].forEach((p) => {
+ 'LocationScalePanel', 'CnmaReceptorPanel', 'SpecCollapsePanel',
+ 'TransportedNMAV1Panel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -271,6 +275,30 @@ try {
 const scBad = global.window.SpecCollapsePanel.parseRows('-0.40');
 if (!(scBad.rows.length === 0 && scBad.errors.length === 1)) fails.push('SpecCollapse.parseRows: 1-column row should fail closed');
 
+// Transported-NMA paste-tool: parse contrasts + a real transport. Self-consistency:
+// when the target equals the source covariate mean, weights are uniform (ESS=n) and
+// the transported league equals the source league.
+const tn = global.window.TransportedNMAV1Panel.parseRows(
+  'A, B, -0.40, 0.12, 60\nA, C, -0.55, 0.16, 55\nB, C, -0.20, 0.18, 65\nA, B, -0.30, 0.14, 50');
+if (tn.rows.length !== 4) fails.push('TransportedNMA.parseRows: expected 4 rows, got ' + tn.rows.length);
+if (tn.errors.length) fails.push('TransportedNMA.parseRows: unexpected errors ' + JSON.stringify(tn.errors));
+try {
+  const treatments = [];
+  tn.rows.forEach(r => { [r.trtA, r.trtB].forEach(t => { if (treatments.indexOf(t) < 0) treatments.push(t); }); });
+  const studies = tn.rows.map(r => ({ cov: { x: r.x } }));
+  const netRows = tn.rows.map((r, i) => ({ trtA: r.trtA, trtB: r.trtB, yi: r.yi, sei: r.sei, study: i }));
+  const meanX = tn.rows.reduce((a, r) => a + r.x, 0) / tn.rows.length;
+  const rr = global.window.AlmTransportedNMA.run({ studies, rows: netRows, treatments, target: { x: meanX } });
+  if (!(rr.ok && rr.transport.converged)) fails.push('TransportedNMA: did not converge');
+  if (!(Math.abs(rr.transport.essRatio - 1) < 1e-6)) fails.push('TransportedNMA: ESS ratio should be 1 at the source mean');
+  const dB = Math.abs(rr.source.effects.B.estimate - rr.transported.effects.B.estimate);
+  const dC = Math.abs(rr.source.effects.C.estimate - rr.transported.effects.C.estimate);
+  if (!(dB < 1e-9 && dC < 1e-9)) fails.push('TransportedNMA: transported league should equal source at the source mean');
+} catch (e) { fails.push('TransportedNMA fit threw ' + e); }
+// Fail-closed: a 4-column row (missing modifier) must be rejected by parseRows.
+const tnBad = global.window.TransportedNMAV1Panel.parseRows('A, B, -0.40, 0.12');
+if (!(tnBad.rows.length === 0 && tnBad.errors.length === 1)) fails.push('TransportedNMA.parseRows: 4-column row should fail closed');
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -306,4 +334,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 22 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse verified');
+console.log('SMOKE OK: 23 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA verified');

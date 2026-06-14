@@ -843,3 +843,43 @@ def test_spec_collapse_matches_python_engine_anchor():
     assert out["between"] >= -1e-12
     # the cardinal sin: the naive IV-RE pool variance collapses below the correct total var
     assert out["nvVar"] < out["wlVar"]
+
+
+def test_transported_nma_self_consistency_at_source_mean():
+    """No R oracle exists for the population-transported NMA — self-consistency
+    sanity anchor instead. When the target effect-modifier value EQUALS the
+    network's (uniform) source mean, entropy balancing returns uniform weights
+    (ESS = n, ratio = 1) and the transported league must EXACTLY equal the source
+    league. Also: a target far outside the covariate hull must lower the ESS ratio
+    (more extrapolation), demonstrating the engine reacts to the target."""
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_alm-stats-shim.js');
+        require('./template/assets/vendor/multiplicative-nma.js');
+        const T = require('./template/assets/vendor/transported-nma-v1.js');
+        const studies=[{cov:{x:60}},{cov:{x:55}},{cov:{x:65}},{cov:{x:50}}];
+        const rows=[
+          {trtA:'A',trtB:'B',yi:-0.40,sei:0.12,study:0},
+          {trtA:'A',trtB:'C',yi:-0.55,sei:0.16,study:1},
+          {trtA:'B',trtB:'C',yi:-0.20,sei:0.18,study:2},
+          {trtA:'A',trtB:'B',yi:-0.30,sei:0.14,study:3},
+        ];
+        const treatments=['A','B','C'];
+        const meanX=(60+55+65+50)/4; // 57.5
+        const atMean=T.run({studies, rows, treatments, target:{x:meanX}});
+        const offHull=T.run({studies, rows, treatments, target:{x:90}}); // far outside [50,65]
+        console.log(JSON.stringify({
+          ok:atMean.ok, conv:atMean.transport.converged, essRatio:atMean.transport.essRatio,
+          srcB:atMean.source.effects.B.estimate, tgtB:atMean.transported.effects.B.estimate,
+          srcC:atMean.source.effects.C.estimate, tgtC:atMean.transported.effects.C.estimate,
+          offEss:offHull.ok ? offHull.transport.essRatio : null
+        }));
+    """)
+    assert out["ok"] is True and out["conv"] is True
+    # uniform weights at the source mean: ESS ratio == 1
+    assert abs(out["essRatio"] - 1.0) < 1e-6
+    # transported league == source league at the source mean
+    assert abs(out["srcB"] - out["tgtB"]) < 1e-9
+    assert abs(out["srcC"] - out["tgtC"]) < 1e-9
+    # a target far outside the covariate hull retains LESS information (lower ESS ratio)
+    assert out["offEss"] is not None and out["offEss"] < 1.0 - 1e-6
