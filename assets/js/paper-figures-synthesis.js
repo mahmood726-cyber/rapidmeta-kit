@@ -192,16 +192,15 @@
     if (ann !== false && pEff != null) {
       if (ann == null || ann === true) ann = PS.defaultForestAnnotation(res);
       if (ann) {
-        // Measure clearance on each side of the data cluster, then place the note
-        // in the side wedge that fits; if the effect sits near the null (data
-        // centred, neither wedge wide enough) fall back to a clean italic note in
-        // the top band above the column headers — so it NEVER overlaps the data.
-        var allLoV = rows.map(function (r) { return r.lo; }).concat(pLo != null ? [pLo] : [], piLo != null ? [piLo] : []);
-        var allHiV = rows.map(function (r) { return r.hi; }).concat(pHi != null ? [pHi] : [], piHi != null ? [piHi] : []);
-        var minLoX = tx(Math.min.apply(null, allLoV)), maxHiX = tx(Math.max.apply(null, allHiV));
-        var leftClear = minLoX - plotL, rightClear = plotR - maxHiX;
+        // The note sits at the POOLED-ROW height, where the only mark is the
+        // diamond — so the usable space is left/right of the diamond, not of the
+        // study CIs (which live on other rows). Place it in the side that fits;
+        // if the effect sits near the null (diamond central, neither side wide
+        // enough) fall back to a clean italic note in the top band above the
+        // column headers — so it NEVER overlaps the data.
         var dxL = tx(pLo != null ? pLo : pEff), dxR = tx(pHi != null ? pHi : pEff);
-        var ANNW = 168;
+        var leftClear = dxL - plotL, rightClear = plotR - dxR;
+        var ANNW = 140;
         var _annText = function (lns, ax, ay) {
           S.push('<text x="' + ax + '" y="' + ay + '" font-size="10.5" font-style="italic" fill="' + C.inkSoft + '">');
           lns.forEach(function (ln, j) { S.push('<tspan x="' + ax + '" dy="' + (j === 0 ? 0 : 13) + '">' + esc(ln) + '</tspan>'); });
@@ -210,16 +209,16 @@
         var _annArrow = function (sx, sy, ex, ey) {
           S.push('<path d="M' + sx.toFixed(0) + ',' + sy.toFixed(0) + ' Q' + ((sx + ex) / 2).toFixed(0) + ',' + ((sy + ey) / 2 + 6).toFixed(0) + ' ' + ex.toFixed(0) + ',' + ey.toFixed(0) + '" fill="none" stroke="' + C.maroon + '" stroke-width="1.1" marker-end="url(#synArrow)" opacity="0.85"/>');
         };
-        if (rightClear >= ANNW) {
-          var lnsR = wrapText(ann, 26), axR = maxHiX + 10, bhR = lnsR.length * 13;
-          var ayR = pooledY - bhR - 6; if (ayR < yStudy0 + 8) ayR = yStudy0 + 8;
-          _annText(lnsR, axR, ayR);
-          _annArrow(Math.max(axR - 6, dxR + 22), ayR + bhR - 6, dxR + 4, pooledY);
-        } else if (leftClear >= ANNW) {
+        if (leftClear >= ANNW) {                       // prefer the left wedge (PDF style)
           var lnsL = wrapText(ann, 26), axL = plotL + 4, bhL = lnsL.length * 13;
           var ayL = pooledY - bhL - 6; if (ayL < yStudy0 + 8) ayL = yStudy0 + 8;
           _annText(lnsL, axL, ayL);
           _annArrow(Math.min(axL + 140, dxL - 30), ayL + bhL - 6, dxL - 4, pooledY);
+        } else if (rightClear >= ANNW) {
+          var lnsR = wrapText(ann, 26), axR = dxR + 14, bhR = lnsR.length * 13;
+          var ayR = pooledY - bhR - 6; if (ayR < yStudy0 + 8) ayR = yStudy0 + 8;
+          _annText(lnsR, axR, ayR);
+          _annArrow(axR - 4, ayR + bhR - 6, dxR + 4, pooledY);
         } else {
           _annText(wrapText(ann, 64), plotL, 12);   // centred data → top-band note, no arrow
         }
