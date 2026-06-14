@@ -526,3 +526,40 @@ def test_bma_tau_weights_track_marginal_likelihood_not_uniform():
     assert abs(out["sum"] - 1.0) < 1e-6                 # weights sum to 1
     # halfNormal(0.5) is the best-fitting prior -> largest weight.
     assert out["wHN05"] > out["wU"]
+
+
+def test_transportability_v1_predicts_target_population_effect():
+    """transportability-v1.js (vendored verbatim from allmeta/shared) transports a
+    pooled effect to a target population via one effect-modifier: a random-effects
+    meta-regression (τ² Paule-Mandel; Knapp-Hartung t_{k-2} CI, HKSJ q-floor) that
+    PREDICTS the mean effect at the target's modifier value. Anchored to the
+    allmeta transportability.spec.mjs example (GLP-1 weight loss by baseline BMI,
+    8 studies, target BMI 31): k=8, effect modification by BMI (slope<0), and
+    transporting to a LOWER BMI attenuates the effect vs the trial mean
+    (transported > atTrialMean on the %-change scale). The kit carries no ma-core
+    qt, so the engine's documented normal-quantile fallback is used (deterministic)."""
+    out = _node(r"""
+        const T = require('./template/assets/vendor/transportability-v1.js');
+        const studies=[
+          {est:-12.4,se:0.6,x:37.9},{est:-10.3,se:0.9,x:38.0},{est:-17.8,se:0.7,x:38.0},
+          {est:-5.4,se:0.5,x:38.3},{est:-4.2,se:0.6,x:32.9},{est:-3.0,se:0.7,x:33.5},
+          {est:-2.1,se:1.0,x:30.5},{est:-15.0,se:1.1,x:41.0}];
+        const r = T.transport({studies, target:31});
+        console.log(JSON.stringify({
+          ok:r.ok, k:r.k, slope:r.slope.est, tau2:r.tau2, df:r.df,
+          atTrial:r.atTrialMean.est, trans:r.transported.est,
+          gtr: r.transported.est > r.atTrialMean.est,
+          few: T.transport({studies:studies.slice(0,2), target:31}).ok,
+          flat: T.transport({studies:[{est:-0.2,se:0.1,x:5},{est:-0.1,se:0.1,x:5},{est:0,se:0.1,x:5}], target:7}).ok,
+          noTarget: T.transport({studies}).ok
+        }));
+    """)
+    assert out["ok"] is True and out["k"] == 8 and out["df"] == 6
+    assert out["slope"] < 0                              # effect modification by BMI
+    assert out["gtr"] is True                            # transport to lower BMI attenuates effect
+    assert abs(out["slope"] - (-1.3348661415)) < 1e-6    # deterministic PM meta-regression slope
+    assert abs(out["tau2"] - 14.6420116691) < 1e-4       # Paule-Mandel residual tau2
+    assert abs(out["trans"] - (-1.7378249825)) < 1e-5    # transported point estimate at x*=31
+    assert out["few"] is False                           # <3 studies fails closed
+    assert out["flat"] is False                          # constant modifier fails closed
+    assert out["noTarget"] is False                      # missing target fails closed
