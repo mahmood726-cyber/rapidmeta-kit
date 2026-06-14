@@ -465,3 +465,33 @@ def test_robma_model_averaging_matches_r_integration():
     assert out["k"] == 8
     assert abs(out["postSum"] - 1.0) < 1e-9          # posterior model probs sum to 1
     assert "library(RoBMA)" in out["rcode"]          # full-package R deep-link
+
+
+def test_experimental_ma_grma_and_conformal_pi_match_python_oracle():
+    """experimental-ma.js (vendored verbatim from allmeta/shared) = the author's
+    own EXPERIMENTAL estimators (surfaced behind an Experimental badge). GRMA is a
+    grey-relational robust pool with a Tukey-bisquare guard; conformalPI is a
+    distribution-free prediction interval. Anchored to experimental-ma-parity.spec.mjs
+    (truth from the Python sources, verified to <1e-6) on the 6-study fixture:
+    GRMA estimate = -0.12826963; conformal theta = -0.13796647, lo = -0.35241823,
+    hi = 0.07648528."""
+    out = _node(r"""
+        const E = require('./template/assets/vendor/experimental-ma.js');
+        const yi=[-0.15,-0.10,-0.20,0.02,-0.30,-0.05];
+        const sei=[0.05,0.06,0.07,0.09,0.08,0.10];
+        const vi=sei.map(s=>s*s);
+        const g = E.grma(yi, vi);
+        const c = E.conformalPI(yi, sei, 0.05);
+        console.log(JSON.stringify({
+          grma:g.estimate, wsum:g.weights.reduce((a,b)=>a+b,0),
+          theta:c.theta, lo:c.lo, hi:c.hi,
+          grma1:E.grma([0.1],[0.01]), conf3:E.conformalPI([0.1,0.2,0.15],[0.05,0.06,0.07],0.05)
+        }));
+    """)
+    assert abs(out["grma"] - (-0.12826963)) < 1e-6
+    assert abs(out["wsum"] - 1.0) < 1e-8             # robust weights normalised
+    assert abs(out["theta"] - (-0.13796647)) < 1e-6
+    assert abs(out["lo"] - (-0.35241823)) < 1e-6
+    assert abs(out["hi"] - 0.07648528) < 1e-6
+    assert out["grma1"] is None                       # GRMA k<2 guard
+    assert out["conf3"] is None                       # conformal PI k<4 guard
