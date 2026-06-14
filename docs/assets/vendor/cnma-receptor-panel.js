@@ -106,7 +106,8 @@
     const wrap = document.createElement('div');
     wrap.innerHTML = '<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">'
       + 'Additive <strong>component NMA</strong> — decompose treatments into their components’ effects (Rücker discomb). '
-      + 'Paste contrasts vs control: <code style="color:#7dd3fc;">combo, TE, seTE</code> where combo is a "+"-joined component list. Computes only on your input.</div>';
+      + '<strong>Requires a component map</strong> (which components each treatment contains) — not derivable from the kit\'s effect set, so this is a '
+      + 'paste-input tool. Paste contrasts vs control: <code style="color:#7dd3fc;">combo, TE, seTE</code> where combo is a "+"-joined component list. Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
     fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">combo, TE, seTE</code> — e.g. <code style="color:#7dd3fc;">a+b, -0.65, 0.13</code>. Components inferred from the "+"-joined labels (the treatments→components matrix). Need k ≥ p rows.';
@@ -150,8 +151,8 @@
     if (!P || !global.AlmCnmaReceptor) return false;
     if (document.getElementById('cnma-receptor-panel')) return true;
     const panel = P.buildCollapsiblePanel({
-      id: 'cnma-receptor-panel', badge: 'Additive component NMA (CNMA)',
-      summary: 'Decompose treatments into additive component effects (Rücker discomb) — paste-input tool',
+      id: 'cnma-receptor-panel', badge: 'Additive component NMA (CNMA) <span style="font-size:9px;background:#3a2a0a;color:#fbbf24;border:1px solid #92400e;border-radius:4px;padding:0 4px;margin-left:4px;">Experimental</span>',
+      summary: 'Decompose treatments into additive component effects (Rücker discomb) — requires a component map; paste-input tool',
       bodyNode: buildNode(P), storageKey: STORAGE_KEY,
     });
     P.insertAfterRBadge(panel);

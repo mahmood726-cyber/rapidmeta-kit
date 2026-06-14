@@ -89,7 +89,8 @@
     const wrap = document.createElement('div');
     wrap.innerHTML = '<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">'
       + 'Joint <strong>outcome × time × RoB</strong> hierarchical model (the "everything model") by variational EM. '
-      + 'Paste snapshots: <code style="color:#7dd3fc;">study, time, outcome, rob, yi, sei</code>. Computes only on your input.</div>';
+      + '<strong>Requires a time dimension</strong> (a time-period per snapshot) plus outcome + RoB labels — the kit ships no longitudinal multi-outcome '
+      + 'data, so this is a paste-input tool. Paste snapshots: <code style="color:#7dd3fc;">study, time, outcome, rob, yi, sei</code>. Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
     fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">study, time, outcome, rob, yi, sei</code> — one snapshot per line; first time-period seen is the γ reference (γ=0).';

@@ -107,7 +107,8 @@
     const wrap = document.createElement('div');
     wrap.innerHTML = '<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">'
       + 'Transport an <strong>NMA league</strong> to your target population via entropy balancing on one effect-modifier. '
-      + 'Paste contrasts: <code style="color:#7dd3fc;">trtA, trtB, yi, sei, modifier</code>, then a target modifier value. Computes only on your input.</div>';
+      + '<strong>Requires target-population covariates</strong> (a per-study modifier value + a target value) — not in the kit\'s effect set, so this is a '
+      + 'paste-input tool. Paste contrasts: <code style="color:#7dd3fc;">trtA, trtB, yi, sei, modifier</code>, then a target modifier value. Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
     fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">trtA, trtB, yi, sei, modifier</code> — one study/contrast per line; first treatment seen is the reference.';

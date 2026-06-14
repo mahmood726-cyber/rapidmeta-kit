@@ -84,7 +84,8 @@
     const wrap = document.createElement('div');
     wrap.innerHTML = '<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">'
       + 'Combine <strong>RCT + IPD + observational</strong> evidence under a bias-corrected synthesis (GetReal / Efthimiou 2017). '
-      + 'Paste estimates: <code style="color:#7dd3fc;">contrast, design, yi, sei</code> (design = rct | ipd | obs). Computes only on your input.</div>';
+      + '<strong>Requires IPD and/or observational evidence streams</strong> alongside the RCT anchor — the kit ships only the RCT effect set, so this is a '
+      + 'paste-input tool. Paste estimates: <code style="color:#7dd3fc;">contrast, design, yi, sei</code> (design = rct | ipd | obs). Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
     fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">contrast, design, yi, sei</code> — design is rct, ipd or obs; each contrast needs ≥1 rct row to anchor.';
@@ -127,8 +128,8 @@
     if (!P || !global.AlmCrossNetwork) return false;
     if (document.getElementById('cross-network-synthesis-panel')) return true;
     const panel = P.buildCollapsiblePanel({
-      id: 'cross-network-synthesis-panel', badge: 'Cross-design evidence synthesis',
-      summary: 'Bias-corrected synthesis of RCT + IPD + observational evidence (GetReal) — paste-input tool',
+      id: 'cross-network-synthesis-panel', badge: 'Cross-design evidence synthesis <span style="font-size:9px;background:#3a2a0a;color:#fbbf24;border:1px solid #92400e;border-radius:4px;padding:0 4px;margin-left:4px;">Experimental</span>',
+      summary: 'Bias-corrected synthesis of RCT + IPD + observational evidence (GetReal) — requires IPD + observational streams; paste-input tool',
       bodyNode: buildNode(P), storageKey: STORAGE_KEY,
     });
     P.insertAfterRBadge(panel);
