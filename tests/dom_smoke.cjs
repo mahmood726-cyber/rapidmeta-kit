@@ -71,6 +71,7 @@ require(V + 'location-scale.js');
 require(V + 'cnma-receptor.js');
 require(V + 'spec-collapse.js');
 require(V + 'transported-nma-v1.js');
+require(V + 'multi-outcome-nma.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -94,6 +95,7 @@ require(V + 'location-scale-panel.js');
 require(V + 'cnma-receptor-panel.js');
 require(V + 'spec-collapse-panel.js');
 require(V + 'transported-nma-v1-panel.js');
+require(V + 'multi-outcome-nma-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -152,6 +154,7 @@ const PANEL_ID = {
   CnmaReceptorPanel: 'cnma-receptor-panel',
   SpecCollapsePanel: 'spec-collapse-panel',
   TransportedNMAV1Panel: 'transported-nma-v1-panel',
+  MultiOutcomeNMAPanel: 'multi-outcome-nma-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
@@ -160,7 +163,7 @@ const PANEL_ID = {
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
  'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
  'LocationScalePanel', 'CnmaReceptorPanel', 'SpecCollapsePanel',
- 'TransportedNMAV1Panel'].forEach((p) => {
+ 'TransportedNMAV1Panel', 'MultiOutcomeNMAPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -299,6 +302,33 @@ try {
 const tnBad = global.window.TransportedNMAV1Panel.parseRows('A, B, -0.40, 0.12');
 if (!(tnBad.rows.length === 0 && tnBad.errors.length === 1)) fails.push('TransportedNMA.parseRows: 4-column row should fail closed');
 
+// Multi-outcome-NMA paste-tool: parse contrasts + a real fit. Self-consistency:
+// with single-contrast studies and consistent data the outcome-correlation seeds
+// to 0, so outcome-1's league equals the single-outcome FE-NMA on the same rows.
+const mon = global.window.MultiOutcomeNMAPanel.parseRows(
+  'S1, A, B, -0.40, 0.12, -0.50, 0.15\nS2, A, C, -0.55, 0.16, -0.62, 0.18\nS3, B, C, -0.20, 0.18, -0.25, 0.20\nS4, A, B, -0.30, 0.14, -0.38, 0.16');
+if (mon.rows.length !== 4) fails.push('MultiOutcomeNMA.parseRows: expected 4 rows, got ' + mon.rows.length);
+if (mon.errors.length) fails.push('MultiOutcomeNMA.parseRows: unexpected errors ' + JSON.stringify(mon.errors));
+try {
+  const treatments = [];
+  mon.rows.forEach(r => { [r.trtA, r.trtB].forEach(t => { if (treatments.indexOf(t) < 0) treatments.push(t); }); });
+  const byStudy = {}, order = [];
+  mon.rows.forEach(r => { if (!byStudy[r.study]) { byStudy[r.study] = []; order.push(r.study); } byStudy[r.study].push(r); });
+  const studies = order.map(id => ({ id, contrasts: byStudy[id].map(r => ({ trtA: r.trtA, trtB: r.trtB, outcomes: [r.o1, r.o2] })) }));
+  const f = global.window.AlmMultiOutcomeNMA.fit(studies, treatments, { K: 2 });
+  if (!(f.ok && f.K === 2 && f.n_contrasts === 4)) fails.push('MultiOutcomeNMA fit: not ok / wrong shape');
+  // outcome-1 league vs single-outcome FE NMA on the same rows (taus seed to 0 here).
+  const NMA = global.window.AlmMultiplicativeNMA;
+  const o1rows = mon.rows.map(r => ({ trtA: r.trtA, trtB: r.trtB, yi: r.o1.yi, sei: r.o1.sei }));
+  const d = NMA._buildDesign(o1rows, treatments);
+  const fe = NMA._fitWLS(d.X, d.y, d.v, 0);
+  if (!(Math.abs(f.effects[0].B.estimate - fe.beta[0]) < 1e-9 && Math.abs(f.effects[0].C.estimate - fe.beta[1]) < 1e-9))
+    fails.push('MultiOutcomeNMA: outcome-1 league should equal single-outcome FE NMA when outcome ρ seeds to 0');
+} catch (e) { fails.push('MultiOutcomeNMA fit threw ' + e); }
+// Fail-closed: a 6-column row (missing se2) must be rejected by parseRows.
+const monBad = global.window.MultiOutcomeNMAPanel.parseRows('S1, A, B, -0.40, 0.12, -0.50');
+if (!(monBad.rows.length === 0 && monBad.errors.length === 1)) fails.push('MultiOutcomeNMA.parseRows: 6-column row should fail closed');
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -334,4 +364,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 23 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA verified');
+console.log('SMOKE OK: 24 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma/multi-outcome-nma parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA + MultiOutcomeNMA verified');

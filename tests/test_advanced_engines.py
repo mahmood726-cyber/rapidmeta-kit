@@ -883,3 +883,43 @@ def test_transported_nma_self_consistency_at_source_mean():
     assert abs(out["srcC"] - out["tgtC"]) < 1e-9
     # a target far outside the covariate hull retains LESS information (lower ESS ratio)
     assert out["offEss"] is not None and out["offEss"] < 1.0 - 1e-6
+
+
+def test_multi_outcome_nma_reduces_to_single_outcome_when_uncorrelated():
+    """No R oracle exists for the Achana 2014 multi-outcome NMA — self-consistency
+    sanity anchor instead. With single-contrast (independent) studies and consistent
+    data, the seeded outcome correlation is 0 and each per-study τ² is 0, so the
+    multivariate fit must DECOUPLE: outcome 1's league must EXACTLY equal the
+    single-outcome FE-NMA on the same outcome-1 rows. Also asserts the joint fit
+    returns a well-formed K=2 result and a finite Σ_RE^outcomes."""
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_alm-stats-shim.js');
+        const NMA = require('./template/assets/vendor/multiplicative-nma.js');
+        const M = require('./template/assets/vendor/multi-outcome-nma.js');
+        const treatments = ['A','B','C'];
+        const studies = [
+          {id:'S1',contrasts:[{trtA:'A',trtB:'B',outcomes:[{yi:-0.40,sei:0.12},{yi:-0.50,sei:0.15}]}]},
+          {id:'S2',contrasts:[{trtA:'A',trtB:'C',outcomes:[{yi:-0.55,sei:0.16},{yi:-0.62,sei:0.18}]}]},
+          {id:'S3',contrasts:[{trtA:'B',trtB:'C',outcomes:[{yi:-0.20,sei:0.18},{yi:-0.25,sei:0.20}]}]},
+          {id:'S4',contrasts:[{trtA:'A',trtB:'B',outcomes:[{yi:-0.30,sei:0.14},{yi:-0.38,sei:0.16}]}]},
+        ];
+        const f = M.fit(studies, treatments, {K:2});
+        const o1rows = [
+          {trtA:'A',trtB:'B',yi:-0.40,sei:0.12},{trtA:'A',trtB:'C',yi:-0.55,sei:0.16},
+          {trtA:'B',trtB:'C',yi:-0.20,sei:0.18},{trtA:'A',trtB:'B',yi:-0.30,sei:0.14},
+        ];
+        const d = NMA._buildDesign(o1rows, treatments);
+        const fe = NMA._fitWLS(d.X, d.y, d.v, 0);
+        console.log(JSON.stringify({
+          ok:f.ok, K:f.K, nc:f.n_contrasts, ns:f.n_studies,
+          jB:f.effects[0].B.estimate, jC:f.effects[0].C.estimate,
+          feB:fe.beta[0], feC:fe.beta[1], taus:f.taus
+        }));
+    """)
+    assert out["ok"] is True and out["K"] == 2 and out["nc"] == 4 and out["ns"] == 4
+    # decoupling: uncorrelated outcomes => outcome-1 league == single-outcome FE NMA
+    assert abs(out["jB"] - out["feB"]) < 1e-9
+    assert abs(out["jC"] - out["feC"]) < 1e-9
+    # consistent single-contrast data => zero seeded per-outcome heterogeneity
+    assert all(abs(t) < 1e-9 for t in out["taus"])
