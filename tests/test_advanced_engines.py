@@ -495,3 +495,34 @@ def test_experimental_ma_grma_and_conformal_pi_match_python_oracle():
     assert abs(out["hi"] - 0.07648528) < 1e-6
     assert out["grma1"] is None                       # GRMA k<2 guard
     assert out["conf3"] is None                       # conformal PI k<4 guard
+
+
+def test_bma_tau_weights_track_marginal_likelihood_not_uniform():
+    """bma-tau.js (vendored verbatim from allmeta/shared) = Bayesian model-averaging
+    of the pooled effect across a panel of τ² priors (Friede et al. 2017), weighting
+    models by marginal likelihood (Laplace + Simpson grid over τ²). Anchored to
+    bma-tau-weights.spec.mjs (R-integrated marginal likelihoods cross-checked with
+    bayesmeta) on the 5-study fixture: halfNormal(0.5) carries the largest weight,
+    uniform(5) a small one (ratio ~7.34), BMA μ ~ -0.361. Also regression-guards the
+    2026-05-29 τ=0 bug where uniform spiked to ~5e10 and crowded out every prior."""
+    out = _node(r"""
+        const A = require('./template/assets/vendor/bma-tau.js');
+        const Y=[-0.42,-0.25,-0.55,-0.18,-0.38];
+        const VI=[0.012,0.018,0.025,0.030,0.022];
+        const res = A.fit(Y, VI, A.defaultModels());
+        const w = {}; res.perModel.forEach(m => { w[m.name] = m.weight; });
+        const sum = Object.values(w).reduce((a,b)=>a+b,0);
+        console.log(JSON.stringify({
+          muHat:res.muHat, se:res.sePost,
+          wHN05:w['halfNormal(0.5)'], wU:w['uniform(5)'],
+          ratio:w['halfNormal(0.5)']/w['uniform(5)'], sum,
+          u0:A.uniform(5)(0)
+        }));
+    """)
+    assert out["u0"] == 0                               # τ=0 guard restored (was ~5e10)
+    assert abs(out["muHat"] - (-0.361)) < 1e-2
+    assert out["wU"] < 0.1                              # uniform must NOT dominate
+    assert 5 < out["ratio"] < 10                        # HN(0.5):uniform tracks ML ratio ~7.34
+    assert abs(out["sum"] - 1.0) < 1e-6                 # weights sum to 1
+    # halfNormal(0.5) is the best-fitting prior -> largest weight.
+    assert out["wHN05"] > out["wU"]
