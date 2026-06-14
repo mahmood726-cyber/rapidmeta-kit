@@ -1220,13 +1220,15 @@
   /* ---------------- focus mode (Feature A) ---------------- */
   // CSS full-screen (NOT the Fullscreen API): hides the host chrome so Paper Studio fills the
   // screen like a word processor. Esc exits; the toggle stays visible; focus returns on exit.
-  PS.setFocusMode = function (on) {
+  PS.setFocusMode = function (on, opts) {
+    opts = opts || {};
     document.body.classList.toggle("ps-focus-mode", on);
     var btn = document.getElementById("btnFocusMode");
     if (btn) { btn.setAttribute("aria-pressed", on ? "true" : "false"); btn.textContent = on ? "⛶ Exit focus" : "⛶ Focus mode"; }
-    PS.toast(on ? "Focus mode on — press Esc or “Exit focus” to leave." : "Focus mode off.");
+    if (opts.persist) { try { localStorage.setItem("rapidmeta.paperFocus", on ? "on" : "off"); } catch (e) {} }
+    if (!opts.silent) PS.toast(on ? "Focus mode on — press Esc or “Exit focus” to leave." : "Focus mode off.");
   };
-  PS.toggleFocusMode = function () { PS.setFocusMode(!document.body.classList.contains("ps-focus-mode")); };
+  PS.toggleFocusMode = function () { PS.setFocusMode(!document.body.classList.contains("ps-focus-mode"), { persist: true }); };
 
   /* ---------------- section navigator (Feature B) ---------------- */
   // The 21 fillable sections, grouped into 7 friendly IMRaD headings. This is the single
@@ -1625,7 +1627,7 @@
     // Esc exits focus mode and returns focus to the toggle (a11y: never trap the user).
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && document.body.classList.contains("ps-focus-mode")) {
-        PS.setFocusMode(false);
+        PS.setFocusMode(false, { persist: true });
         var fb = document.getElementById("btnFocusMode"); if (fb) try { fb.focus(); } catch (ex) {}
       }
     });
@@ -1776,6 +1778,11 @@
     var tipsOff = false; try { tipsOff = localStorage.getItem("rapidmeta.paperTips") === "off"; } catch (e) {}
     document.body.classList.toggle("tips-hidden", tipsOff);
     var tb = document.getElementById("btnToggleTips"); if (tb) tb.textContent = tipsOff ? "Show examples & notes" : "Hide examples & notes";
+    // Focus mode (distraction-free full-screen writing) is the DEFAULT — the
+    // student lands straight in the writing space; Esc or the toggle exits, and
+    // that choice is remembered (rapidmeta.paperFocus).
+    var focusOff = false; try { focusOff = localStorage.getItem("rapidmeta.paperFocus") === "off"; } catch (e) {}
+    PS.setFocusMode(!focusOff, { silent: true });
     PS.hookLiveUpdate();   // refresh figures if the host analysis is re-run while open
     PS.embedFigures();
     PS.updateChecklist();
