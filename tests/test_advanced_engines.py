@@ -787,3 +787,27 @@ def test_location_scale_matches_metafor_bcg_anchor():
     assert abs(out["ase"][0] - 6.6766755594) < 1e-2
     assert abs(out["ase"][1] - 0.1288608723) < 1e-3
     assert abs(out["ll"] - (-6.9485391888)) < 1e-4
+
+
+def test_cnma_receptor_matches_discomb_oracle():
+    """Additive component-NMA WLS vs netmeta::discomb on the cnma-tiny oracle
+    (component-nma/tests/fixtures/cnma-oracle.json), the engine's own parity
+    spec: components a/b/c est=(-0.38114604,-0.27569631,-0.17294405),
+    se=(0.08272416,0.08967430,0.09600438), Q_additive=0.09922967, df=4,
+    and the additive a+b+c combination == discomb -0.8297864."""
+    out = _node(r"""
+        const M = require('./template/assets/vendor/cnma-receptor.js');
+        const {comps, X, TE, se} = M._.buildTiny();
+        const f = M.cnmaWls(X, TE, se);
+        const combo = M.predict(['a','b','c'], comps, f.beta, f.cov);
+        console.log(JSON.stringify({beta:f.beta, se:f.se, Q:f.Q, df:f.df, combo:combo.est}));
+    """)
+    assert abs(out["beta"][0] - (-0.38114604)) < 1e-6
+    assert abs(out["beta"][1] - (-0.27569631)) < 1e-6
+    assert abs(out["beta"][2] - (-0.17294405)) < 1e-6
+    assert abs(out["se"][0] - 0.08272416) < 1e-6
+    assert abs(out["se"][1] - 0.0896743) < 1e-6
+    assert abs(out["se"][2] - 0.09600438) < 1e-6
+    assert abs(out["Q"] - 0.09922967) < 1e-6
+    assert out["df"] == 4
+    assert abs(out["combo"] - (-0.8297864)) < 1e-6

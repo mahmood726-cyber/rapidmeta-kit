@@ -68,6 +68,7 @@ require(V + 'nma-meta-regression.js');
 require(V + 'personalised-te.js');
 require(V + 'multi-outcome-ma.js');
 require(V + 'location-scale.js');
+require(V + 'cnma-receptor.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -88,6 +89,7 @@ require(V + 'nma-meta-regression-panel.js');
 require(V + 'personalised-te-panel.js');
 require(V + 'multi-outcome-ma-panel.js');
 require(V + 'location-scale-panel.js');
+require(V + 'cnma-receptor-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -143,6 +145,7 @@ const PANEL_ID = {
   PersonalisedTEPanel: 'personalised-te-panel',
   MultiOutcomeMAPanel: 'multi-outcome-ma-panel',
   LocationScalePanel: 'location-scale-panel',
+  CnmaReceptorPanel: 'cnma-receptor-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
@@ -150,7 +153,7 @@ const PANEL_ID = {
  'ExperimentalMAPanel', 'BMATauPanel',
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
  'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
- 'LocationScalePanel'].forEach((p) => {
+ 'LocationScalePanel', 'CnmaReceptorPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -229,6 +232,23 @@ try {
 const lsBad = global.window.LocationScalePanel.parseRows('-0.94, 0.598, 44');
 if (!(lsBad.rows.length === 0 && lsBad.errors.length === 1)) fails.push('LocationScale.parseRows: 3-column row should fail closed');
 
+// CNMA paste-tool: parse the cnma-tiny example + a real additive WLS fit that
+// reproduces the netmeta::discomb oracle (a+b+c == -0.8297864).
+const cn = global.window.CnmaReceptorPanel.parseRows(
+  'a, -0.40, 0.12\nb, -0.30, 0.15\na+b, -0.65, 0.13\na+c, -0.55, 0.16\nc, -0.20, 0.18\nb+c, -0.45, 0.14\na+b+c, -0.80, 0.20');
+if (cn.rows.length !== 7) fails.push('Cnma.parseRows: expected 7 rows, got ' + cn.rows.length);
+if (cn.errors.length) fails.push('Cnma.parseRows: unexpected errors ' + JSON.stringify(cn.errors));
+try {
+  const comps = ['a', 'b', 'c'];
+  const X = cn.rows.map(r => comps.map(c => (r.comps.indexOf(c) >= 0 ? 1 : 0)));
+  const fit = global.window.AlmCnmaReceptor.cnmaWls(X, cn.rows.map(r => r.te), cn.rows.map(r => r.se));
+  const combo = global.window.AlmCnmaReceptor.predict(comps, comps, fit.beta, fit.cov);
+  if (!(Math.abs(combo.est - (-0.8297864)) < 1e-6 && fit.df === 4)) fails.push('Cnma fit: a+b+c not -0.8297864 / df!=4');
+} catch (e) { fails.push('Cnma fit threw ' + e); }
+// Fail-closed: a 2-column row (missing seTE) must be rejected by parseRows.
+const cnBad = global.window.CnmaReceptorPanel.parseRows('a+b, -0.65');
+if (!(cnBad.rows.length === 0 && cnBad.errors.length === 1)) fails.push('Cnma.parseRows: 2-column row should fail closed');
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -264,4 +284,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 20 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale verified');
+console.log('SMOKE OK: 21 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA verified');
