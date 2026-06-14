@@ -64,6 +64,7 @@ require(V + 'bma-tau.js');
 require(V + 'transportability-v1.js');
 require(V + 'multivariate-ma.js');
 require(V + 'evalue.js');
+require(V + 'nma-meta-regression.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -80,6 +81,7 @@ require(V + 'bma-tau-panel.js');
 require(V + 'transportability-v1-panel.js');
 require(V + 'multivariate-ma-panel.js');
 require(V + 'evalue-panel.js');
+require(V + 'nma-meta-regression-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -131,12 +133,14 @@ const PANEL_ID = {
   TransportabilityV1Panel: 'transportability-v1-panel',
   MultivariateMAPanel: 'multivariate-ma-panel',
   EValuePanel: 'evalue-panel',
+  NmaMetaRegPanel: 'nma-meta-regression-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
  'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel', 'RoBMAPanel',
  'ExperimentalMAPanel', 'BMATauPanel',
- 'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel'].forEach((p) => {
+ 'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
+ 'NmaMetaRegPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -178,6 +182,16 @@ try { global.window.AlmMultivariate.fit([mv.rows[0]]); fails.push('Multivariate:
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
 
+// NMA-meta-reg buildRows must carry a finite year covariate per contrast row,
+// and a real fit on the scenario must return per-treatment β + interaction slopes.
+const mrrows = global.window.NmaMetaRegPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
+if (mrrows.length < 5) fails.push('NmaMetaReg.buildRows: expected 5 rows, got ' + mrrows.length);
+if (!mrrows.every(r => isFinite(r.covariate))) fails.push('NmaMetaReg.buildRows: a row has a non-finite year covariate');
+try {
+  const fr = global.window.AlmNmaMetaReg.fit(mrrows, global.window.NMA_CONFIG.treatments, { predictAt: [2018, 2022] });
+  if (!(fr.ok && isFinite(fr.tau2) && fr.gamma.B && isFinite(fr.gamma.B.estimate))) fails.push('NmaMetaReg fit: not ok / non-finite');
+} catch (e) { fails.push('NmaMetaReg fit threw ' + e); }
+
 // Funnel diagnostics must still mount with the AlmTrimFill delegation active.
 check('FunnelDiagnostics', () => global.window.FunnelDiagnostics.render());
 if (!registry['funnel-diagnostics-panel']) fails.push('FunnelDiagnostics: panel did not mount');
@@ -199,4 +213,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 16 panels mounted + RVE/multilevel/transport/multivariate parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value verified');
+console.log('SMOKE OK: 17 panels mounted + RVE/multilevel/transport/multivariate parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg verified');

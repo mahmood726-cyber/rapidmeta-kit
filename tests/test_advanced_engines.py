@@ -635,3 +635,40 @@ def test_evalue_matches_evalue_r_package():
     assert abs(out["hrCI"] - 1.525531) < 1e-5
     assert out["crossCI"] == 1                            # CI crossing the null -> E-value 1
     assert out["eNull"] == 1                              # E-value at the null RR=1 is exactly 1
+
+
+def test_nma_meta_regression_matches_netmeta_netmetareg():
+    """nma-meta-regression.js (vendored verbatim from allmeta/shared) = network
+    meta-regression with an independent treatment x covariate interaction (Cooper
+    2009; NICE DSU TSD 3), matching netmeta::netmetareg(assumption="independent").
+    Anchored to nma-meta-reg-parity.spec.mjs: on the ref=A, A/B/C example
+    netmetareg gives d[B]=+0.3775860, d[C]=+0.4106535 at covariate=0 and slopes
+    beta[B:cov]=-0.0009636, beta[C:cov]=+0.0012448. The engine reports the
+    treatment2-treatment1 contrast (sign flipped vs netmeta) and centres the
+    covariate at its mean (=58), so its prediction at x=0 equals -d and its slopes
+    equal -beta[:cov]. tau2 ~ 0 on this fixture."""
+    out = _node(r"""
+        const M = require('./template/assets/vendor/nma-meta-regression.js');
+        const RAW=[['A','B',-0.30,0.10,50],['A','B',-0.25,0.12,55],['A','B',-0.40,0.11,45],
+                   ['A','B',-0.35,0.10,65],['A','C',-0.45,0.13,50],['A','C',-0.50,0.12,60],
+                   ['A','C',-0.48,0.11,70],['B','C',-0.15,0.14,55],['B','C',-0.20,0.13,60],
+                   ['A','B',-0.32,0.10,70]];
+        const rows=RAW.map(x=>({trtA:x[0],trtB:x[1],yi:x[2],sei:x[3],covariate:x[4]}));
+        const res=M.fit(rows,['A','B','C'],{predictAt:[0]});
+        const p0=res.predictions[0].perTreatment;
+        let threw=false; try { M.fit(rows,['A']); } catch(e){ threw=true; }  // <2 treatments throws
+        console.log(JSON.stringify({
+          tau2:res.tau2, xMean:res.xMean, n:res.n, p:res.p,
+          bB:p0.B.estimate, bC:p0.C.estimate,
+          gB:res.gamma.B.estimate, gC:res.gamma.C.estimate,
+          refZero:p0.A.estimate, threw
+        }));
+    """)
+    assert abs(out["tau2"]) < 1e-6                         # ~ homogeneous on this fixture
+    assert out["xMean"] == 58 and out["n"] == 10 and out["p"] == 4
+    assert abs(out["bB"] - (-0.3775860)) < 1e-5            # app x=0 effect = -(netmetareg d[B])
+    assert abs(out["bC"] - (-0.4106535)) < 1e-5            # = -(netmetareg d[C])
+    assert abs(out["gB"] - 0.0009636) < 1e-6              # slope = -(beta[B:cov])
+    assert abs(out["gC"] - (-0.0012448)) < 1e-6           # = -(beta[C:cov])
+    assert out["refZero"] == 0                             # reference treatment effect is exactly 0
+    assert out["threw"] is True                            # <2 treatments fails closed
