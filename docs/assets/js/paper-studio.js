@@ -542,6 +542,10 @@
     html += box("studentText.methodsStudentLimitation", "One limitation of this rapid workflow", "One limitation of this rapid workflow is...", "1-2 sentences",
       "Name one shortcut a rapid review takes (e.g. fewer databases, faster screening) and say how it could affect the result.",
       "One limitation of this rapid workflow is that the search covered fewer databases than a full systematic review, so a relevant study could have been missed, which may affect the result.");
+    html += caseStudy("the marker that was treated instead of the patient",
+      "When you choose which outcome to pool, choose the one that matters. After a heart attack, extra beats on the ECG predicted death, so drugs that abolished those beats were assumed to save lives and were given to hundreds of thousands. The Cardiac Arrhythmia Suppression Trial finally tested the assumption against the outcome that mattered. The drugs suppressed the beats beautifully — and roughly doubled the death rate. The surrogate had been treated, not the patient.",
+      "Pool the outcome that matters to people, not the marker that is easy to measure.",
+      "Echt et al., New England Journal of Medicine 1991;324:781-788.");
 
     /* results */
     html += '<h2>Results</h2>';
@@ -576,6 +580,10 @@
       "A wide confidence interval is a warning, not a verdict. Before 2004 the smaller studies left it unclear whether steroids helped severe head injury, and many clinicians assumed they did. Then the CRASH trial randomised over 10,000 patients and found steroids actually increased deaths, with a relative risk of about 1.18. A wide, uncertain estimate had been resolved — and the direction reversed. So when your interval is wide, say so, and hold your conclusion loosely until the data are precise.",
       "Until the interval is narrow, hold your conclusion loosely.",
       "CRASH trial, Lancet 2004.");
+    html += caseStudy("the cheap old drug that a clean trial proved",
+      "Not every reversal is a disappointment. In mid-2020, with no proven treatment for severe COVID-19, the RECOVERY trial randomised thousands of hospitalised patients to a cheap, decades-old steroid. Dexamethasone cut deaths in the sickest, ventilated patients by about a third. One large, fast, openly-reported trial changed practice within days and is estimated to have saved around a million lives worldwide. A clean result, shown plainly on a forest plot, is the whole point.",
+      "One clear, well-run result, shown plainly, can change practice in days.",
+      "RECOVERY Collaborative Group, New England Journal of Medicine 2021;384:693-704.");
 
     html += renderOutcomeSections();   // one section per secondary outcome
 
@@ -597,11 +605,19 @@
       "Should you trust a benefit that keeps appearing across several small trials? In the early 1990s, small trials and an early meta-analysis suggested magnesium lowered deaths after a heart attack. Then one very large, carefully run trial, ISIS-4, enrolled 58,050 patients — and found no benefit at all. The hopeful pattern in the small studies had not survived. For you: a signal repeated across small trials is a question, not an answer, and heterogeneity together with study size tells you how much to trust it.",
       "One large, careful trial can outweigh many small, hopeful ones.",
       "ISIS-4, Lancet 1995; Egger & Davey Smith, BMJ 1995.");
+    html += caseStudy("the answer that arrived a decade early",
+      "In 1992 Lau and colleagues re-ran the trials of a clot-buster for heart attacks cumulatively, adding each as it had appeared over the years. The benefit had become statistically clear by the mid-1970s — after only a few thousand patients — yet textbooks did not recommend the treatment until the late 1980s. The answer had been sitting in the assembled literature for over a decade while patients waited. Pooling is not just tidier; done in time, it saves lives.",
+      "Evidence assembled in time is evidence that can still help someone.",
+      "Lau et al., New England Journal of Medicine 1992;327:248-254.");
 
     html += '<h3>Risk of bias</h3>';
     html += helper("Risk of bias asks whether the way a study was run could have distorted its result — separate from whether the study is “good”. Link each concern to <em>how</em> it could change the answer.");
     html += figureCard(4, "Risk-of-bias summary", ["risk_of_bias"], "robPaperSlot", "figures.riskOfBias.caption",
       "The main risk to trustworthiness is... This could affect the result because... Overall, the risk of bias appears...");
+    html += caseStudy("when the way a trial was reported hid what it found",
+      "Risk of bias is not about whether a study is “good” — it is about whether the way it was run or reported could bend the answer. In the VIGOR trial, the painkiller rofecoxib (Vioxx) was followed by several times more heart attacks than its comparator, but the result was framed around the comparator looking protective, and some cardiovascular events surfaced only later. The drug stayed in use for four more years before it was withdrawn. How a result is presented can change what readers believe it showed.",
+      "Ask not whether a study is good, but whether its conduct or reporting could bend the answer.",
+      "Bombardier et al., New England Journal of Medicine 2000;343:1520-1528.");
 
     html += '<h3>Certainty of evidence</h3>';
     html += helper("GRADE certainty (High → Moderate → Low → Very low) is how confident we are that the true effect is close to this estimate. It is <em>not</em> the size of the effect. Explain the rating and why it was downgraded.");
@@ -618,6 +634,10 @@
     html += example("From the reconstructed curves the restricted mean survival time favoured the intervention by a small margin (self-audit: Silver); because these are pseudo-IPD from registry summaries, not true patient data, we report them alongside — not in place of — the published hazard ratio.",
       "We reconstructed the individual patient data and it proved the drug works.");
     html += story("Two maps lie before you, both pointing the same way. One was drawn by many careful surveyors who walked every mile; the other sketched in haste by a single hand. You might follow either — but you would trust the careful map further, and you would say so out loud. GRADE certainty is how carefully the map was drawn. It is not where the road leads (that is the effect); it is how much to trust the drawing. Match the strength of your words to the strength of your map.");
+    html += caseStudy("the advice that everyone repeated — and the trial that overturned it",
+      "For decades, large observational studies showed that women taking hormone replacement therapy had much less heart disease, and it became standard advice repeated everywhere. Then the Women’s Health Initiative randomised over 16,000 women and found the opposite: HRT slightly raised heart attacks, strokes and breast cancer. The observational signal had been healthy-user bias — the women who took HRT were simply healthier to begin with. How a finding was obtained matters more than how many times it was repeated; that is what certainty ratings are for.",
+      "How a finding was obtained matters more than how often it was repeated.",
+      "Writing Group for the Women’s Health Initiative, JAMA 2002;288:321-333.");
 
     html += '<h3>Are small studies missing? (publication bias — optional)</h3>';
     html += helper("Optional. A funnel plot explores whether small studies are missing, which can be a sign of publication bias — but an uneven (asymmetric) funnel can also come from real differences between studies or from chance, and the plot is unreliable with fewer than about 10 studies. With few studies, describe what you see but do not conclude there is publication bias.");
