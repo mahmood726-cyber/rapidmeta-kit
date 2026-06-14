@@ -324,6 +324,67 @@ def test_nma_dbt_detects_inconsistency_and_star():
     assert "note" in out["star"]             # star network -> unidentifiable
 
 
+def _classify(cfg_js):
+    return _node(
+        "require('./template/assets/vendor/nma-consistency.js');\n"
+        "const N = globalThis.NMAConsistency;\n"
+        "console.log(JSON.stringify(N.classifyNetwork(" + cfg_js + ")));"
+    )
+
+
+def test_nma_classify_closed_loop_is_testable():
+    # triangle A-B, A-C, B-C : 3 edges, 3 nodes -> 1 independent loop
+    out = _classify("{treatments:['A','B','C'],comparisons:[{t1:'A',t2:'B'},{t1:'A',t2:'C'},{t1:'B',t2:'C'}]}")
+    assert out["kind"] == "closed-loop" and out["hasLoop"] is True
+    assert out["disconnected"] is False and out["nLoops"] == 1
+
+
+def test_nma_classify_star_has_no_loop():
+    out = _classify("{treatments:['R','A','B','C'],comparisons:[{t1:'R',t2:'A'},{t1:'R',t2:'B'},{t1:'R',t2:'C'}]}")
+    assert out["kind"] == "star" and out["isStar"] is True and out["hasLoop"] is False
+
+
+def test_nma_classify_tree_chain_is_not_closed_loop():
+    # chain A-B-C-D : connected, non-star, but NO cycle -> must NOT be closed-loop
+    out = _classify("{treatments:['A','B','C','D'],comparisons:[{t1:'A',t2:'B'},{t1:'B',t2:'C'},{t1:'C',t2:'D'}]}")
+    assert out["kind"] == "tree" and out["hasLoop"] is False and out["isStar"] is False
+    assert out["disconnected"] is False
+
+
+def test_nma_classify_forest_is_disconnected():
+    # two disjoint edges {A-B} and {C-D} : no path A->C -> cannot be one NMA
+    out = _classify("{treatments:['A','B','C','D'],comparisons:[{t1:'A',t2:'B'},{t1:'C',t2:'D'}]}")
+    assert out["disconnected"] is True and out["kind"] == "disconnected"
+    assert out["nComponents"] == 2 and out["hasLoop"] is False
+
+
+def test_nma_classify_isolated_treatment_is_disconnected():
+    # E is declared but never compared -> isolated node -> disconnected
+    out = _classify("{treatments:['A','B','C','E'],comparisons:[{t1:'A',t2:'B'},{t1:'A',t2:'C'},{t1:'B',t2:'C'}]}")
+    assert out["disconnected"] is True and out["isolatedTreatments"] == ["E"]
+
+
+def test_nma_classify_duplicate_edge_does_not_fabricate_loop():
+    # the same comparison listed twice is replicate evidence, not a cycle
+    out = _classify("{treatments:['A','B'],comparisons:[{t1:'A',t2:'B'},{t1:'A',t2:'B'}]}")
+    assert out["hasLoop"] is False and out["nLoops"] == 0
+
+
+def test_nma_analyze_disconnected_refuses_consistency():
+    out = _node(
+        "require('./template/assets/vendor/nma-consistency.js');\n"
+        "const N = globalThis.NMAConsistency;\n"
+        "const cfg={treatments:['A','B','C','D'],comparisons:["
+        "{t1:'A',t2:'B',trials:['t1']},{t1:'C',t2:'D',trials:['t2']}]};\n"
+        "const rd={t1:{tE:10,tN:100,cE:20,cN:100},t2:{tE:8,tN:90,cE:15,cN:95}};\n"
+        "const r=N.analyze(rd,cfg);\n"
+        "console.log(JSON.stringify({overall:r.summary.overall,nTests:r.summary.nTests,disc:r.network.disconnected}));"
+    )
+    assert out["disc"] is True
+    assert out["nTests"] == 0                       # no node-splits fabricated
+    assert "DISCONNECTED" in out["overall"]
+
+
 def test_rare_events_conditional_exact_cmel():
     out = _node(r"""
         const M = require('./template/assets/vendor/rare-events-glmm.js');
