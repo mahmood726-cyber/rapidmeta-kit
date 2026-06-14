@@ -73,6 +73,7 @@ require(V + 'spec-collapse.js');
 require(V + 'transported-nma-v1.js');
 require(V + 'multi-outcome-nma.js');
 require(V + 'cross-network-synthesis.js');
+require(V + 'everything-model.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -98,6 +99,7 @@ require(V + 'spec-collapse-panel.js');
 require(V + 'transported-nma-v1-panel.js');
 require(V + 'multi-outcome-nma-panel.js');
 require(V + 'cross-network-synthesis-panel.js');
+require(V + 'everything-model-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -158,6 +160,7 @@ const PANEL_ID = {
   TransportedNMAV1Panel: 'transported-nma-v1-panel',
   MultiOutcomeNMAPanel: 'multi-outcome-nma-panel',
   CrossNetworkSynthesisPanel: 'cross-network-synthesis-panel',
+  EverythingModelPanel: 'everything-model-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
@@ -167,7 +170,7 @@ const PANEL_ID = {
  'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
  'LocationScalePanel', 'CnmaReceptorPanel', 'SpecCollapsePanel',
  'TransportedNMAV1Panel', 'MultiOutcomeNMAPanel',
- 'CrossNetworkSynthesisPanel'].forEach((p) => {
+ 'CrossNetworkSynthesisPanel', 'EverythingModelPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -356,6 +359,27 @@ try {
 const cxBad = global.window.CrossNetworkSynthesisPanel.parseRows('A_vs_B, survey, -0.40, 0.12');
 if (!(cxBad.rows.length === 0 && cxBad.errors.length === 1)) fails.push('CrossNetwork.parseRows: bad design should fail closed');
 
+// Everything-model paste-tool: parse longitudinal rows + a real EM fit. Sanity:
+// the reference period's γ is exactly 0; and with one period + one outcome the
+// model reduces to the RE-IV pool at the converged τ².
+const em = global.window.EverythingModelPanel.parseRows(
+  'S1, 2018, mortality, low, -0.40, 0.12\nS2, 2018, mortality, low, -0.30, 0.14\nS3, 2020, mortality, high, -0.55, 0.16\nS4, 2020, MACE, low, -0.20, 0.18\nS1, 2020, MACE, low, -0.25, 0.20\nS2, 2018, MACE, high, -0.35, 0.15');
+if (em.rows.length !== 6) fails.push('Everything.parseRows: expected 6 rows, got ' + em.rows.length);
+if (em.errors.length) fails.push('Everything.parseRows: unexpected errors ' + JSON.stringify(em.errors));
+try {
+  const f = global.window.AlmEverythingModel.fit(em.rows, { biasScale: 0 });
+  if (!(f.ok && Math.abs(f.gamma[f.ref_time].estimate) < 1e-12)) fails.push('Everything: reference-period gamma should be 0');
+  // single-period single-outcome reduces to RE-IV pool
+  const one = global.window.EverythingModelPanel.parseRows(
+    'S1, T, O, low, -0.40, 0.12\nS2, T, O, low, -0.30, 0.14\nS3, T, O, low, -0.50, 0.16');
+  const f1 = global.window.AlmEverythingModel.fit(one.rows, { biasScale: 0 });
+  let sw = 0, swy = 0; one.rows.forEach(r => { const w = 1 / (r.vi + f1.tau2_delta); sw += w; swy += w * r.yi; });
+  if (!(Math.abs(f1.mu.O.estimate - swy / sw) < 1e-9)) fails.push('Everything: single period+outcome should equal the RE-IV pool');
+} catch (e) { fails.push('Everything fit threw ' + e); }
+// Fail-closed: a 5-column row (missing sei) must be rejected by parseRows.
+const emBad = global.window.EverythingModelPanel.parseRows('S1, 2018, mortality, low, -0.40');
+if (!(emBad.rows.length === 0 && emBad.errors.length === 1)) fails.push('Everything.parseRows: 5-column row should fail closed');
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -391,4 +415,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 25 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma/multi-outcome-nma/cross-network parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA + MultiOutcomeNMA + CrossNetwork verified');
+console.log('SMOKE OK: 26 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma/multi-outcome-nma/cross-network/everything-model parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA + MultiOutcomeNMA + CrossNetwork + EverythingModel verified');

@@ -955,3 +955,39 @@ def test_cross_network_synthesis_anchor_and_bias_recovery():
     assert abs(out["anchor"] - out["synA"]) < 1e-12
     # (b) injected observational bias of +0.20 is recovered exactly
     assert abs(out["deltaObs"] - 0.20) < 1e-9
+
+
+def test_everything_model_gamma_ref_zero_and_reduces_to_re_pool():
+    """No R oracle exists for the everything model — two deterministic sanity
+    anchors: (a) the reference time-period's γ is EXACTLY 0 (identifiability); (b)
+    with one time-period and one outcome (and no RoB shift) the variational-EM μ̂
+    reduces EXACTLY to the random-effects IV pool at the converged τ²_δ."""
+    out = _node(r"""
+        const M = require('./template/assets/vendor/everything-model.js');
+        const rows = [
+          {study:'S1',time:'2018',outcome:'mortality',rob:'low',yi:-0.40,vi:0.0144},
+          {study:'S2',time:'2018',outcome:'mortality',rob:'low',yi:-0.30,vi:0.0196},
+          {study:'S3',time:'2020',outcome:'mortality',rob:'high',yi:-0.55,vi:0.0256},
+          {study:'S4',time:'2020',outcome:'MACE',rob:'low',yi:-0.20,vi:0.0324},
+          {study:'S1',time:'2020',outcome:'MACE',rob:'low',yi:-0.25,vi:0.04},
+          {study:'S2',time:'2018',outcome:'MACE',rob:'high',yi:-0.35,vi:0.0225},
+        ];
+        const f = M.fit(rows, {biasScale:0});
+        // single period + single outcome
+        const one = [
+          {study:'S1',time:'T',outcome:'O',rob:'low',yi:-0.40,vi:0.0144},
+          {study:'S2',time:'T',outcome:'O',rob:'low',yi:-0.30,vi:0.0196},
+          {study:'S3',time:'T',outcome:'O',rob:'low',yi:-0.50,vi:0.0256},
+        ];
+        const f1 = M.fit(one, {biasScale:0});
+        let sw=0, swy=0; one.forEach(r=>{const w=1/(r.vi+f1.tau2_delta); sw+=w; swy+=w*r.yi;});
+        console.log(JSON.stringify({
+          ok:f.ok, conv:f.converged, gammaRef:f.gamma[f.ref_time].estimate,
+          muO:f1.mu.O.estimate, rePool:swy/sw, tau2:f1.tau2_delta
+        }));
+    """)
+    assert out["ok"] is True
+    # (a) reference-period gamma is exactly 0
+    assert abs(out["gammaRef"]) < 1e-12
+    # (b) single period + outcome reduces to the RE-IV pool exactly
+    assert abs(out["muO"] - out["rePool"]) < 1e-9
