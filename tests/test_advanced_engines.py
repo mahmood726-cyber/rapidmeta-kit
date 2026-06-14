@@ -923,3 +923,35 @@ def test_multi_outcome_nma_reduces_to_single_outcome_when_uncorrelated():
     assert abs(out["jC"] - out["feC"]) < 1e-9
     # consistent single-contrast data => zero seeded per-outcome heterogeneity
     assert all(abs(t) < 1e-9 for t in out["taus"])
+
+
+def test_cross_network_synthesis_anchor_and_bias_recovery():
+    """No R oracle exists for the cross-design synthesis — two sanity anchors:
+    (a) with RCT rows only the bias-corrected synthesis EQUALS the RCT anchor (no
+    non-RCT stream to correct); (b) an observational stream injected exactly at the
+    anchor + 0.20 must recover delta_obs == 0.20 (the engine identifies the design
+    bias by method of moments on residuals vs the anchor). Both are exact."""
+    out = _node(r"""
+        const M = require('./template/assets/vendor/cross-network-synthesis.js');
+        const rctOnly = [
+          {contrast:'A_vs_B', yi:-0.40, vi:0.0144, design:'rct'},
+          {contrast:'A_vs_B', yi:-0.30, vi:0.0196, design:'rct'},
+        ];
+        const fa = M.fit(rctOnly);
+        const cA = fa.contrasts['A_vs_B'];
+        const anchorMu = cA.mu_anchor;
+        const withObs = rctOnly.concat([
+          {contrast:'A_vs_B', yi:anchorMu+0.20, vi:0.01, design:'obs'},
+          {contrast:'A_vs_B', yi:anchorMu+0.20, vi:0.01, design:'obs'},
+        ]);
+        const cB = M.fit(withObs).contrasts['A_vs_B'];
+        console.log(JSON.stringify({
+          anchor:cA.mu_anchor, synA:cA.mu_synthesis,
+          deltaObs:cB.delta_obs, kObs:cB.k_obs, kRct:cA.k_rct
+        }));
+    """)
+    assert out["kRct"] == 2 and out["kObs"] == 2
+    # (a) RCT-only synthesis equals the anchor exactly
+    assert abs(out["anchor"] - out["synA"]) < 1e-12
+    # (b) injected observational bias of +0.20 is recovered exactly
+    assert abs(out["deltaObs"] - 0.20) < 1e-9

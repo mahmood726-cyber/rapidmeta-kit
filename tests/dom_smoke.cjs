@@ -72,6 +72,7 @@ require(V + 'cnma-receptor.js');
 require(V + 'spec-collapse.js');
 require(V + 'transported-nma-v1.js');
 require(V + 'multi-outcome-nma.js');
+require(V + 'cross-network-synthesis.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -96,6 +97,7 @@ require(V + 'cnma-receptor-panel.js');
 require(V + 'spec-collapse-panel.js');
 require(V + 'transported-nma-v1-panel.js');
 require(V + 'multi-outcome-nma-panel.js');
+require(V + 'cross-network-synthesis-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -155,6 +157,7 @@ const PANEL_ID = {
   SpecCollapsePanel: 'spec-collapse-panel',
   TransportedNMAV1Panel: 'transported-nma-v1-panel',
   MultiOutcomeNMAPanel: 'multi-outcome-nma-panel',
+  CrossNetworkSynthesisPanel: 'cross-network-synthesis-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
@@ -163,7 +166,8 @@ const PANEL_ID = {
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
  'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
  'LocationScalePanel', 'CnmaReceptorPanel', 'SpecCollapsePanel',
- 'TransportedNMAV1Panel', 'MultiOutcomeNMAPanel'].forEach((p) => {
+ 'TransportedNMAV1Panel', 'MultiOutcomeNMAPanel',
+ 'CrossNetworkSynthesisPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -329,6 +333,29 @@ try {
 const monBad = global.window.MultiOutcomeNMAPanel.parseRows('S1, A, B, -0.40, 0.12, -0.50');
 if (!(monBad.rows.length === 0 && monBad.errors.length === 1)) fails.push('MultiOutcomeNMA.parseRows: 6-column row should fail closed');
 
+// Cross-network-synthesis paste-tool: parse rct/ipd/obs rows + a real fit. Sanity:
+// (a) with RCT rows only the synthesis equals the RCT anchor; (b) an obs stream
+// injected at anchor+0.20 recovers delta_obs == 0.20.
+const cx = global.window.CrossNetworkSynthesisPanel.parseRows(
+  'A_vs_B, rct, -0.40, 0.12\nA_vs_B, rct, -0.30, 0.14');
+if (cx.rows.length !== 2) fails.push('CrossNetwork.parseRows: expected 2 rows, got ' + cx.rows.length);
+if (cx.errors.length) fails.push('CrossNetwork.parseRows: unexpected errors ' + JSON.stringify(cx.errors));
+try {
+  const fa = global.window.AlmCrossNetwork.fit(cx.rows);
+  const cA = fa.contrasts['A_vs_B'];
+  if (!(Math.abs(cA.mu_anchor - cA.mu_synthesis) < 1e-12)) fails.push('CrossNetwork: RCT-only synthesis should equal the anchor');
+  const anchorMu = cA.mu_anchor;
+  const withObs = cx.rows.concat([
+    { contrast: 'A_vs_B', design: 'obs', yi: anchorMu + 0.20, vi: 0.01 },
+    { contrast: 'A_vs_B', design: 'obs', yi: anchorMu + 0.20, vi: 0.01 },
+  ]);
+  const fb = global.window.AlmCrossNetwork.fit(withObs);
+  if (!(Math.abs(fb.contrasts['A_vs_B'].delta_obs - 0.20) < 1e-9)) fails.push('CrossNetwork: delta_obs should recover the injected 0.20 bias');
+} catch (e) { fails.push('CrossNetwork fit threw ' + e); }
+// Fail-closed: an unknown design label must be rejected by parseRows.
+const cxBad = global.window.CrossNetworkSynthesisPanel.parseRows('A_vs_B, survey, -0.40, 0.12');
+if (!(cxBad.rows.length === 0 && cxBad.errors.length === 1)) fails.push('CrossNetwork.parseRows: bad design should fail closed');
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -364,4 +391,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 24 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma/multi-outcome-nma parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA + MultiOutcomeNMA verified');
+console.log('SMOKE OK: 25 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse/transported-nma/multi-outcome-nma/cross-network parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse + TransportedNMA + MultiOutcomeNMA + CrossNetwork verified');
