@@ -58,6 +58,7 @@ require(V + 'limit-ma.js');
 require(V + 'gosh.js');
 require(V + 'nma-dbt.js');
 require(V + 'copas-shi.js');
+require(V + 'robma.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -68,6 +69,7 @@ require(V + 'limit-ma-panel.js');
 require(V + 'gosh-panel.js');
 require(V + 'nma-dbt-panel.js');
 require(V + 'copas-shi-panel.js');
+require(V + 'robma-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -113,11 +115,11 @@ const PANEL_ID = {
   RareEventsPanel: 'rare-events-panel', RVEPanel: 'rve-panel',
   MultiplicativeNMAPanel: 'multiplicative-nma-panel', MultilevelREMLPanel: 'multilevel-reml-panel',
   LimitMAPanel: 'limit-ma-panel', GOSHPanel: 'gosh-panel', NmaDBTPanel: 'nma-dbt-panel',
-  CopasShiPanel: 'copas-shi-panel',
+  CopasShiPanel: 'copas-shi-panel', RoBMAPanel: 'robma-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
- 'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel'].forEach((p) => {
+ 'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel', 'RoBMAPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -156,4 +158,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 10 panels mounted + RVE/multilevel parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi verified');
+console.log('SMOKE OK: 11 panels mounted + RVE/multilevel parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA verified');

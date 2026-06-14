@@ -434,3 +434,34 @@ def test_copas_shi_profile_mle_matches_metasens_oracle():
     assert abs(out["te03"] - 0.2286357398443) < 1e-4     # most-adjusted point
     assert abs(out["tau03"] - 0.0) < 1e-6
     assert out["attenuates"] is True                      # bias adjustment pulls effect down
+
+
+def test_robma_model_averaging_matches_r_integration():
+    """robma.js (vendored verbatim from allmeta/shared) = RoBMA-style robust
+    Bayesian model-averaging over the four effect×heterogeneity models by
+    adaptive-Simpson quadrature (no MCMC). Anchored to robma-parity.spec.mjs
+    (marginal likelihoods vs R integrate()): on the 8-study set, BF_effect =
+    6.738859, BF_hetero = 2.698955, E[mu|H1FE] = 0.3520793."""
+    out = _node(r"""
+        const R = require('./template/assets/vendor/robma.js');
+        const yi=[0.10,0.30,0.50,0.20,0.90,0.40,1.10,0.05];
+        const sei=[0.20,0.25,0.18,0.30,0.22,0.28,0.35,0.15];
+        const r = R.analysis(yi, sei);
+        console.log(JSON.stringify({
+          H1FE:r.marginal.H1FE, H0RE:r.marginal.H0RE, H1RE:r.marginal.H1RE,
+          bfEffect:r.bfEffect, bfHetero:r.bfHetero, muH1FE:r.muH1FE,
+          pInclEffect:r.pInclEffect, k:r.k,
+          postSum: r.postProb.H0FE+r.postProb.H1FE+r.postProb.H0RE+r.postProb.H1RE,
+          rcode: R.buildRCode([0.1,0.3],[0.2,0.25])
+        }));
+    """)
+    assert abs(out["H1FE"] - 8.7430312e-4) < 1e-9
+    assert abs(out["H0RE"] - 4.1773407e-4) < 1e-9
+    assert abs(out["H1RE"] - 1.9427874e-3) < 1e-8
+    assert abs(out["bfEffect"] - 6.738859) < 1e-3
+    assert abs(out["bfHetero"] - 2.698955) < 1e-3
+    assert abs(out["muH1FE"] - 0.3520793) < 1e-5
+    assert 0.0 < out["pInclEffect"] < 1.0
+    assert out["k"] == 8
+    assert abs(out["postSum"] - 1.0) < 1e-9          # posterior model probs sum to 1
+    assert "library(RoBMA)" in out["rcode"]          # full-package R deep-link
