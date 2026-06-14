@@ -672,3 +672,44 @@ def test_nma_meta_regression_matches_netmeta_netmetareg():
     assert abs(out["gC"] - (-0.0012448)) < 1e-6           # = -(beta[C:cov])
     assert out["refZero"] == 0                             # reference treatment effect is exactly 0
     assert out["threw"] is True                            # <2 treatments fails closed
+
+
+def test_personalised_te_shrinkage_matches_metafor_blup():
+    """personalised-te.js (vendored verbatim from allmeta/shared) = personalised
+    treatment effects via empirical-Bayes shrinkage of subgroup estimates (PATH
+    Statement; Kent 2018). The shrunk POINT estimates are the BLUP/empirical-Bayes
+    predictor, matching metafor::blup of a DL RE model on the per-subgroup DL pools.
+    Anchored to personalised-te-parity.spec.mjs (3 subgroups): overall μ=-0.4936426,
+    σ²_between=0.0233495; DL pools young=-0.3138551, old=-0.5363559,
+    biomarker+=-0.6758621; blup young=-0.3467833, old=-0.5280389,
+    biomarker+=-0.6061057. The shrunk SE is the conservative Morris-1983 variance,
+    intentionally ≥ metafor's plug-in blup se (young 0.105 vs 0.068)."""
+    out = _node(r"""
+        const P = require('./template/assets/vendor/personalised-te.js');
+        const RAW=[['S1','young',-0.30,0.020],['S2','young',-0.25,0.025],['S3','young',-0.40,0.018],['S4','young',-0.28,0.022],
+                   ['S1','old',-0.55,0.022],['S2','old',-0.50,0.025],['S3','old',-0.60,0.020],['S4','old',-0.48,0.024],
+                   ['S1','biomarker+',-0.65,0.030],['S2','biomarker+',-0.70,0.028]];
+        const rows=RAW.map(x=>({study:x[0],subgroup:x[1],yi:x[2],vi:x[3]}));
+        const r=P.fit(rows);
+        const pred = P.predict(r, 'young'), miss = P.predict(r, 'nonesuch');
+        const few = P.fit([rows[0]]);
+        console.log(JSON.stringify({
+          mu:r.overall.mu, sig2:r.sigma2_between, n_sub:r.n_subgroups,
+          poolY:r.subgroups.young.yi_pooled, poolO:r.subgroups.old.yi_pooled, poolB:r.subgroups['biomarker+'].yi_pooled,
+          blupY:r.subgroups.young.theta_shrunk, blupO:r.subgroups.old.theta_shrunk, blupB:r.subgroups['biomarker+'].theta_shrunk,
+          seY:r.subgroups.young.se_shrunk, predBasis:pred.basis, missBasis:miss.basis, fewOk:few.ok
+        }));
+    """)
+    assert abs(out["mu"] - (-0.4936426)) < 1e-5
+    assert abs(out["sig2"] - 0.0233495) < 1e-5
+    assert out["n_sub"] == 3
+    assert abs(out["poolY"] - (-0.3138551)) < 1e-5         # DL subgroup pool (young)
+    assert abs(out["poolO"] - (-0.5363559)) < 1e-5
+    assert abs(out["poolB"] - (-0.6758621)) < 1e-5
+    assert abs(out["blupY"] - (-0.3467833)) < 1e-5         # BLUP point estimate — exact
+    assert abs(out["blupO"] - (-0.5280389)) < 1e-5
+    assert abs(out["blupB"] - (-0.6061057)) < 1e-5
+    assert out["seY"] >= 0.0680165 - 1e-6                  # Morris-1983 SE >= metafor plug-in
+    assert out["predBasis"] == "subgroup-shrunk"           # observed subgroup -> EB posterior
+    assert out["missBasis"] == "overall-fallback"          # unobserved subgroup -> overall
+    assert out["fewOk"] is False                           # <2 rows fails closed

@@ -65,6 +65,7 @@ require(V + 'transportability-v1.js');
 require(V + 'multivariate-ma.js');
 require(V + 'evalue.js');
 require(V + 'nma-meta-regression.js');
+require(V + 'personalised-te.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -82,6 +83,7 @@ require(V + 'transportability-v1-panel.js');
 require(V + 'multivariate-ma-panel.js');
 require(V + 'evalue-panel.js');
 require(V + 'nma-meta-regression-panel.js');
+require(V + 'personalised-te-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -134,13 +136,14 @@ const PANEL_ID = {
   MultivariateMAPanel: 'multivariate-ma-panel',
   EValuePanel: 'evalue-panel',
   NmaMetaRegPanel: 'nma-meta-regression-panel',
+  PersonalisedTEPanel: 'personalised-te-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
  'GOSHPanel', 'NmaDBTPanel', 'CopasShiPanel', 'RoBMAPanel',
  'ExperimentalMAPanel', 'BMATauPanel',
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
- 'NmaMetaRegPanel'].forEach((p) => {
+ 'NmaMetaRegPanel', 'PersonalisedTEPanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -178,6 +181,20 @@ try {
 // k<2 must fail closed (between-study G unidentifiable).
 try { global.window.AlmMultivariate.fit([mv.rows[0]]); fails.push('Multivariate: k<2 should throw'); } catch (e) { /* expected */ }
 
+// Personalised-TE paste-tool: parseRows + a real EB-shrinkage fit on subgroup rows.
+const ptp = global.window.PersonalisedTEPanel.parseRows(
+  'S1, young, -0.30, 0.141\nS2, young, -0.25, 0.158\nS1, old, -0.55, 0.148\nS2, old, -0.50, 0.158\nS1, biomarker+, -0.65, 0.173\nS2, biomarker+, -0.70, 0.167');
+if (ptp.rows.length !== 6) fails.push('PersonalisedTE.parseRows: expected 6 rows, got ' + ptp.rows.length);
+if (ptp.errors.length) fails.push('PersonalisedTE.parseRows: unexpected errors ' + JSON.stringify(ptp.errors));
+try {
+  const pf = global.window.AlmPersonalisedTE.fit(ptp.rows);
+  if (!(pf.ok && pf.n_subgroups === 3 && isFinite(pf.overall.mu) && pf.subgroups.young
+        && isFinite(pf.subgroups.young.theta_shrunk) && pf.subgroups.young.shrinkage_weight >= 0)) fails.push('PersonalisedTE fit: not ok / wrong shape');
+  // single-subgroup input must fail closed (shrinkage across subgroups unidentifiable).
+  const one = global.window.AlmPersonalisedTE.fit([{ study: 'S1', subgroup: 'a', yi: -0.3, vi: 0.02 }]);
+  if (one.ok) fails.push('PersonalisedTE: <2 rows should fail closed');
+} catch (e) { fails.push('PersonalisedTE fit threw ' + e); }
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -213,4 +230,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 17 panels mounted + RVE/multilevel/transport/multivariate parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg verified');
+console.log('SMOKE OK: 18 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE verified');
