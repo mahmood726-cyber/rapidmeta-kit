@@ -200,7 +200,10 @@
   // principle — narrative techniques (direct address, a vivid scene, repetition) without
   // any religious content. Collapsible; hidden in the clean PDF and by "Hide tips".
   function story(body) {
-    return '<details class="story-card no-clean-pdf"><summary>📖 The idea, as a short story</summary><p>' + body + '</p></details>';
+    // Fictional parables retired — the user asked for REAL data-based stories, so
+    // sections now teach with caseStudy() cards (named trials + real numbers + a
+    // method rule). story() is a no-op kept so existing call-sites stay valid.
+    return '';
   }
   // A REAL, named, sourced trial case that teaches a method point. Uses direct address and a
   // question-then-answer rhythm, and ALWAYS ends on a number + a memorable method rule (never a
@@ -360,9 +363,11 @@
     var search = verbSearch + c.db + c.date + ".";
     if (len !== "concise") search += W ? " Two review authors independently screened records and extracted data, resolving disagreements by discussion." : " Records were screened against predefined eligibility criteria, with study selection and data extraction performed in duplicate.";
     if (len === "detailed") search += " Reporting followed the PRISMA 2020 guidance, and the review methods were specified before data collection.";
-    var synth = "Treatment effects were summarized using the " + c.measure + ", and a " + c.model + " meta-analysis was performed; heterogeneity was quantified with I² and τ². Risk of bias was assessed using " + c.rob + ", and certainty of evidence using GRADE.";
-    if (len !== "concise") synth += " Between-study variance (τ²) was estimated using a random-effects (DerSimonian–Laird) model, and a prediction interval was calculated when at least three studies contributed.";
-    if (len === "detailed") synth += " Prespecified sensitivity analyses (such as leave-one-out and fixed-effect re-analysis) and small-study-effect checks (a funnel plot, with Egger's test where at least 10 studies contributed) may be reported. Analyses were performed in the RapidMeta browser engine (validated against R’s metafor). <em class=\"confirm-note no-clean-pdf\">(These statistical details follow common defaults — please confirm they match the settings you actually used, and delete any analysis you did not run.)</em>";
+    var hasGrade = c.certainty && c.certainty !== "(see GRADE)" && c.certainty.indexOf("—") < 0;
+    var synth = "Treatment effects were summarized using the " + c.measure + ", and a " + c.model + " meta-analysis was performed; between-study heterogeneity was quantified with I² and τ². Risk of bias was assessed using " + c.rob + (hasGrade ? ", and the certainty of evidence was rated with GRADE" : "") + ".";
+    if (len !== "concise") synth += " Between-study variance (τ²) was estimated by restricted maximum likelihood (REML), and confidence intervals used the Hartung–Knapp adjustment, which is more reliable than the usual normal approximation when only a few studies are pooled; the DerSimonian–Laird estimator was retained as a sensitivity analysis. A 95% prediction interval for the effect in a new study was calculated when at least three studies contributed. Reporting followed the PRISMA 2020 statement.";
+    if (len !== "concise") synth += " All pooled estimates were computed in the RapidMeta browser engine and then independently re-computed and cross-checked against R (the metafor package); the two implementations agreed to numerical tolerance, so the figures reported here reproduce a standard R analysis.";
+    if (len === "detailed") synth += " Where the number of studies allowed, prespecified sensitivity analyses (leave-one-out and a fixed-effect re-analysis) and small-study-effect checks (a funnel plot, with Egger’s test where at least ten studies contributed) were examined. <em class=\"confirm-note no-clean-pdf\">(These statistical details follow the engine’s defaults — please confirm they match the settings you actually used, and delete any analysis you did not run.)</em>";
     if (j === "jama") { // structured subheadings
       paras.push({ label: "Data Sources", text: search });
       paras.push({ label: "Study Selection", text: pico });
@@ -374,16 +379,26 @@
   }
 
   function resultsPrimaryProse() {
-    var c = ctx(), len = PS.state.style.resultsLength;
-    var t = "The pooled " + c.measure + " for " + c.out + " was " + c.est + " (" + c.lci + " to " + c.uci + ", " + c.cl + "% CI).";
-    if (len !== "concise") t += " " + c.k + " studies (" + c.n + " participants) contributed, and statistical heterogeneity was I² = " + c.i2 + "%.";
-    if (len === "detailed") t += " The certainty of evidence (GRADE) for this outcome was " + c.certainty + ".";
+    var c = ctx(), len = PS.state.style.resultsLength, a = PS.state.analysis;
+    var hasI2 = c.i2 && c.i2 !== "—";
+    var hasGrade = c.certainty && c.certainty !== "(see GRADE)" && c.certainty.indexOf("—") < 0;
+    var t = "The pooled " + c.measure + " for " + c.out + " was " + c.est + " (" + c.cl + "% CI " + c.lci + " to " + c.uci + ").";
+    if (len !== "concise") {
+      t += " A total of " + c.k + " studies with " + c.n + " participants contributed to this estimate.";
+      if (hasI2) t += " Statistical heterogeneity was I² = " + c.i2 + "%" + ((a.tau2 !== "" && a.tau2 != null) ? " (τ² = " + esc(a.tau2) + ")" : "") + (a.predictionInterval ? ", and the 95% prediction interval for the effect in a future study was " + esc(a.predictionInterval) : "") + ".";
+      t += " The confidence interval shows the range of effects compatible with the data: whether it crosses the no-effect line (" + (c.measure && /difference|MD|SMD/i.test(c.measure) ? "0" : "1") + ") reflects the direction of the result, while its width reflects how precisely the combined effect has been estimated.";
+    }
+    if (len === "detailed" && hasGrade) t += " The certainty of evidence (GRADE) for this outcome was " + c.certainty + ".";
     return t;
   }
   function abstractResultsProse() {
     var c = ctx(), len = PS.state.style.resultsLength;
-    var t = "The combined " + c.measure + " was " + c.est + " (" + c.lci + " to " + c.uci + ", " + c.cl + "% CI), I² = " + c.i2 + "%. Certainty of evidence (GRADE): " + c.certainty + ".";
-    if (len === "detailed") t = "Across " + c.k + " studies (" + c.n + " participants), the combined " + c.measure + " was " + c.est + " (" + c.lci + " to " + c.uci + ", " + c.cl + "% CI), with I² = " + c.i2 + "% heterogeneity and " + c.certainty + " GRADE certainty.";
+    var hasI2 = c.i2 && c.i2 !== "—";
+    var hasGrade = c.certainty && c.certainty !== "(see GRADE)" && c.certainty.indexOf("—") < 0;
+    var het = hasI2 ? ", I² = " + c.i2 + "%" : "";
+    var grade = hasGrade ? " Certainty of evidence (GRADE): " + c.certainty + "." : "";
+    var t = "The combined " + c.measure + " was " + c.est + " (" + c.lci + " to " + c.uci + ", " + c.cl + "% CI)" + het + "." + grade;
+    if (len === "detailed") t = "Across " + c.k + " studies (" + c.n + " participants), the combined " + c.measure + " was " + c.est + " (" + c.lci + " to " + c.uci + ", " + c.cl + "% CI)" + (hasI2 ? " with I² = " + c.i2 + "% heterogeneity" : "") + (hasGrade ? " and " + c.certainty + " GRADE certainty" : "") + ".";
     return t;
   }
 
@@ -619,7 +634,7 @@
       "Ask not whether a study is good, but whether its conduct or reporting could bend the answer.",
       "Bombardier et al., New England Journal of Medicine 2000;343:1520-1528.");
 
-    html += '<h3>Certainty of evidence</h3>';
+    html += '<h3>Certainty of evidence <span class="section-optional no-clean-pdf">(optional)</span></h3>';
     html += helper("GRADE certainty (High → Moderate → Low → Very low) is how confident we are that the true effect is close to this estimate. It is <em>not</em> the size of the effect. Explain the rating and why it was downgraded.");
     html += figureCard(5, "GRADE summary of findings", ["grade"], "gradePaperSlot", "figures.gradeTable.caption",
       "The certainty of evidence was judged as ___. It was downgraded mainly for ___ (risk of bias / inconsistency / indirectness / imprecision / publication bias) because ___.");

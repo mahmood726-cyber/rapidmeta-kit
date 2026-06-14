@@ -187,26 +187,42 @@
     });
     S.push('<text x="' + ((plotL + plotR) / 2).toFixed(1) + '" y="' + (axisY + 34) + '" text-anchor="middle" font-size="11" fill="' + C.inkSoft + '">' + esc(measure) + (cont ? '' : ' (log scale)') + '</text>');
 
-    // ---- annotation callout (default-on, editable) ----
+    // ---- annotation callout (default-on, editable) — placed in CLEAR space ----
     var ann = opts.annotation;
     if (ann !== false && pEff != null) {
       if (ann == null || ann === true) ann = PS.defaultForestAnnotation(res);
       if (ann) {
-        // Sit in the empty wedge left of the diamond, at the pooled-row height,
-        // so it never crosses a study CI. Wrap narrow to stay in that column.
-        var lines = wrapText(ann, 30);
-        var ax = plotL + 4;
-        var blockH = lines.length * 13;
-        var ay = pooledY - blockH - 6;                    // block ends just above the diamond
-        if (ay < yStudy0 + 8) ay = yStudy0 + 8;           // never collide with row 1
-        S.push('<text x="' + ax + '" y="' + ay + '" font-size="10.5" font-style="italic" fill="' + C.inkSoft + '">');
-        lines.forEach(function (ln, j) { S.push('<tspan x="' + ax + '" dy="' + (j === 0 ? 0 : 13) + '">' + esc(ln) + '</tspan>'); });
-        S.push('</text>');
-        // short curved arrow from the block to the diamond's left vertex
-        var ty = ay + blockH - 6;
-        var dxl2 = tx(pLo != null ? pLo : pEff);
-        var sx = Math.min(ax + 150, dxl2 - 30);
-        S.push('<path d="M' + sx.toFixed(0) + ',' + ty.toFixed(0) + ' Q' + ((sx + dxl2) / 2).toFixed(0) + ',' + (pooledY - 2) + ' ' + (dxl2 - 4).toFixed(0) + ',' + pooledY + '" fill="none" stroke="' + C.maroon + '" stroke-width="1.1" marker-end="url(#synArrow)" opacity="0.85"/>');
+        // Measure clearance on each side of the data cluster, then place the note
+        // in the side wedge that fits; if the effect sits near the null (data
+        // centred, neither wedge wide enough) fall back to a clean italic note in
+        // the top band above the column headers — so it NEVER overlaps the data.
+        var allLoV = rows.map(function (r) { return r.lo; }).concat(pLo != null ? [pLo] : [], piLo != null ? [piLo] : []);
+        var allHiV = rows.map(function (r) { return r.hi; }).concat(pHi != null ? [pHi] : [], piHi != null ? [piHi] : []);
+        var minLoX = tx(Math.min.apply(null, allLoV)), maxHiX = tx(Math.max.apply(null, allHiV));
+        var leftClear = minLoX - plotL, rightClear = plotR - maxHiX;
+        var dxL = tx(pLo != null ? pLo : pEff), dxR = tx(pHi != null ? pHi : pEff);
+        var ANNW = 168;
+        var _annText = function (lns, ax, ay) {
+          S.push('<text x="' + ax + '" y="' + ay + '" font-size="10.5" font-style="italic" fill="' + C.inkSoft + '">');
+          lns.forEach(function (ln, j) { S.push('<tspan x="' + ax + '" dy="' + (j === 0 ? 0 : 13) + '">' + esc(ln) + '</tspan>'); });
+          S.push('</text>');
+        };
+        var _annArrow = function (sx, sy, ex, ey) {
+          S.push('<path d="M' + sx.toFixed(0) + ',' + sy.toFixed(0) + ' Q' + ((sx + ex) / 2).toFixed(0) + ',' + ((sy + ey) / 2 + 6).toFixed(0) + ' ' + ex.toFixed(0) + ',' + ey.toFixed(0) + '" fill="none" stroke="' + C.maroon + '" stroke-width="1.1" marker-end="url(#synArrow)" opacity="0.85"/>');
+        };
+        if (rightClear >= ANNW) {
+          var lnsR = wrapText(ann, 26), axR = maxHiX + 10, bhR = lnsR.length * 13;
+          var ayR = pooledY - bhR - 6; if (ayR < yStudy0 + 8) ayR = yStudy0 + 8;
+          _annText(lnsR, axR, ayR);
+          _annArrow(Math.max(axR - 6, dxR + 22), ayR + bhR - 6, dxR + 4, pooledY);
+        } else if (leftClear >= ANNW) {
+          var lnsL = wrapText(ann, 26), axL = plotL + 4, bhL = lnsL.length * 13;
+          var ayL = pooledY - bhL - 6; if (ayL < yStudy0 + 8) ayL = yStudy0 + 8;
+          _annText(lnsL, axL, ayL);
+          _annArrow(Math.min(axL + 140, dxL - 30), ayL + bhL - 6, dxL - 4, pooledY);
+        } else {
+          _annText(wrapText(ann, 64), plotL, 12);   // centred data → top-band note, no arrow
+        }
       }
     }
 

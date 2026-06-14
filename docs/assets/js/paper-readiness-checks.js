@@ -19,7 +19,8 @@
     ["studentText.methodsEligibility", "Methods: eligibility criteria (state your real design)", 10],
     ["studentText.forestInterpretation", "Forest plot interpretation", 40],
     ["studentText.heterogeneityInterpretation", "Heterogeneity interpretation", 15],
-    ["studentText.certaintyInterpretation", "Certainty interpretation", 15],
+    // Certainty / GRADE is OPTIONAL — not every rapid review grades the evidence,
+    // so it no longer blocks the finished paper (it is still offered as a section).
     ["studentText.discussionPrincipalFinding", "Discussion: principal finding", 15],
     ["studentText.discussionLimitations", "Main limitation", 50],
     ["studentText.discussionConclusion", "Balanced conclusion", 40],
@@ -38,8 +39,8 @@
   // figure caption field -> [path, label, figures-state-key, minWords]
   var REQUIRED_FIGURE_CAPTIONS = [
     ["figures.prisma.caption", "PRISMA caption", "prisma", 8],
-    ["figures.forestPlot.caption", "Forest plot caption", "forestPlot", 8],
-    ["figures.gradeTable.caption", "GRADE table caption", "gradeTable", 8]
+    ["figures.forestPlot.caption", "Forest plot caption", "forestPlot", 8]
+    // GRADE table caption is optional (GRADE itself is optional) — not required.
   ];
 
   // Blocking: literal scaffold tokens / unfilled blanks left in the text.
