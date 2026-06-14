@@ -68,7 +68,7 @@
         + '<td style="padding:4px 8px;text-align:right;font-family:JetBrains Mono,monospace;">' + fmt(g.n_unpubl, 1) + '</td></tr>';
     });
     html += '</tbody></table>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
       + '<strong>Copas–Shi profile MLE (metasens::copas):</strong> the full selection-model maximum likelihood, '
       + 'not the kit\'s exploratory heuristic ρ-sweep (chart #13). Each row maximises the Copas log-likelihood over '
       + '(effect, ρ, τ) at a fixed publication-probability path point; ρ is the correlation between a study\'s effect and '

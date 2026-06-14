@@ -85,7 +85,7 @@
     const ref = f.reference;
     function leagueTable(o) {
       let t = '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">'
-        + '<tr style="color:#64748b;text-align:left;"><th style="padding:3px 6px;">vs ' + P.escapeHtml(ref) + '</th><th style="padding:3px 6px;">Effect</th><th style="padding:3px 6px;">SE</th><th style="padding:3px 6px;">95% CI</th></tr>';
+        + '<tr style="color:#94a3b8;text-align:left;"><th style="padding:3px 6px;">vs ' + P.escapeHtml(ref) + '</th><th style="padding:3px 6px;">Effect</th><th style="padding:3px 6px;">SE</th><th style="padding:3px 6px;">95% CI</th></tr>';
       f.treatments.forEach(tr => {
         if (tr === ref) return;
         const e = f.effects[o][tr];
@@ -103,8 +103,8 @@
     resultEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">' + (header || '')
       + f.n_studies + ' studies · ' + f.n_contrasts + ' contrasts · ' + f.treatments.length + ' treatments · '
       + 'between-study τ = (' + fmt(tau1, 3) + ', ' + fmt(tau2, 3) + ') · outcome ρ = ' + fmt(rho, 3) + '</div>'
-      + '<div style="font-size:10px;color:#64748b;margin:6px 0 2px;">Outcome 1 league</div>' + leagueTable(0)
-      + '<div style="font-size:10px;color:#64748b;margin:8px 0 2px;">Outcome 2 league</div>' + leagueTable(1);
+      + '<div style="font-size:10px;color:#94a3b8;margin:6px 0 2px;">Outcome 1 league</div>' + leagueTable(0)
+      + '<div style="font-size:10px;color:#94a3b8;margin:8px 0 2px;">Outcome 2 league</div>' + leagueTable(1);
   }
 
   function compute(P, resultEl, text, rhoWithin) {
@@ -202,7 +202,7 @@
       + 'Multivariate NMA over <strong>two correlated outcomes</strong> (Achana 2014) — joint modelling borrows strength across outcomes. '
       + 'Paste contrasts: <code style="color:#7dd3fc;">study, trtA, trtB, y1, se1, y2, se2</code>. Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">study, trtA, trtB, y1, se1, y2, se2</code> — one contrast per line; rows sharing a study id form a multi-arm study; NA for an unreported outcome.';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -232,7 +232,7 @@
     const result = document.createElement('div'); result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Multi-outcome NMA (Achana 2014 §3.2) — Experimental, no R oracle:</strong> the combined random-effects covariance is '
       + 'Σ_RE^outcomes ⊗ G_arm, where G_arm carries the multi-arm shared-control ½ off-diagonal and Σ_RE^outcomes the between-study correlation across '
       + 'the two outcomes; β is solved by GLS. Σ_RE^outcomes is seeded by per-outcome DL + the sample correlation of residuals (a non-iterative analytic '
@@ -280,7 +280,7 @@
       if (re) renderFit(P, result, re.f, '');
     });
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Multi-outcome NMA (Achana 2014) — Experimental, no R oracle.</strong> Joint Σ_RE^outcomes ⊗ G_arm covariance; the '
       + 'within-study cross-outcome correlation is an ASSUMPTION (default 0.5, editable above). A non-iterative analytic approximation — '
       + 'for complex multi-arm × multi-outcome networks use a full Bayesian fit.';

@@ -70,7 +70,7 @@
         + '<td style="padding:4px 8px;font-family:JetBrains Mono,monospace;color:#f1f5f9;text-align:right;">' + fmt(s.theta_shrunk, 3) + '</td>'
         + '<td style="padding:4px 8px;font-family:JetBrains Mono,monospace;color:#94a3b8;text-align:right;">' + fmt(s.ci_lo, 3) + '–' + fmt(s.ci_hi, 3) + '</td>'
         + '<td style="padding:4px 8px;font-family:JetBrains Mono,monospace;color:' + (s.shrinkage_weight < 0.5 ? '#fbbf24' : '#94a3b8') + ';text-align:right;">' + fmt(100 * s.shrinkage_weight, 0) + '%</td>'
-        + '<td style="padding:4px 8px;font-family:JetBrains Mono,monospace;color:#64748b;text-align:right;">' + s.k + '</td>'
+        + '<td style="padding:4px 8px;font-family:JetBrains Mono,monospace;color:#94a3b8;text-align:right;">' + s.k + '</td>'
         + '</tr>';
     });
     const zc = 1.959963984540054;
@@ -78,12 +78,12 @@
       + r.n_rows + ' rows · ' + r.n_subgroups + ' subgroups · overall μ = ' + fmt(r.overall.mu, 3)
       + ' (95% CI ' + fmt(r.overall.ci_lo, 3) + '–' + fmt(r.overall.ci_hi, 3) + ') · σ²_between = ' + fmt(r.sigma2_between, 4) + '</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px;">'
-      + '<thead><tr style="color:#64748b;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
+      + '<thead><tr style="color:#94a3b8;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
       + '<th style="text-align:left;padding:4px 8px;">subgroup</th><th style="text-align:right;padding:4px 8px;">raw pool</th>'
       + '<th style="text-align:right;padding:4px 8px;">EB-shrunk</th><th style="text-align:right;padding:4px 8px;">95% CI</th>'
       + '<th style="text-align:right;padding:4px 8px;">weight</th><th style="text-align:right;padding:4px 8px;">k</th></tr></thead><tbody>'
       + rowsHtml + '</tbody></table>'
-      + '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+      + '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>Empirical-Bayes shrinkage (PATH Statement; Kent 2018):</strong> each subgroup is pooled (DL) then pulled toward the overall '
       + 'effect by weight σ²_between/(σ²_between+se²) — a low weight means a noisy subgroup heavily borrowed from the overall. The EB-shrunk '
       + 'estimate matches metafor::blup; the SE is the conservative Morris-1983 variance (≥ the plug-in BLUP se). A personalised-effect view — '
@@ -109,7 +109,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Personalised treatment-effect synthesis:</strong> within each subgroup the studies are pooled (inverse-variance, DL τ²), then the '
       + 'subgroup pools are shrunk toward the overall effect (James-Stein / empirical Bayes). Use when subgroup-specific effects are reported and you want a '
       + 'noise-corrected per-subgroup estimate; naively trusting one subgroup is noisy, ignoring the subgroup is biased. Requires ≥2 subgroups.';

@@ -77,7 +77,7 @@
     if (!f || !f.beta.every(isFinite)) { resultEl.innerHTML = '<div style="color:#fca5a5;font-size:11px;">WLS failed on this input.</div>'; return; }
     const zc = 1.959963984540054;
     let body = '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">'
-      + '<tr style="color:#64748b;text-align:left;"><th style="padding:3px 6px;">Component</th><th style="padding:3px 6px;">Effect β</th><th style="padding:3px 6px;">SE</th><th style="padding:3px 6px;">95% CI</th></tr>';
+      + '<tr style="color:#94a3b8;text-align:left;"><th style="padding:3px 6px;">Component</th><th style="padding:3px 6px;">Effect β</th><th style="padding:3px 6px;">SE</th><th style="padding:3px 6px;">95% CI</th></tr>';
     comps.forEach((c, j) => {
       body += '<tr style="border-top:1px solid #1e293b;color:#e2e8f0;font-family:JetBrains Mono,monospace;">'
         + '<td style="padding:3px 6px;color:#7dd3fc;">' + P.escapeHtml(c) + '</td>'
@@ -99,7 +99,7 @@
     resultEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">'
       + parsed.rows.length + ' contrasts · ' + comps.length + ' components · additive common-effect CNMA</div>'
       + body + predNote
-      + '<div style="font-size:10.5px;color:#64748b;margin-top:6px;">' + qNote + '</div>';
+      + '<div style="font-size:10.5px;color:#94a3b8;margin-top:6px;">' + qNote + '</div>';
   }
 
   function buildNode(P) {
@@ -109,7 +109,7 @@
       + '<strong>Requires a component map</strong> (which components each treatment contains) — not derivable from the kit\'s effect set, so this is a '
       + 'paste-input tool. Paste contrasts vs control: <code style="color:#7dd3fc;">combo, TE, seTE</code> where combo is a "+"-joined component list. Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">combo, TE, seTE</code> — e.g. <code style="color:#7dd3fc;">a+b, -0.65, 0.13</code>. Components inferred from the "+"-joined labels (the treatments→components matrix). Need k ≥ p rows.';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -133,7 +133,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Additive component NMA (Welton 2009; Rücker netmeta::discomb):</strong> each treatment is the additive sum of its '
       + 'component effects β, fitted by weighted least squares (β = (XᵀWX)⁻¹XᵀW·TE; W = 1/seTE²). Lets you predict combinations that were never '
       + 'directly trialled from their parts. The additive Q measures how well strict additivity fits — Q ≫ df flags component interactions / '

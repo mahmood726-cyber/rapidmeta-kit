@@ -22,7 +22,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
     }
@@ -36,13 +36,14 @@
       : '⚠ E-value = ' + fmt(ev.point, 2) + ' — only a modest unmeasured confounder (RR ≈ ' + fmt(ev.point, 2)
         + ' on both arms) is needed to explain away the effect; the pooled estimate is confounding-fragile.';
     let html = '<div style="background:' + bg + ';border:1px solid ' + bd + ';color:' + tone + ';padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">' + verdict + '</div>';
+    html += '<div style="background:#1e1b16;border:1px solid #92400e;color:#fbbf24;padding:7px 10px;border-radius:6px;margin-bottom:10px;font-size:10.5px;line-height:1.45;">⚠ Interpret only for OBSERVATIONAL evidence. If these are <strong>randomised</strong> trials, randomisation already balances unmeasured confounders, so the E-value is not informative about this pool — ignore it unless the included studies are non-randomised.</div>';
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;">';
     html += cell('E-value (point)', fmt(ev.point, 2), 'min confounder RR for the estimate');
     html += cell('E-value (CI bound)', fmt(ev.ci, 2), ev.ci <= 1.0001 ? 'CI crosses the null' : 'to shift the near-null bound to 1');
     html += cell('Pooled OR', fmt(pooled.OR, 2), '95% CI ' + fmt(pooled.ci_low, 2) + '–' + fmt(pooled.ci_high, 2));
     html += cell('Approx. RR (√OR)', fmt(ev.rr.point, 3), 'common-outcome map (VanderWeele-Ding)');
     html += '</div>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>E-value (VanderWeele &amp; Ding 2017, Ann Intern Med 167:268-274):</strong> the minimum association '
       + '(risk-ratio scale) an unmeasured confounder would need with both the treatment and the outcome to fully explain '
       + 'away the observed effect (point), or to move the CI bound nearest the null to 1. Larger = more robust to '

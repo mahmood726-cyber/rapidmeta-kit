@@ -28,7 +28,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '')
         + '</div>';
@@ -53,7 +53,7 @@
     html += cell('LRT for selection', 'χ²=' + fmt(r.LRT, 2), 'df=' + r.LRTdf + ', p=' + fmt(r.LRTp, 3));
     if (shift) html += cell('Adjusted ÷ unadjusted OR', fmt(shift, 2) + '×', shift < 1 ? 'effect attenuates' : 'effect grows');
     html += '</div>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>Vevea-Hedges step model (1995):</strong> maximum-likelihood fit of the unadjusted mean μ, between-study τ², '
       + 'and a selection weight δ for the p≥0.025 interval (δ₁≡1 for significant studies). δ₂&lt;1 means non-significant studies are '
       + 'less likely to be published; the adjusted OR removes that selection. The LRT compares the selection fit to the unadjusted ML. '

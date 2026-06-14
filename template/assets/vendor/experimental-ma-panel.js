@@ -33,7 +33,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
     }
@@ -50,7 +50,7 @@
       html += '<div style="background:#3a2a0a;border:1px solid #92400e;color:#fbbf24;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11px;">'
         + '⚠ Conformal prediction interval needs k≥4 studies; only the GRMA robust pool is shown for k=' + kVal + '.</div>';
     }
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
       + '<strong>GRMA (Grey Relational Meta-Analysis):</strong> a robust pool that downweights outliers via grey-relational grades '
       + 'and a redescending Tukey-bisquare guard — less sensitive to a single aberrant trial than DL. '
       + '<strong>Conformal prediction interval:</strong> a DISTRIBUTION-FREE interval for the next study’s effect with guaranteed '

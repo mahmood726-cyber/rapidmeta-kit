@@ -58,7 +58,7 @@
     ctx.fillStyle = '#fbbf24';
     ctx.beginPath(); ctx.arc(sx(res.full.mu), sy(res.full.I2), 4, 0, 2 * Math.PI); ctx.fill();
     // labels
-    ctx.fillStyle = '#64748b'; ctx.font = '9px monospace';
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px monospace';
     ctx.fillText('I²→', 4, pad + 8);
     ctx.fillText('estimate (logOR) →', W - 130, H - 8);
   }
@@ -92,7 +92,7 @@
     drawScatter(canvas, res);
 
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>GOSH (Olkin-Dahabreh-Trikalinos 2012):</strong> each point is the pooled estimate (x) and I² (y) of one subset of studies. '
       + 'A single contiguous cloud is reassuring; ≥2 separated clusters indicate the overall estimate is a blend of distinct subpopulations or that one study flips the result. '
       + 'The amber point is the full-sample estimate. k≤15 enumerates all 2ᵏ−1 subsets; k&gt;15 uses a reproducible (seeded) random sample (advanced-stats.md).';

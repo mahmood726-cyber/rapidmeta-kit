@@ -75,7 +75,7 @@
   // ---- Result renderer (shared by auto + paste) ------------------------------
   function cell(label, value, sub) {
     return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-      + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+      + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
       + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
       + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
   }
@@ -106,11 +106,11 @@
         + '<td style="padding:3px 6px;font-family:JetBrains Mono,monospace;color:#94a3b8;text-align:right;">' + fmt(s.valueSE, 3) + '</td></tr>';
     });
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-      + '<thead><tr style="color:#64748b;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
+      + '<thead><tr style="color:#94a3b8;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
       + '<th style="text-align:left;padding:3px 6px;">Treatment</th><th style="text-align:right;padding:3px 6px;">P(best)</th>'
       + '<th style="text-align:right;padding:3px 6px;">mean value</th><th style="text-align:right;padding:3px 6px;">value SE</th></tr></thead><tbody>'
       + rows + '</tbody></table>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
       + '<strong>Illustrative MCDA, no external validation.</strong> Probabilistic benefit-risk (SMAA; Tervonen 2011, ISPOR benefit-risk task force): '
       + 'criteria are mapped to [0,1] linear partial values, summed under EQUAL weights, and the treatment×criterion uncertainty is propagated by a '
       + 'seeded Monte-Carlo. Weights are value judgements and EVPI is on the value scale — no R/Python package validates this engine. '
@@ -205,7 +205,7 @@
       + 'Probabilistic <strong>benefit-risk MCDA + EVPI</strong> (SMAA; ISPOR). Two blocks separated by a blank line — '
       + '<code style="color:#7dd3fc;">CRITERIA:</code> then <code style="color:#7dd3fc;">VALUES:</code>. Illustrative; computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'CRITERIA: <code style="color:#7dd3fc;">id, benefit|harm[, weight]</code> · VALUES: <code style="color:#7dd3fc;">treatment, criterionId, mean[, se]</code>';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -226,7 +226,7 @@
     const result = document.createElement('div'); result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Illustrative MCDA, no external validation.</strong> Linear partial value functions on each criterion (benefit higher-better, '
       + 'harm lower-better), equal-or-specified weights, seeded SMAA Monte-Carlo for rank-acceptability + EVPI. Weights are value judgements; '
       + 'no statistical package validates this engine — a structured what-if, not an inferential claim.';

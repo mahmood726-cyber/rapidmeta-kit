@@ -68,7 +68,7 @@
   function cell(P, label, value, sub, tone) {
     const border = tone === 'bad' ? '#7f1d1d' : (tone === 'good' ? '#14532d' : '#1e293b');
     return '<div style="background:#0b1220;border:1px solid ' + border + ';border-radius:6px;padding:6px 8px;">'
-      + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+      + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
       + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
       + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
   }
@@ -87,7 +87,7 @@
       + cell(P, 'Naive IV-RE pool θ', fmt(nv.theta, 3), '95% CI ' + fmt(nv.ciLo, 3) + ' – ' + fmt(nv.ciHi, 3) + ' (' + nv.verdict + ')', 'bad')
       + cell(P, 'CI collapse factor', isFinite(collapse) ? fmt(collapse, 1) + '×' : 'n/a', 'naive CI is ~this much too narrow', 'bad')
       + '</div>'
-      + '<div style="font-size:10.5px;color:' + (flip ? '#fbbf24' : '#64748b') + ';margin-top:8px;line-height:1.5;">'
+      + '<div style="font-size:10.5px;color:' + (flip ? '#fbbf24' : '#94a3b8') + ';margin-top:8px;line-height:1.5;">'
       + (flip
         ? '<strong>False robustness detected:</strong> the naive IV-RE pool reads <em>robust</em> but the correct weighted-likelihood interval is <em>fragile</em> — the apparent robustness is an artefact of pooling specs from one dataset.'
         : '<strong>Use the weighted-likelihood interval.</strong> The naive IV-RE pool is shown only to expose how far it collapses — never report it as the multiverse summary.')
@@ -145,7 +145,7 @@
       + 'Multiverse / many-analyst summary — the <strong>weighted-likelihood</strong> aggregator that does NOT collapse the CI. '
       + 'Paste your spec curve: <code style="color:#7dd3fc;">estimate, se[, k]</code> (one specification per line). Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">estimate, se[, k]</code> — one spec per line; k (primary studies, default 8) sets the t-mixture df. ≥2 specs.';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -169,7 +169,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Weighted-likelihood multiverse aggregator (Spec-Collapse Atlas, validated vs metafor across 473 Cochrane reviews):</strong> '
       + 'the spec estimates come from ONE dataset, so they are NOT independent — IV-RE pooling them collapses the variance by ~the number of specs and '
       + 'manufactures robustness. The weighted-likelihood interval is a t-mixture of the per-spec likelihoods; its variance = within + between '

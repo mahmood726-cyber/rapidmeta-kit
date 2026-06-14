@@ -89,7 +89,7 @@
 
   function cell(label, value, sub) {
     return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-      + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+      + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
       + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
       + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
   }
@@ -148,7 +148,7 @@
       + 'Location-scale meta-regression — model the <strong>mean effect AND τ²</strong> on moderators (Viechtbauer-López 2022). '
       + 'Paste rows: <code style="color:#7dd3fc;">yi, sei, xMod, zMod</code> (xMod = mean model, zMod = scale/heterogeneity model). Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">yi, sei, xMod, zMod</code> — one study per line. Intercepts added automatically; zMod must vary.';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -172,7 +172,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Location-scale model (metafor::rma scale=~z, link=log):</strong> the residual heterogeneity τ²_i = exp(α₀ + α₁·zᵢ) '
       + 'is allowed to depend on a moderator, so studies with different zMod get different τ². Location β is GLS given the per-study τ²; α is ML '
       + '(Nelder-Mead on the profile log-likelihood). A significant α₁ means heterogeneity itself is moderated. Reduces to ordinary ML meta-regression '
@@ -231,7 +231,7 @@
     wrap.appendChild(result);
     renderFit(P, result, auto.f, auto.modLabel, '');
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Location-scale model (Viechtbauer-López 2022; metafor scale=~z, link=log):</strong> the residual τ²_i = exp(α₀ + α₁·mᵢ) '
       + 'is allowed to depend on the moderator. The <em>location slope β₁</em> asks whether the effect changes with the moderator; the '
       + '<em>scale slope α₁</em> asks whether between-study heterogeneity itself changes with it. A single auto-chosen moderator (publication year '

@@ -30,7 +30,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '')
         + '</div>';
@@ -54,7 +54,7 @@
     html += cell('Overdispersion φ = Q/(k−1)', fmt(uw.phi, 3), 'Q = ' + fmt(uw.Q, 2) + ', k = ' + uw.k);
     if (widerRatio) html += cell('UWLS SE ÷ RE SE', fmt(widerRatio, 2) + '×', widerRatio > 1 ? 'UWLS more conservative' : 'UWLS narrower');
     html += '</div>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>UWLS (Stanley & Doucouliagos 2015):</strong> point estimate equals the fixed-effect inverse-variance mean; '
       + 'the SE is inflated by a single multiplicative factor √φ (φ = Q/(k−1)) rather than by adding a between-study variance τ². '
       + 'Equivalent to lm(y ~ 1, weights = 1/v) with t<sub>k−1</sub> intervals. For observational syntheses, advanced-stats.md '

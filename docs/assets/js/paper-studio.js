@@ -366,7 +366,7 @@
     var hasGrade = c.certainty && c.certainty !== "(see GRADE)" && c.certainty.indexOf("—") < 0;
     var synth = "Treatment effects were summarized using the " + c.measure + ", and a " + c.model + " meta-analysis was performed; between-study heterogeneity was quantified with I² and τ². Risk of bias was assessed using " + c.rob + (hasGrade ? ", and the certainty of evidence was rated with GRADE" : "") + ".";
     if (len !== "concise") synth += " Between-study variance (τ²) was estimated by restricted maximum likelihood (REML), and confidence intervals used the Hartung–Knapp adjustment, which is more reliable than the usual normal approximation when only a few studies are pooled; the DerSimonian–Laird estimator was retained as a sensitivity analysis. A 95% prediction interval for the effect in a new study was calculated when at least three studies contributed. Reporting followed the PRISMA 2020 statement, and the review’s eligibility criteria and methods were defined before data collection (any protocol registration is stated under Disclosures).";
-    if (len !== "concise") synth += " All pooled estimates were computed in the RapidMeta browser engine and then independently re-computed and cross-checked against R (the metafor package); the two implementations agreed to numerical tolerance, so the figures reported here reproduce a standard R analysis.";
+    if (len !== "concise") synth += " All pooled estimates were computed in the RapidMeta browser engine and then independently re-computed and cross-checked against R (the metafor package); the two implementations agreed to numerical tolerance, so the figures reported here reproduce a standard R analysis. <em class=\"confirm-note no-clean-pdf\">(Confirm the pooling model named here — REML with the Hartung-Knapp adjustment — matches the settings you actually ran in the Analysis tab.)</em>";
     if (len === "detailed") synth += " Where the number of studies allowed, prespecified sensitivity analyses (leave-one-out and a fixed-effect re-analysis) and small-study-effect checks (a funnel plot, with Egger’s test where at least ten studies contributed) were examined. <em class=\"confirm-note no-clean-pdf\">(These statistical details follow the engine’s defaults — please confirm they match the settings you actually used, and delete any analysis you did not run.)</em>";
     if (j === "jama") { // structured subheadings
       paras.push({ label: "Data Sources", text: search });
@@ -412,7 +412,7 @@
       '<ol class="orient-steps">' +
       '<li><span class="orient-num">1</span> <strong>Check the included articles</strong> are the right ones.</li>' +
       '<li><span class="orient-num">2</span> <strong>Check the data extraction</strong> looks correct.</li>' +
-      '<li><span class="orient-num">3</span> <strong>Write the paper</strong> — click any highlighted text and type. Hover the <span class="orient-chip">ⓘ guide</span> beside each section for examples, the data to use, and short stories.</li>' +
+      '<li><span class="orient-num">3</span> <strong>Write the paper</strong> — click any highlighted text and type. Every section comes with worked examples, the data to use, and short real stories: shown inline here, or tucked behind the <span class="orient-chip">ⓘ guide</span> tab when you switch to <strong>📄 Page view</strong>.</li>' +
       '</ol></aside>';
   }
 
@@ -515,7 +515,7 @@
       "This short review aimed to assess whether the intervention improves the main outcome compared with the comparator in this population.") + '</div>';
     html += example("We assessed whether finerenone reduces cardiovascular events compared with placebo in adults with CKD and type 2 diabetes.",
       "We looked at whether the drug works.");
-    html += '<p><strong>Methods.</strong> A rapid systematic review and ' + esc(a.model).toLowerCase() +
+    html += '<p><strong>Methods.</strong> A systematic review and ' + esc(a.model).toLowerCase() +
       ' meta-analysis combined ' + auto("analysis.kStudies") + ' studies (' + auto("analysis.totalParticipants") + ' participants) for ' + auto("pico.primaryOutcome", "the primary outcome") + '.</p>';
     html += '<p><strong>Results.</strong> ' + abstractResultsProse() + '</p>';
     html += '<div class="abs-structured"><strong>Conclusion.</strong> ' + box("studentText.abstractConclusion", "Conclusion", "In patients with... the findings suggest... however this should be interpreted cautiously because...", "~2-3 sentences",

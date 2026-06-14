@@ -66,7 +66,7 @@
       return;
     }
     let muTbl = '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">'
-      + '<tr style="color:#64748b;text-align:left;"><th style="padding:3px 6px;">Outcome</th><th style="padding:3px 6px;">μ̂</th><th style="padding:3px 6px;">SE</th><th style="padding:3px 6px;">95% CI</th></tr>';
+      + '<tr style="color:#94a3b8;text-align:left;"><th style="padding:3px 6px;">Outcome</th><th style="padding:3px 6px;">μ̂</th><th style="padding:3px 6px;">SE</th><th style="padding:3px 6px;">95% CI</th></tr>';
     f.outcomes.forEach(o => {
       const m = f.mu[o];
       muTbl += '<tr style="border-top:1px solid #1e293b;color:#e2e8f0;font-family:JetBrains Mono,monospace;">'
@@ -82,7 +82,7 @@
       + 'τ²_δ = ' + fmt(f.tau2_delta, 4) + ' · ' + f.n_iter + ' EM iters · ' + (f.converged ? 'converged' : 'NOT converged') + '</div>'
       + muTbl
       + '<div style="font-size:10.5px;color:#94a3b8;margin-top:8px;">Time-period effects: ' + periods + '</div>'
-      + '<div style="font-size:10.5px;color:#64748b;margin-top:4px;">RoB-bias scale = ' + fmt(f.bias_scale, 2) + ' (0 = no systematic RoB shift applied).</div>';
+      + '<div style="font-size:10.5px;color:#94a3b8;margin-top:4px;">RoB-bias scale = ' + fmt(f.bias_scale, 2) + ' (0 = no systematic RoB shift applied).</div>';
   }
 
   function buildNode(P) {
@@ -92,7 +92,7 @@
       + '<strong>Requires a time dimension</strong> (a time-period per snapshot) plus outcome + RoB labels — the kit ships no longitudinal multi-outcome '
       + 'data, so this is a paste-input tool. Paste snapshots: <code style="color:#7dd3fc;">study, time, outcome, rob, yi, sei</code>. Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">study, time, outcome, rob, yi, sei</code> — one snapshot per line; first time-period seen is the γ reference (γ=0).';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -126,7 +126,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>The everything model (Higgins-Whitehead hierarchical frame):</strong> y_{i,t,o} = μ_o + δ_i + γ_t + bias(RoB) + ε, fitted by '
       + 'closed-form variational EM. The study random effect δ_i is shared across time and outcome; γ_t is anchored at γ=0 in the reference period; the '
       + 'RoB→bias term is a systematic shift on the effect scale (NOT a downweight), defaulting to 0 so you must opt in to a bias prior. '

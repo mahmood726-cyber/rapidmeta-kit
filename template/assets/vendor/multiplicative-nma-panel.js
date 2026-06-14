@@ -42,7 +42,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '')
         + '</div>';
@@ -76,11 +76,11 @@
         + '</tr>';
     });
     html += '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px;">'
-      + '<thead><tr style="color:#64748b;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
+      + '<thead><tr style="color:#94a3b8;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
       + '<th style="text-align:left;padding:4px 8px;">vs ref</th><th style="text-align:right;padding:4px 8px;">RR</th>'
       + '<th style="text-align:right;padding:4px 8px;">SE(FE)</th><th style="text-align:right;padding:4px 8px;">SE(mult)</th>'
       + '<th style="text-align:right;padding:4px 8px;">95% CI (mult)</th></tr></thead><tbody>' + rowsHtml + '</tbody></table>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>Multiplicative NMA (network UWLS):</strong> the fixed-effect network covariance scaled by φ = Q/(n−p) — relative effects unchanged, '
       + 'SEs × √φ, t<sub>n−p</sub> CIs. The network generalisation of UWLS. Use as the heterogeneity model when small-study effects are suspected; '
       + 'switch from additive RE only when AIC favours by ≥2 (advanced-stats.md). Sensitivity alongside the RE-NMA primary, not a replacement.</div>';

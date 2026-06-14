@@ -83,7 +83,7 @@
     }
     const ref = r.source.reference;
     let tbl = '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">'
-      + '<tr style="color:#64748b;text-align:left;"><th style="padding:3px 6px;">vs ' + P.escapeHtml(ref) + '</th><th style="padding:3px 6px;">Source</th><th style="padding:3px 6px;">Transported</th><th style="padding:3px 6px;">ΔP-score</th></tr>';
+      + '<tr style="color:#94a3b8;text-align:left;"><th style="padding:3px 6px;">vs ' + P.escapeHtml(ref) + '</th><th style="padding:3px 6px;">Source</th><th style="padding:3px 6px;">Transported</th><th style="padding:3px 6px;">ΔP-score</th></tr>';
     built.treatments.forEach(t => {
       if (t === ref) return;
       const se = r.source.effects[t], te = r.transported.effects[t];
@@ -99,7 +99,7 @@
       + r.transport.n + ' studies · ' + built.treatments.length + ' treatments · target modifier = ' + fmt(target, 2)
       + ' · ESS ' + fmt(r.transport.ess, 1) + '/' + r.transport.n + ' (' + fmt(100 * r.transport.essRatio, 0) + '%)</div>'
       + tbl
-      + '<div style="font-size:10.5px;color:' + (r.caution ? '#fbbf24' : '#64748b') + ';margin-top:8px;line-height:1.5;">'
+      + '<div style="font-size:10.5px;color:' + (r.caution ? '#fbbf24' : '#94a3b8') + ';margin-top:8px;line-height:1.5;">'
       + (r.caution ? '<strong>CAUTION:</strong> ' : '') + P.escapeHtml(r.verdict) + '</div>';
   }
 
@@ -110,7 +110,7 @@
       + '<strong>Requires target-population covariates</strong> (a per-study modifier value + a target value) — not in the kit\'s effect set, so this is a '
       + 'paste-input tool. Paste contrasts: <code style="color:#7dd3fc;">trtA, trtB, yi, sei, modifier</code>, then a target modifier value. Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">trtA, trtB, yi, sei, modifier</code> — one study/contrast per line; first treatment seen is the reference.';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -145,7 +145,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Population-transported NMA (entropy balancing; nmatransport):</strong> reweights each study so the network’s weighted '
       + 'modifier mean exactly matches the target (Hainmueller dual-Newton), inflates each study’s variance by its weight, and refits the RE-NMA on the '
       + 'audited multiplicative-NMA WLS solver. <strong>Experimental & assumption-laden:</strong> corrects only the MEASURED modifier; watch the ESS '

@@ -54,8 +54,11 @@
     "proves", "proven", "definitely proves", "confirms beyond doubt", "should always be used",
     "is completely safe", "completely safe", "no uncertainty", "cures", "eliminates risk",
     "guarantees", "all patients should", "safe and effective", "significantly better",
-    "clearly superior", "is effective", "standard of care", "miracle", "breakthrough"
+    "clearly superior", "is highly effective", "miracle", "breakthrough"
   ];
+  // ("is effective" and "standard of care" removed — they match normal neutral
+  //  phrasing like "assess whether X is effective" / "compared with standard of
+  //  care", which were being BLOCKED in the conclusion/abstract fields.)
   var GENERIC_PHRASES = [
     "more research is needed", "this is very important", "this study has limitations",
     "the results are significant", "in conclusion, this study shows"

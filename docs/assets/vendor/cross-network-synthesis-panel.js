@@ -56,7 +56,7 @@
     catch (e) { resultEl.innerHTML = '<div style="background:#3a0a0a;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 10px;border-radius:6px;font-size:11px;">Computation failed: ' + P.escapeHtml(String(e.message || e)) + '</div>'; return; }
     if (!f || !f.ok) { resultEl.innerHTML = '<div style="color:#fca5a5;font-size:11px;">Synthesis failed on this input.</div>'; return; }
     let tbl = '<table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-top:4px;">'
-      + '<tr style="color:#64748b;text-align:left;"><th style="padding:3px 5px;">Contrast</th><th style="padding:3px 5px;">RCT anchor</th>'
+      + '<tr style="color:#94a3b8;text-align:left;"><th style="padding:3px 5px;">Contrast</th><th style="padding:3px 5px;">RCT anchor</th>'
       + '<th style="padding:3px 5px;">Synthesis [95% CI]</th><th style="padding:3px 5px;">δ_IPD</th><th style="padding:3px 5px;">δ_obs</th><th style="padding:3px 5px;">k (r/i/o)</th></tr>';
     Object.keys(f.contrasts).forEach(cn => {
       const c = f.contrasts[cn];
@@ -77,7 +77,7 @@
     resultEl.innerHTML = '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">'
       + f.n_contrasts + ' contrast(s) · ' + f.n_rows + ' estimates · RCT-anchored bias-corrected synthesis</div>'
       + tbl + warn
-      + '<div style="font-size:10.5px;color:#64748b;margin-top:6px;">δ is each non-RCT stream’s estimated design-bias vs the RCT anchor; the synthesis enters those streams at yᵢ − δ with an inflated variance. With RCT rows only the synthesis equals the anchor.</div>';
+      + '<div style="font-size:10.5px;color:#94a3b8;margin-top:6px;">δ is each non-RCT stream’s estimated design-bias vs the RCT anchor; the synthesis enters those streams at yᵢ − δ with an inflated variance. With RCT rows only the synthesis equals the anchor.</div>';
   }
 
   function buildNode(P) {
@@ -87,7 +87,7 @@
       + '<strong>Requires IPD and/or observational evidence streams</strong> alongside the RCT anchor — the kit ships only the RCT effect set, so this is a '
       + 'paste-input tool. Paste estimates: <code style="color:#7dd3fc;">contrast, design, yi, sei</code> (design = rct | ipd | obs). Computes only on your input.</div>';
     const fmtHint = document.createElement('div');
-    fmtHint.style.cssText = 'font-size:10px;color:#64748b;margin-bottom:6px;';
+    fmtHint.style.cssText = 'font-size:10px;color:#94a3b8;margin-bottom:6px;';
     fmtHint.innerHTML = 'format: <code style="color:#7dd3fc;">contrast, design, yi, sei</code> — design is rct, ipd or obs; each contrast needs ≥1 rct row to anchor.';
     wrap.appendChild(fmtHint);
     const ta = document.createElement('textarea');
@@ -111,7 +111,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Cross-design network synthesis (Welton 2009; Efthimiou GetReal 2017):</strong> RCTs anchor the truth (design-bias δ = 0); each '
       + 'IPD / observational stream gets a design-bias offset δ and a between-study bias variance σ²_bias estimated by method of moments on its residuals '
       + 'vs the anchor. The bias-corrected synthesis enters each non-RCT observation at yᵢ − δ with variance vᵢ + τ²_RCT + σ²_bias — wider than a naive pool '

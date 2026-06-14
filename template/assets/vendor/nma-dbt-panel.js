@@ -37,7 +37,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
     }
@@ -57,7 +57,7 @@
     html += cell('Q_inc (fixed-effect)', fmt(fe.Q, 3), 'df = ' + fe.df + ', χ² p = ' + fmt(fe.p, 3));
     if (re) html += cell('Q_inc (random-effects)', fmt(re.Q, 3), 'df = ' + re.df + ', p = ' + fmt(re.p, 3) + ' · τ²(DL)=' + fmt(tau2, 4));
     html += '</div>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>Design-by-treatment interaction model (Higgins et al. 2012):</strong> compares the consistency model (basic contrasts only) with a full model that '
       + 'gives each design its own contrast; Q_cons − Q_full ~ χ² tests whether ANY inconsistency exists in the network — the single global complement to per-loop '
       + 'node-splitting. p&lt;0.05 ⇒ inconsistency present somewhere; follow up with node-splitting to localise it. The RE column uses DL τ²-inflated weights.</div>';

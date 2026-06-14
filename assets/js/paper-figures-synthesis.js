@@ -229,17 +229,23 @@
     return S.join("");
   };
 
-  // The default narrative callout, in the PDF's voice.
+  // The default narrative callout, in the PDF's voice. The "all trials point the
+  // same way" clause is only emitted when the per-study point estimates are
+  // ACTUALLY unanimous (every study on the same side of the null) — never assumed.
   PS.defaultForestAnnotation = function (res) {
-    var pEff = num(res.or), pLo = num(res.lci), pHi = num(res.uci), k = num(res.k);
+    var pEff = num(res.or), pLo = num(res.lci), pHi = num(res.uci);
     if (pEff == null) return "";
     var cont = !!res.isContinuous, nullX = cont ? 0 : 1;
     var measure = cont ? "mean difference" : "odds ratio";
     var excludes = (pLo != null && pHi != null) && (pLo > nullX || pHi < nullX);
+    var rows = studyRows(res), k = rows.length || num(res.k);
+    var sides = rows.map(function (r) { return r.eff > nullX ? 1 : (r.eff < nullX ? -1 : 0); });
+    var unanimous = rows.length >= 2 && sides.every(function (x) { return x !== 0 && x === sides[0]; });
     var s = "Pooled " + measure + " " + f2(pEff);
     if (pLo != null && pHi != null) s += " (95% CI " + f2(pLo) + "–" + f2(pHi) + ")";
     s += "; ";
-    if (k) s += "all " + k + " trials point the same way and the ";
+    if (k && unanimous) s += "all " + k + " trials point the same way and the ";
+    else if (rows.length >= 2) s += "the trials do not all point the same way, and the ";
     s += "interval " + (excludes ? "excludes" : "includes") + " no effect.";
     return s;
   };

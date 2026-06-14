@@ -24,7 +24,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '')
         + '</div>';
@@ -45,7 +45,7 @@
     html += cell('τ² (GLMM)', fmt(glmm.tau2, 4), 'between-study heterogeneity');
     html += cell('Zero-cell studies', String(glmm.n_zero_cell_studies), 'of k = ' + glmm.k);
     html += '</div>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>CM.EL (Stijnen et al. 2010):</strong> the conditional-exact binomial-normal GLMM. Conditioning on each study’s '
       + 'total event count eliminates the nuisance baseline rate entirely, so zero-event arms contribute with no +0.5 fudge. '
       + 'The treatment-arm count follows Fisher’s noncentral hypergeometric law with OR ψ=exp(θ+u), u~N(0,τ²), integrated by '

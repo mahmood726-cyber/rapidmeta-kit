@@ -65,7 +65,7 @@
     }
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
     }
@@ -78,7 +78,7 @@
       + cell('Modifier slope', fmt(s.est, 3), 'p = ' + fmt(s.p, 3) + (s.p < 0.05 ? ' (effect modification)' : ' (NS)'))
       + cell('Transport shift', fmt(r.shift, 3), 'β·(x*−x̄)')
       + '</div>'
-      + '<div style="font-size:10.5px;color:#64748b;margin-top:8px;">'
+      + '<div style="font-size:10.5px;color:#94a3b8;margin-top:8px;">'
       + (r.sensitivity.significant
         ? '<strong>Unmeasured-modifier sensitivity:</strong> a residual shift of ' + fmt(r.sensitivity.biasToNull, 3) + ' on the analysis scale would move the transported CI to the null.'
         : '<strong>Unmeasured-modifier sensitivity:</strong> the transported CI already crosses the null, so no residual shift is required to nullify it.')
@@ -115,7 +115,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Transportability (aggregate one-covariate ML-NMR idea):</strong> fits a random-effects meta-regression on the modifier '
       + '(τ² Paule-Mandel; Knapp-Hartung t_{k-2} CI with HKSJ q-floor) and predicts the effect at the target population’s modifier value. '
       + '<strong>Experimental & assumption-laden:</strong> assumes the modifier captures the relevant trial-vs-target difference and that the linear '

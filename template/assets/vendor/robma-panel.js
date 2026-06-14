@@ -44,7 +44,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
     }
@@ -80,7 +80,7 @@
         + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#a78bfa;">' + fmt(100 * pp[m[0]], 1) + '%</td></tr>';
     });
     html += '</tbody></table>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">'
       + '<strong>RoBMA-style model-averaging (Maier, Bartoš &amp; Wagenmakers 2023):</strong> averages over the four '
       + 'effect×heterogeneity models, giving inclusion Bayes factors for whether an effect and whether heterogeneity '
       + 'exist — evidence <em>for the null</em> is possible (unlike a p-value). <strong>Experimental:</strong> this is the '

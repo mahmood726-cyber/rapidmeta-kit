@@ -73,7 +73,7 @@
     const tau = [Math.sqrt(Math.max(0, f.Sigma_RE[0][0])), Math.sqrt(Math.max(0, f.Sigma_RE[1][1]))];
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
     }
@@ -115,7 +115,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>Bivariate MA, unknown within-study ρ (Riley 2007; metafor::rma.mv UN):</strong> pools two outcomes jointly under '
       + 'yᵢ ~ N(μ, Vᵢ + Σ_RE), where Vᵢ is built from each study’s two SEs and a SINGLE assumed within-study correlation. Borrows strength '
       + 'across the correlated outcomes — and recovers a pooled estimate for studies that report only ONE outcome. Unlike the multivariate-MA panel '

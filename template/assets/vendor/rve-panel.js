@@ -89,7 +89,7 @@
       '<div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">'
       + fit.m_clusters + ' clusters · ' + fit.k_total + ' effects · τ²(HTJ) = ' + fmt(fit.tau2, 4) + ' · ρ = ' + fmt(fit.rho, 2) + ' · CR2 + Satterthwaite df</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-      + '<thead><tr style="color:#64748b;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
+      + '<thead><tr style="color:#94a3b8;text-transform:uppercase;font-size:9.5px;letter-spacing:0.04em;">'
       + '<th style="text-align:left;padding:4px 8px;">Term</th><th style="text-align:right;padding:4px 8px;">Est</th>'
       + '<th style="text-align:right;padding:4px 8px;">Robust SE</th><th style="text-align:right;padding:4px 8px;">95% CI</th>'
       + '<th style="text-align:right;padding:4px 8px;">df</th><th style="text-align:right;padding:4px 8px;">p</th></tr></thead>'
@@ -116,7 +116,7 @@
     result.style.cssText = 'margin-top:6px;';
     wrap.appendChild(result);
     const note = document.createElement('div');
-    note.style.cssText = 'font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
+    note.style.cssText = 'font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;margin-top:10px;';
     note.innerHTML = '<strong>RVE CORR model (Hedges-Tipton-Johnson 2010; CR2: Tipton 2015):</strong> a cluster-robust sandwich SE that stays valid '
       + 'even when the within-study working correlation ρ is misspecified, with the CR2 bias reduction and per-coefficient Satterthwaite df '
       + 'for correct small-sample coverage. Use when effects are nested within studies; for independent single-effect trials it reduces to ordinary '

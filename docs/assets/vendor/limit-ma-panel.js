@@ -26,7 +26,7 @@
     const fmt = P.fmt;
     function cell(label, value, sub) {
       return '<div style="background:#0b1220;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;">'
-        + '<div style="font-size:9.5px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
+        + '<div style="font-size:9.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;">' + label + '</div>'
         + '<div style="font-size:13px;color:#f1f5f9;font-weight:700;font-family:JetBrains Mono,monospace;margin-top:2px;">' + value + '</div>'
         + (sub ? '<div style="font-size:10px;color:#94a3b8;margin-top:1px;">' + sub + '</div>' : '') + '</div>';
     }
@@ -46,7 +46,7 @@
     html += cell('Radial slope β', fmt(r.beta_r, 3), r.beta_r > 0 ? 'small-study effect present' : 'no positive slope');
     html += cell('G² (small-study share)', fmt(r.G_squared, 3), 'Q_small = ' + fmt(r.Q_small, 2) + ' / Q = ' + fmt(r.Q, 2));
     html += '</div>';
-    html += '<div style="font-size:10.5px;color:#64748b;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
+    html += '<div style="font-size:10.5px;color:#94a3b8;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
       + '<strong>Limit meta-analysis (Rücker 2011, metasens::limitmeta):</strong> shrinks each study toward the radial-regression line and '
       + 're-pools, giving the effect the synthesis would converge to with infinitely precise studies. The β slope gives the small-study-effect '
       + 'direction; G² the share of heterogeneity it explains. A bias-adjusted SENSITIVITY estimate — report beside the RE primary, not instead of it.</div>';
