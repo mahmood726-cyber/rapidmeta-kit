@@ -811,3 +811,35 @@ def test_cnma_receptor_matches_discomb_oracle():
     assert abs(out["Q"] - 0.09922967) < 1e-6
     assert out["df"] == 4
     assert abs(out["combo"] - (-0.8297864)) < 1e-6
+
+
+def test_spec_collapse_matches_python_engine_anchor():
+    """Weighted-likelihood multiverse aggregator vs the Spec-Collapse Atlas
+    Python engine (tests/test_spec_collapse.py), validated vs metafor across 473
+    Cochrane reviews. On the fixed spec set [(-0.40,0.03,8),(-0.25,0.05,8),
+    (-0.55,0.08,6),(-0.18,0.02,8)]: weighted_likelihood theta=-0.345,
+    var=0.08865833, ciLo=-0.99563438, ciHi=0.17696733; naive_ivre theta=-0.29532374.
+    The naive IV-RE pool collapses (var << weighted total var) — the cardinal sin
+    the corrected aggregator avoids (advanced-stats: never IV-RE-pool multiverse)."""
+    out = _node(r"""
+        global.window = global;
+        require('./template/assets/vendor/_alm-stats-shim.js');
+        require('./template/assets/vendor/trimfill.js');
+        const SC = require('./template/assets/vendor/spec-collapse.js');
+        const SPECS=[{theta:-0.40,var:0.03,k:8},{theta:-0.25,var:0.05,k:8},{theta:-0.55,var:0.08,k:6},{theta:-0.18,var:0.02,k:8}];
+        const wl = SC.weightedLikelihood(SPECS);
+        const nv = SC.naiveIvre(SPECS);
+        console.log(JSON.stringify({wlTheta:wl.theta, wlVar:wl.var, wlLo:wl.ciLo, wlHi:wl.ciHi,
+                                    within:wl.within, between:wl.between,
+                                    nvTheta:nv.theta, nvLo:nv.ciLo, nvHi:nv.ciHi, nvVar:nv.var}));
+    """)
+    assert abs(out["wlTheta"] - (-0.345)) < 1e-6
+    assert abs(out["wlVar"] - 0.08865833) < 1e-6
+    assert abs(out["wlLo"] - (-0.99563438)) < 1e-6
+    assert abs(out["wlHi"] - 0.17696733) < 1e-6
+    assert abs(out["nvTheta"] - (-0.29532374)) < 1e-6
+    # law of total variance: total var = within + between >= within > 0
+    assert out["wlVar"] >= out["within"] - 1e-12
+    assert out["between"] >= -1e-12
+    # the cardinal sin: the naive IV-RE pool variance collapses below the correct total var
+    assert out["nvVar"] < out["wlVar"]

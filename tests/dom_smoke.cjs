@@ -69,6 +69,7 @@ require(V + 'personalised-te.js');
 require(V + 'multi-outcome-ma.js');
 require(V + 'location-scale.js');
 require(V + 'cnma-receptor.js');
+require(V + 'spec-collapse.js');
 require(V + 'uwls-panel.js');
 require(V + 'selmodel-panel.js');
 require(V + 'rare-events-panel.js');
@@ -90,6 +91,7 @@ require(V + 'personalised-te-panel.js');
 require(V + 'multi-outcome-ma-panel.js');
 require(V + 'location-scale-panel.js');
 require(V + 'cnma-receptor-panel.js');
+require(V + 'spec-collapse-panel.js');
 require(V + 'funnel-diagnostics.js'); // exercises the AlmTrimFill delegation + Begg added this batch
 
 // ---- Realistic dataset: 5 binary trials, one with a zero cell ---------------
@@ -146,6 +148,7 @@ const PANEL_ID = {
   MultiOutcomeMAPanel: 'multi-outcome-ma-panel',
   LocationScalePanel: 'location-scale-panel',
   CnmaReceptorPanel: 'cnma-receptor-panel',
+  SpecCollapsePanel: 'spec-collapse-panel',
 };
 ['UWLSPanel', 'SelModelPanel', 'RareEventsPanel', 'RVEPanel',
  'MultiplicativeNMAPanel', 'MultilevelREMLPanel', 'LimitMAPanel',
@@ -153,7 +156,7 @@ const PANEL_ID = {
  'ExperimentalMAPanel', 'BMATauPanel',
  'TransportabilityV1Panel', 'MultivariateMAPanel', 'EValuePanel',
  'NmaMetaRegPanel', 'PersonalisedTEPanel', 'MultiOutcomeMAPanel',
- 'LocationScalePanel', 'CnmaReceptorPanel'].forEach((p) => {
+ 'LocationScalePanel', 'CnmaReceptorPanel', 'SpecCollapsePanel'].forEach((p) => {
   check(p, () => global.window[p].render());
   if (!registry[PANEL_ID[p]]) fails.push(p + ': no DOM node with id ' + PANEL_ID[p] + ' was inserted');
 });
@@ -249,6 +252,25 @@ try {
 const cnBad = global.window.CnmaReceptorPanel.parseRows('a+b, -0.65');
 if (!(cnBad.rows.length === 0 && cnBad.errors.length === 1)) fails.push('Cnma.parseRows: 2-column row should fail closed');
 
+// Spec-collapse paste-tool: parse the python-anchor spec curve + the correct
+// weighted-likelihood aggregator (theta -0.345, total var 0.08865833) and the
+// naive IV-RE pool (theta -0.29532374).
+const sc = global.window.SpecCollapsePanel.parseRows(
+  '-0.40, 0.17320508, 8\n-0.25, 0.2236068, 8\n-0.55, 0.28284271, 6\n-0.18, 0.14142136, 8');
+if (sc.rows.length !== 4) fails.push('SpecCollapse.parseRows: expected 4 rows, got ' + sc.rows.length);
+if (sc.errors.length) fails.push('SpecCollapse.parseRows: unexpected errors ' + JSON.stringify(sc.errors));
+try {
+  const wl = global.window.AlmSpecCollapse.weightedLikelihood(sc.rows);
+  const nv = global.window.AlmSpecCollapse.naiveIvre(sc.rows);
+  if (!(Math.abs(wl.theta - (-0.345)) < 1e-6 && Math.abs(wl.var - 0.08865833) < 1e-6)) fails.push('SpecCollapse WL: theta/var off anchor');
+  if (!(Math.abs(nv.theta - (-0.29532374)) < 1e-6)) fails.push('SpecCollapse naive: theta off anchor');
+  // structural: total variance must exceed the collapsed naive pool variance.
+  if (!(wl.var > nv.var)) fails.push('SpecCollapse: WL var should exceed naive (collapsed) var');
+} catch (e) { fails.push('SpecCollapse fit threw ' + e); }
+// Fail-closed: a 1-column row (missing se) must be rejected by parseRows.
+const scBad = global.window.SpecCollapsePanel.parseRows('-0.40');
+if (!(scBad.rows.length === 0 && scBad.errors.length === 1)) fails.push('SpecCollapse.parseRows: 1-column row should fail closed');
+
 // Multiplicative-NMA buildRows from the NMA scenario must yield n>p contrast rows.
 const nrows = global.window.MultiplicativeNMAPanel.buildRows(global.window.NMA_CONFIG, global.window.RapidMeta.realData);
 if (nrows.length < 5) fails.push('MultiplicativeNMA.buildRows: expected 5 rows, got ' + nrows.length);
@@ -284,4 +306,4 @@ if (fails.length) {
   console.error('SMOKE FAIL:\n - ' + fails.join('\n - '));
   process.exit(1);
 }
-console.log('SMOKE OK: 21 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA verified');
+console.log('SMOKE OK: 22 panels mounted + RVE/multilevel/transport/multivariate/personalised-TE/multi-outcome/location-scale/cnma/spec-collapse parse/fit + NMA buildRows + funnel/Begg + GOSH/DBT + Copas-Shi + RoBMA + ExperimentalMA + BMATau + Transportability + Multivariate + E-value + NMA-meta-reg + Personalised-TE + Multi-outcome + Location-scale + CNMA + SpecCollapse verified');
