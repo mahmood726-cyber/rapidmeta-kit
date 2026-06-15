@@ -18115,10 +18115,10 @@ const ContinuousMDEngine = {
           const SN = '(-?\\d+\\.?\\d*)';
 
 
-          const SEP = '[-\\u2013\\u2014,]';
+          const SEP = '(?:to|[-\\u2013\\u2014,])';   // CI bound separator: "to", hyphen/en/em dash, or comma
 
 
-          const TO = '(?:to|[-\\u2013\\u2014])';
+          const TO = '(?:to|[-\\u2013\\u2014,])';   // unified with SEP so to/dash/comma all parse
 
 
           const CI_LABEL = '(?:95%?[\\s-]*)?(?:CI|KI|IC|BI|CrI|CL)?';
@@ -18208,13 +18208,13 @@ const ContinuousMDEngine = {
             { rx: new RegExp('\\(HR[,;]\\s*' + N + '[;,]\\s*(?:95%?\\s*)?CI[,:\\s]+' + N + '\\s*' + TO + '\\s*' + N + '\\)', 'i'), type: 'HR' },
 
 
-            { rx: new RegExp('\\bHR\\b\\s+' + N + '\\s*\\(\\s*' + N + '\\s*[-\\u2013\\u2014]\\s*' + N + '\\s*\\)', 'i'), type: 'HR' },
+            { rx: new RegExp('\\bHR\\b\\s+' + N + '\\s*\\(\\s*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*\\)', 'i'), type: 'HR' },
 
 
             /* Adjusted / aHR */
 
 
-            { rx: new RegExp('[Aa]djusted\\s+(?:HR|hazard\\s*ratio)[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*[-\\u2013\\u2014]\\s*' + N, ''), type: 'HR' },
+            { rx: new RegExp('[Aa]djusted\\s+(?:HR|hazard\\s*ratio)[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N, ''), type: 'HR' },
 
 
             { rx: new RegExp('\\baHR\\b[,;:\\s=]+' + N + '\\s*[\\(\\[]\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*[\\)\\]]', 'i'), type: 'HR' },
@@ -18232,7 +18232,7 @@ const ContinuousMDEngine = {
             { rx: new RegExp('\\bOR\\b[,;:\\s=]+' + N + '\\s*[\\(\\[]\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*[\\)\\]]', 'i'), type: 'OR' },
 
 
-            { rx: new RegExp('\\bOR\\b\\s+' + N + '\\s*,\\s*(?:95%?\\s*)?CI\\s+' + N + '\\s*[-\\u2013\\u2014]\\s*' + N, 'i'), type: 'OR' },
+            { rx: new RegExp('\\bOR\\b\\s+' + N + '\\s*,\\s*(?:95%?\\s*)?CI\\s+' + N + '\\s*' + SEP + '\\s*' + N, 'i'), type: 'OR' },
 
 
             { rx: new RegExp('\\bOR\\b\\s+' + N + '\\s*;\\s*(?:95%?\\s*)?CI[:\\s]+' + N + '\\s*' + TO + '\\s*' + N, 'i'), type: 'OR' },
@@ -18241,13 +18241,13 @@ const ContinuousMDEngine = {
             { rx: new RegExp('odds\\s*ratio[,;:\\s=]+(?:was\\s+|of\\s+)?' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + TO + '\\s*' + N, 'i'), type: 'OR' },
 
 
-            { rx: new RegExp('\\bOR\\b\\s+' + N + '\\s*\\(\\s*' + N + '\\s*[-\\u2013\\u2014]\\s*' + N + '\\s*\\)', 'i'), type: 'OR' },
+            { rx: new RegExp('\\bOR\\b\\s+' + N + '\\s*\\(\\s*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*\\)', 'i'), type: 'OR' },
 
 
             /* aOR */
 
 
-            { rx: new RegExp('[Aa]djusted\\s+(?:OR|odds\\s*ratio)[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*[-\\u2013\\u2014]\\s*' + N, 'i'), type: 'OR' },
+            { rx: new RegExp('[Aa]djusted\\s+(?:OR|odds\\s*ratio)[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N, 'i'), type: 'OR' },
 
 
             { rx: new RegExp('\\baOR\\b[,;:\\s=]+' + N + '\\s*[\\(\\[]\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*[\\)\\]]', 'i'), type: 'OR' },
@@ -18259,7 +18259,7 @@ const ContinuousMDEngine = {
             /* -- IRR / Rate Ratio -- */
 
 
-            { rx: new RegExp('(?:incidence\\s+)?rate\\s*ratio[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*[-\\u2013\\u2014]\\s*' + N, 'i'), type: 'IRR' },
+            { rx: new RegExp('(?:incidence\\s+)?rate\\s*ratio[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N, 'i'), type: 'IRR' },
 
 
             { rx: new RegExp('\\bIRR\\b[,;:\\s=]+' + N + '\\s*[\\(\\[]\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*[\\)\\]]', 'i'), type: 'IRR' },
@@ -18283,7 +18283,7 @@ const ContinuousMDEngine = {
             { rx: new RegExp('risk\\s+ratio[,;:\\s]+' + N + '\\s*[;,]\\s*(?:95%?\\s*)?CI[,:\\s]+' + N + '\\s*' + TO + '\\s*' + N, 'i'), type: 'RR' },
 
 
-            { rx: new RegExp('\\bRR\\b\\s+' + N + '\\s*\\(\\s*' + N + '\\s*[-\\u2013\\u2014]\\s*' + N + '\\s*\\)', 'i'), type: 'RR' },
+            { rx: new RegExp('\\bRR\\b\\s+' + N + '\\s*\\(\\s*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*\\)', 'i'), type: 'RR' },
 
 
             /* aRR */
@@ -18343,7 +18343,7 @@ const ContinuousMDEngine = {
             { rx: new RegExp('\\bNNH\\b[,;:\\s=]+' + N + '\\s*[\\(\\[]\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N + '\\s*[\\)\\]]', 'i'), type: 'NNH' },
 
 
-            { rx: new RegExp('number\\s+needed\\s+to\\s+treat[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*[-\\u2013\\u2014]\\s*' + N, 'i'), type: 'NNT' },
+            { rx: new RegExp('number\\s+needed\\s+to\\s+treat[,;:\\s=]+' + N + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + N + '\\s*' + SEP + '\\s*' + N, 'i'), type: 'NNT' },
 
 
 
@@ -18358,10 +18358,10 @@ const ContinuousMDEngine = {
             { rx: new RegExp('\\bSMD\\b[,;:\\s=]+' + SN + '\\s*[\\(\\[]\\s*' + CI_LABEL + '[,:\\s]*' + SN + '\\s*,\\s*' + SN + '\\s*[\\)\\]]', 'i'), type: 'SMD' },
 
 
-            { rx: new RegExp("Cohen'?s?\\s+d[,;:\\s=]+" + SN + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + SN + '\\s*[-\\u2013\\u2014]\\s*' + SN, 'i'), type: 'SMD' },
+            { rx: new RegExp("Cohen'?s?\\s+d[,;:\\s=]+" + SN + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + SN + '\\s*' + SEP + '\\s*' + SN, 'i'), type: 'SMD' },
 
 
-            { rx: new RegExp("[Hh]edges'?\\s*g[,;:\\s=]+" + SN + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + SN + '\\s*[-\\u2013\\u2014]\\s*' + SN, 'i'), type: 'SMD' },
+            { rx: new RegExp("[Hh]edges'?\\s*g[,;:\\s=]+" + SN + '\\s*\\(\\s*' + CI_LABEL + '[,:\\s]*' + SN + '\\s*' + SEP + '\\s*' + SN, 'i'), type: 'SMD' },
 
 
 
@@ -24737,28 +24737,35 @@ const ContinuousMDEngine = {
                             ${(() => {
 
 
-                                const _isContinuous = (d?.tE == null && d?.cE == null);
+                                const _selOut = (d?.allOutcomes ?? []).find(o => o?.shortLabel === (RapidMeta?.state?.selectedOutcome || 'default'));
+                                const _noCounts = (d?.tE == null && d?.cE == null);
+                                const _isContinuous = _noCounts && (RapidMeta.isContinuousOutcome(_selOut) || d?.md != null);
+                                const _isPubRatio = _noCounts && !_isContinuous && (d?.publishedHR != null || d?.pubHR != null || (_selOut && _selOut.effect != null));
+                                const _kicker = _isContinuous ? 'Continuous outcome &mdash; events display not applicable' : 'Published ratio &mdash; no 2&times;2 event table';
+                                const _desc = _isContinuous
+                                    ? 'This trial reports a continuous effect (a mean difference), not a 2&times;2 event table. The published estimate and 95% CI appear in the <strong>Source Evidence Extracts</strong> panel below; it is pooled on a linear scale (no-effect line at 0). The 2&times;2 event fields are intentionally null.'
+                                    : 'This trial reports a published relative effect (a rate, risk or hazard ratio) with its 95% CI, not a 2&times;2 event table. It is pooled on the log scale from the published estimate (no-effect line at 1); the 2&times;2 event fields are intentionally null.';
 
 
-                                if (_isContinuous) {
+                                if (_isContinuous || _isPubRatio) {
 
 
-                                    const _contOutcome = (d?.allOutcomes ?? []).find(o => o?.type === 'CONTINUOUS') ?? {};
+                                    const _contOutcome = _selOut ?? (d?.allOutcomes ?? []).find(o => o?.type === 'CONTINUOUS') ?? {};
 
 
-                                    const _contTitle = _contOutcome.title || 'a continuous outcome (see Source Evidence Extracts)';
+                                    const _contTitle = _contOutcome.title || (_isContinuous ? 'a continuous outcome (see Source Evidence Extracts)' : 'a published relative effect (see Source Evidence Extracts)');
 
 
                                     return `<div class="p-6 rounded-2xl border border-amber-500/30 bg-amber-500/5">
 
 
-                                        <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400/80 mb-2"><i class="fa-solid fa-chart-line mr-1"></i>Continuous outcome &mdash; events display not applicable</div>
+                                        <div class="text-[10px] font-bold uppercase tracking-widest text-amber-400/80 mb-2"><i class="fa-solid fa-chart-line mr-1"></i>${_kicker}</div>
 
 
                                         <div class="text-[13px] text-slate-200 mb-3">Primary endpoint: <span class="font-semibold text-amber-200">${escapeHtml(_contTitle)}</span></div>
 
 
-                                        <div class="text-[11px] text-slate-400 leading-relaxed">This trial reports a continuous effect (mean difference or ratio of change), not a 2&times;2 event table. The published effect estimate and 95% CI appear in the <strong>Source Evidence Extracts</strong> panel below. The 2&times;2 event fields are intentionally null and are excluded from OR/RR pooling. HR pooling also skips this trial unless a <code>publishedHR</code> is declared.</div>
+                                        <div class="text-[11px] text-slate-400 leading-relaxed">${_desc}</div>
 
 
                                         <div class="grid grid-cols-2 gap-6 mt-4">
