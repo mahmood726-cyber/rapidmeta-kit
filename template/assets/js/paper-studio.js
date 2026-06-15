@@ -29,11 +29,12 @@
       funnelPlot: { available: false, caption: "" },
       labbePlot: { available: false, caption: "" },
       leaveOneOutPlot: { available: false, caption: "" },
-      cumulativePlot: { available: false, caption: "" }
+      cumulativePlot: { available: false, caption: "" },
+      subgroupPlot: { available: false, caption: "" }
     },
     outcomes: [],        // additional (secondary) outcomes the student writes on
     _seededOutcomes: false,
-    style: { methodsLength: "concise", resultsLength: "concise", journal: "generic" },
+    style: { methodsLength: "concise", resultsLength: "concise", journal: "generic", reportLength: "full" },
     studentText: {}
   };
 
@@ -326,6 +327,11 @@
   /* ---------------- Methods/Results length + journal style ---------------- */
   var JOURNALS = { generic: "Generic", cochrane: "Cochrane style", jama: "JAMA style", bmj: "BMJ style", plos: "PLOS style", lancet: "Lancet style" };
   var LENGTHS = { concise: "Keep present size", moderate: "Moderately longer", detailed: "Much longer (detailed)" };
+  // Report length controls which SECTIONS appear (not just wording). Short = a lean
+  // ~1000-word paper (primary outcome + forest + risk of bias + discussion); Full adds
+  // publication-bias, subgroup, and the sensitivity/diagnostics battery. Risk of bias is
+  // never gated; GRADE stays optional in both.
+  var REPORT_LENGTHS = { full: "Full report (all analyses)", short: "Short paper (~1000 words)" };
   function we(j) { return (j === "cochrane" || j === "plos"); } // first-person plural house styles
   function styleSel(id, label, map, cur) {
     var opts = Object.keys(map).map(function (k) { return '<option value="' + k + '"' + (k === cur ? " selected" : "") + ">" + esc(map[k]) + "</option>"; }).join("");
@@ -334,6 +340,7 @@
   function styleControl() {
     var s = PS.state.style;
     return '<div class="style-control no-clean-pdf"><span class="style-control-label">✍️ Methods &amp; Results format:</span>' +
+      styleSel("reportLength", "Report length", REPORT_LENGTHS, s.reportLength) +
       styleSel("journal", "Journal style", JOURNALS, s.journal) +
       styleSel("methodsLength", "Methods length", LENGTHS, s.methodsLength) +
       styleSel("resultsLength", "Results length", LENGTHS, s.resultsLength) +
@@ -469,6 +476,13 @@
 
   PS.render = function () {
     var a = PS.state.analysis, p = PS.state.pico;
+    // Report-length preset gates whole SECTIONS. Short = lean paper; Full = + publication
+    // bias, subgroup, and the sensitivity/diagnostics battery. RoB + GRADE are never gated
+    // here (they live above the gated block). fewStudies marks k<10 analyses where the
+    // small-study / subgroup figures are unreliable, so they are flagged "(optional)".
+    var full = PS.state.style.reportLength !== "short";
+    var kForLen = Number(a.kStudies);
+    var fewStudies = isFinite(kForLen) && kForLen < 10;
     var emEst = (a.effectMeasure ? a.effectMeasure + " " : "") + auto("analysis.effectEstimate");
     var ciTxt = auto("analysis.ciLower") + " to " + auto("analysis.ciUpper") + " (" + auto("analysis.confLevel", "95") + "% CI)";
     var html = "";
@@ -657,7 +671,9 @@
       "How a finding was obtained matters more than how often it was repeated.",
       "Writing Group for the Women’s Health Initiative, JAMA 2002;288:321-333.");
 
-    html += '<h3>Are small studies missing? (publication bias — optional)</h3>';
+    if (full) {
+    html += helper("<strong>Full report.</strong> The sections below — publication bias, subgroup, and the sensitivity/diagnostics battery — are optional extras this program generates for you. You may write about any that are useful and delete the rest. They are most informative when several studies contributed; with only a few, describe what you see and read them cautiously. (Switch “Report length” to “Short paper” above to omit them entirely.)");
+    html += '<h3>Are small studies missing? (publication bias — optional' + (fewStudies ? ', few studies' : '') + ')</h3>';
     html += helper("Optional. A funnel plot explores whether small studies are missing, which can be a sign of publication bias — but an uneven (asymmetric) funnel can also come from real differences between studies or from chance, and the plot is unreliable with fewer than about 10 studies. With few studies, describe what you see but do not conclude there is publication bias.");
     html += figureCard(6, "Funnel plot", ["funnel_plot"], "funnelPaperSlot", "figures.funnelPlot.caption",
       "The funnel plot suggests... However, funnel plots are difficult to interpret when...");
@@ -670,15 +686,27 @@
       "Symmetry in what you can see is no proof of what you cannot.",
       "Eyding et al., BMJ 2010;341:c4737. (Evidence Reversal course, Module on publication bias.)");
 
+    /* subgroup analysis — host-fillable slot; student writes the interaction read */
+    html += '<h3>Subgroup analysis (optional' + (fewStudies ? ', few studies' : '') + ')</h3>';
+    html += helper("Optional. A subgroup analysis asks whether the effect differs between groups of studies (e.g. by dose, population, or risk of bias). Judge the <em>difference between</em> subgroups (the interaction), not whether each subgroup is individually “significant” — and treat it as hypothesis-generating, especially with few studies. Use the Subgroup / interaction panel in the Analysis tab to populate this figure.");
+    html += figureCard(10, "Subgroup analysis", [], "subgroupPaperSlot", "figures.subgroupPlot.caption",
+      "Across subgroups defined by ___, the pooled effect was ___ versus ___; the test for subgroup differences was / was not significant (interaction p = ___), so the effect does / does not appear to differ by this factor.");
+    html += box("studentText.subgroupInterpretation", "Interpret the subgroup analysis", "The effect appeared similar / different across ___ because... The test for interaction suggests... With this many studies this should be read as hypothesis-generating because...", "~2-3 sentences",
+      "Say whether the effect looked different between subgroups, what the test for interaction showed, and how much weight to put on it given the number of studies. Subgroup findings from few studies are hypothesis-generating, not confirmatory.",
+      "The pooled effect looked broadly similar across the subgroups examined, and the test for subgroup differences was not significant, so there is no strong evidence that the effect varies by this factor. With only a small number of studies, this comparison is hypothesis-generating rather than confirmatory.");
+    html += example("Splitting the trials by baseline risk, the direction of effect was the same in both subgroups and the test for interaction was not significant (p = 0.42), so the benefit did not clearly differ by baseline risk; with four trials this is at most a hypothesis for a future, larger study.",
+      "The drug worked better in the high-risk subgroup so it should be used there.");
+
     /* optional visual diagnostics + robustness — Synthēsis figures, auto-drawn */
     html += '<h3>Visual diagnostics &amp; robustness (optional)</h3>';
     html += helper("These figures are drawn automatically from your results in the Synthēsis style. The L'Abbé plot shows each trial's event rate in the two arms; leave-one-out and cumulative plots check whether the pooled result is stable. They are most useful when you have several trials; with only a few, describe what you see but read them cautiously.");
     html += figureCard(7, "L'Abbé plot — per-arm event proportions", ["effect_size"], "labbePaperSlot", "figures.labbePlot.caption",
       "Each bubble is one trial; bubbles above the diagonal had more events in the treatment arm. The trials cluster on one side, which suggests...");
-    html += figureCard(8, "Leave-one-out sensitivity analysis", [], "leaveOneOutPaperSlot", "figures.leaveOneOutPlot.caption",
+    html += figureCard(8, "Sensitivity analysis (leave-one-out)", [], "leaveOneOutPaperSlot", "figures.leaveOneOutPlot.caption",
       "Removing any single trial leaves the pooled estimate between ___ and ___, so no one trial drives the result / the result depends on ___.");
     html += figureCard(9, "Cumulative meta-analysis", [], "cumulativePaperSlot", "figures.cumulativePlot.caption",
       "As trials accumulated over time the pooled estimate moved toward ___ and the interval narrowed, which suggests the evidence has / has not stabilised.");
+    }   /* end if (full) — publication bias + subgroup + diagnostics are Full-report only */
 
     /* discussion */
     html += '<h2>Discussion</h2>';
