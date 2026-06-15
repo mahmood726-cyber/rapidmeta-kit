@@ -403,6 +403,23 @@ def test_nma_triangulation_real_doac_warfarin_star():
     assert out["reference"] == "warfarin"
 
 
+def test_nma_triangulation_real_renin_angiotensin_closed_loop():
+    # REAL closed loop from SEPARATE trials: HOPE (ramipril vs placebo),
+    # TRANSCEND (telmisartan vs placebo), ONTARGET (telmisartan vs ramipril).
+    # The three pairwise comparisons among {placebo, ramipril, telmisartan} form
+    # a closed triangle, so direct AND indirect evidence coexist -> consistency
+    # IS testable. The guard must classify it closed-loop (not star/tree).
+    out = _classify(
+        "{treatments:['placebo','ramipril','telmisartan'],comparisons:["
+        "{t1:'placebo',t2:'ramipril'},"        # HOPE
+        "{t1:'placebo',t2:'telmisartan'},"     # TRANSCEND
+        "{t1:'ramipril',t2:'telmisartan'}]}"   # ONTARGET
+    )
+    assert out["kind"] == "closed-loop" and out["hasLoop"] is True
+    assert out["nLoops"] == 1 and out["disconnected"] is False
+    assert out["isStar"] is False
+
+
 def test_rare_events_conditional_exact_cmel():
     out = _node(r"""
         const M = require('./template/assets/vendor/rare-events-glmm.js');
