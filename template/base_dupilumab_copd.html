@@ -6111,10 +6111,17 @@ const ContinuousMDEngine = {
         trials.forEach(t => {
 
 
-            const o = t.data?.allOutcomes?.find(x => x.shortLabel === outcomeKey) || { md: t.data.md, se: t.data.se };
+            const _oc = t.data?.allOutcomes?.find(x => x.shortLabel === outcomeKey) || { md: t.data.md, se: t.data.se, effect: t.data.effect, lci: t.data.lci, uci: t.data.uci };
 
+            // Derive the mean difference + SE from a published point estimate + 95% CI when
+            // md/se are not stored directly (continuous outcomes often carry effect/lci/uci).
+            const _z95md = 1.959963985;
+            const o = {
+                md: (_oc.md != null ? _oc.md : (_oc.effect != null ? _oc.effect : null)),
+                se: (_oc.se != null ? _oc.se : ((_oc.lci != null && _oc.uci != null) ? (Number(_oc.uci) - Number(_oc.lci)) / (2 * _z95md) : null))
+            };
 
-            if (o.md != null && o.se != null) {
+            if (o.md != null && o.se != null && isFinite(o.md) && isFinite(o.se) && o.se > 0) {
 
 
                 const vi = o.se * o.se;
@@ -6813,6 +6820,10 @@ const ContinuousMDEngine = {
             trialPublishedRatio(trial) {
                 const d = trial?.data;
                 if (!d) return null;
+                // A mean difference is NOT a ratio: never pool it on the log scale. Reject
+                // anything carrying a mean-difference value or a difference-type estimand,
+                // so a positive MD (e.g. +83 mL) is not mis-pooled as "Risk Ratio 83".
+                if (d.md != null || /^(MD|SMD|WMD|MEAN_DIFFERENCE)$/i.test(String(d.estimandType || ''))) return null;
                 const est = d.pubHR ?? d.publishedHR ?? d.effect ?? null;
                 const lci = d.pubHR_LCI ?? d.hrLCI ?? d.lci ?? null;
                 const uci = d.pubHR_UCI ?? d.hrUCI ?? d.uci ?? null;
@@ -6822,6 +6833,18 @@ const ContinuousMDEngine = {
 
             trialHasPublishedRatio(trial) {
                 return this.trialPublishedRatio(trial) != null;
+            },
+
+            // An outcome is CONTINUOUS (mean difference / SMD — LINEAR scale, null = 0) if
+            // its type or estimand says so, or it carries a mean-difference value (md). Used
+            // to route to ContinuousMDEngine and to keep mean differences OUT of the
+            // published-ratio (log-scale) pooling path.
+            isContinuousOutcome(o) {
+                if (!o) return false;
+                if (/^(CONTINUOUS|MD|SMD|WMD|MEAN_DIFFERENCE)$/i.test(String(o.type || ''))) return true;
+                if (/^(MD|SMD|WMD|MEAN_DIFFERENCE)$/i.test(String(o.estimandType || ''))) return true;
+                if (o.md != null && o.tE == null && o.cE == null) return true;
+                return false;
             },
 
 
@@ -32903,7 +32926,7 @@ const AnalysisEngine = {
                     const o = t.data?.allOutcomes?.find(x => x.shortLabel === outcomeKey);
 
 
-                    return o && o.type === 'CONTINUOUS';
+                    return RapidMeta.isContinuousOutcome(o);
 
 
                 });

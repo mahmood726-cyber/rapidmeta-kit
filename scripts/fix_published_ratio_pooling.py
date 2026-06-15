@@ -182,6 +182,70 @@ T.append((
  "                if (useHR || !_fiHasCounts) { /* FI is N/A in HR mode or without 2x2 counts (e.g. rate ratios); leave fragIdx = 0 */ }",
 ))
 
+# ---- continuous-hardening transforms (keep mean differences off the ratio path) ----
+
+# T9 — guard trialPublishedRatio so a mean difference is never pooled as a ratio.
+T.append((
+ "T9-ratio-guard", "if (d.md != null || /^(MD|SMD|WMD",
+ "            trialPublishedRatio(trial) {\n"
+ "                const d = trial?.data;\n"
+ "                if (!d) return null;\n"
+ "                const est = d.pubHR ?? d.publishedHR ?? d.effect ?? null;",
+ "            trialPublishedRatio(trial) {\n"
+ "                const d = trial?.data;\n"
+ "                if (!d) return null;\n"
+ "                // A mean difference is NOT a ratio: never pool it on the log scale. Reject\n"
+ "                // anything carrying a mean-difference value or a difference-type estimand,\n"
+ "                // so a positive MD (e.g. +83 mL) is not mis-pooled as \"Risk Ratio 83\".\n"
+ "                if (d.md != null || /^(MD|SMD|WMD|MEAN_DIFFERENCE)$/i.test(String(d.estimandType || ''))) return null;\n"
+ "                const est = d.pubHR ?? d.publishedHR ?? d.effect ?? null;",
+))
+
+# T10 — add isContinuousOutcome helper after trialHasPublishedRatio.
+T.append((
+ "T10-iscontinuous", "isContinuousOutcome(o) {",
+ "            trialHasPublishedRatio(trial) {\n"
+ "                return this.trialPublishedRatio(trial) != null;\n"
+ "            },",
+ "            trialHasPublishedRatio(trial) {\n"
+ "                return this.trialPublishedRatio(trial) != null;\n"
+ "            },\n\n"
+ "            // An outcome is CONTINUOUS (mean difference / SMD — LINEAR scale, null = 0) if\n"
+ "            // its type or estimand says so, or it carries a mean-difference value (md). Used\n"
+ "            // to route to ContinuousMDEngine and to keep mean differences OUT of the\n"
+ "            // published-ratio (log-scale) pooling path.\n"
+ "            isContinuousOutcome(o) {\n"
+ "                if (!o) return false;\n"
+ "                if (/^(CONTINUOUS|MD|SMD|WMD|MEAN_DIFFERENCE)$/i.test(String(o.type || ''))) return true;\n"
+ "                if (/^(MD|SMD|WMD|MEAN_DIFFERENCE)$/i.test(String(o.estimandType || ''))) return true;\n"
+ "                if (o.md != null && o.tE == null && o.cE == null) return true;\n"
+ "                return false;\n"
+ "            },",
+))
+
+# T11 — broaden the continuous classifier to route all continuous-family outcomes.
+T.append((
+ "T11-classifier", "return RapidMeta.isContinuousOutcome(o);",
+ "                    return o && o.type === 'CONTINUOUS';",
+ "                    return RapidMeta.isContinuousOutcome(o);",
+))
+
+# T12 — let ContinuousMDEngine derive md/se from effect/lci/uci when absent.
+T.append((
+ "T12-md-derive", "_z95md",
+ "            const o = t.data?.allOutcomes?.find(x => x.shortLabel === outcomeKey) || { md: t.data.md, se: t.data.se };"+B+
+ "            if (o.md != null && o.se != null) {",
+ "            const _oc = t.data?.allOutcomes?.find(x => x.shortLabel === outcomeKey) || { md: t.data.md, se: t.data.se, effect: t.data.effect, lci: t.data.lci, uci: t.data.uci };\n\n"
+ "            // Derive the mean difference + SE from a published point estimate + 95% CI when\n"
+ "            // md/se are not stored directly (continuous outcomes often carry effect/lci/uci).\n"
+ "            const _z95md = 1.959963985;\n"
+ "            const o = {\n"
+ "                md: (_oc.md != null ? _oc.md : (_oc.effect != null ? _oc.effect : null)),\n"
+ "                se: (_oc.se != null ? _oc.se : ((_oc.lci != null && _oc.uci != null) ? (Number(_oc.uci) - Number(_oc.lci)) / (2 * _z95md) : null))\n"
+ "            };\n\n"
+ "            if (o.md != null && o.se != null && isFinite(o.md) && isFinite(o.se) && o.se > 0) {",
+))
+
 
 def _variants(old):
     """The kit template is triple-spaced (two blank lines between statements);
@@ -202,10 +266,13 @@ INVARIANTS = [
     ("T5-main-fallback", ["T1-helpers", "T4-countPoolable"]),
     ("T6-cumulative", ["T1-helpers"]),
     ("T7-secondary-forest", ["T1-helpers"]),
+    ("T9-ratio-guard", ["T1-helpers"]),       # guard edits the T1 helper body
+    ("T11-classifier", ["T10-iscontinuous"]),  # classifier calls isContinuousOutcome
 ]
-# Transforms that actually fix a bug (vs T4 which is an inert helper def on its own).
+# Transforms that actually fix a bug (vs T4/T10 which are inert helper defs on their own).
 CORE_FIXES = {"T5-main-fallback", "T6-cumulative", "T7-secondary-forest",
-              "T2-norm-def", "T3-norm-oc", "T8-fragility-na"}
+              "T2-norm-def", "T3-norm-oc", "T8-fragility-na",
+              "T9-ratio-guard", "T11-classifier", "T12-md-derive"}
 
 
 def apply_file(path, apply):
