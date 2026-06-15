@@ -6805,6 +6805,25 @@ const ContinuousMDEngine = {
 
             },
 
+            // Published RELATIVE effect (rate ratio / risk ratio / hazard ratio /
+            // incidence-rate ratio) + 95% CI, regardless of estimandType. Unlike
+            // trialHasPublishedHR this does NOT exclude estimandType 'RR' — it is the
+            // source for log-ratio pooling when a trial reports a published effect but
+            // no 2x2 event counts (e.g. annualized exacerbation rate ratios).
+            trialPublishedRatio(trial) {
+                const d = trial?.data;
+                if (!d) return null;
+                const est = d.pubHR ?? d.publishedHR ?? d.effect ?? null;
+                const lci = d.pubHR_LCI ?? d.hrLCI ?? d.lci ?? null;
+                const uci = d.pubHR_UCI ?? d.hrUCI ?? d.uci ?? null;
+                if (est > 0 && lci > 0 && uci > 0 && uci >= lci) return { est, lci, uci };
+                return null;
+            },
+
+            trialHasPublishedRatio(trial) {
+                return this.trialPublishedRatio(trial) != null;
+            },
+
 
             resolveEffectMeasure(opts = {}) {
 
@@ -10971,22 +10990,12 @@ const ContinuousMDEngine = {
                             if (def.nC != null) t.data.cN = def.nC;
 
 
-                            t.data.pubHR = def.pubHR ?? null;
-
-
-                            t.data.pubHR_LCI = def.pubHR_LCI ?? null;
-
-
-                            t.data.pubHR_UCI = def.pubHR_UCI ?? null;
-
-
-                            t.data.publishedHR = def.pubHR ?? null;
-
-
-                            t.data.hrLCI = def.pubHR_LCI ?? null;
-
-
-                            t.data.hrUCI = def.pubHR_UCI ?? null;
+                            t.data.pubHR = def.pubHR ?? def.publishedHR ?? def.effect ?? null;
+                            t.data.pubHR_LCI = def.pubHR_LCI ?? def.hrLCI ?? def.lci ?? null;
+                            t.data.pubHR_UCI = def.pubHR_UCI ?? def.hrUCI ?? def.uci ?? null;
+                            t.data.publishedHR = t.data.pubHR;
+                            t.data.hrLCI = t.data.pubHR_LCI;
+                            t.data.hrUCI = t.data.pubHR_UCI;
 
 
                             t.data.estimandType = def.estimandType ?? (def.pubHR ? 'HR' : 'RR');
@@ -11037,22 +11046,12 @@ const ContinuousMDEngine = {
                             if (oc.nC != null) t.data.cN = oc.nC;
 
 
-                            t.data.pubHR = oc.pubHR ?? null;
-
-
-                            t.data.pubHR_LCI = oc.pubHR_LCI ?? null;
-
-
-                            t.data.pubHR_UCI = oc.pubHR_UCI ?? null;
-
-
-                            t.data.publishedHR = oc.pubHR ?? null;
-
-
-                            t.data.hrLCI = oc.pubHR_LCI ?? null;
-
-
-                            t.data.hrUCI = oc.pubHR_UCI ?? null;
+                            t.data.pubHR = oc.pubHR ?? oc.publishedHR ?? oc.effect ?? null;
+                            t.data.pubHR_LCI = oc.pubHR_LCI ?? oc.hrLCI ?? oc.lci ?? null;
+                            t.data.pubHR_UCI = oc.pubHR_UCI ?? oc.hrUCI ?? oc.uci ?? null;
+                            t.data.publishedHR = t.data.pubHR;
+                            t.data.hrLCI = t.data.pubHR_LCI;
+                            t.data.hrUCI = t.data.pubHR_UCI;
 
 
                             t.data.estimandType = oc.estimandType ?? (oc.pubHR ? 'HR' : 'RR');
@@ -27429,6 +27428,13 @@ const ContinuousMDEngine = {
 
                         }
 
+                        // Published relative effect with no usable 2x2 counts (e.g. rate ratio):
+                        // pool the log-ratio (published CIs are 95%, so se = (logU-logL)/(2*1.96)).
+                        if (RapidMeta.trialHasPublishedRatio(t) && ![t.data.tE, t.data.cE, t.data.tN, t.data.cN].every(v => typeof v === 'number' && isFinite(v))) {
+                            const _p = RapidMeta.trialPublishedRatio(t);
+                            const _se = (Math.log(_p.uci) - Math.log(_p.lci)) / (2 * 1.959963985);
+                            return { logOR: Math.log(_p.est), vi: _se * _se, se: _se, id: RapidMeta.nctAcronyms[t.id] ?? t.data?.name ?? t.id, year: t.data.year ?? 2020 };
+                        }
 
                         const hasZero = (t.data.tE === 0 || t.data.cE === 0 || t.data.tE === t.data.tN || t.data.cE === t.data.cN);
 
@@ -31669,7 +31675,17 @@ const AnalysisEngine = {
                 } else {
 
 
-                    /* OR / RR mode: compute from 2x2 event counts */
+                    /* OR / RR mode: compute from 2x2 event counts, with a published-ratio
+                       fallback (relative effect + 95% CI) for trials that report a ratio
+                       but no 2x2 event table (e.g. annualized exacerbation rate ratios). */
+                    const _countPoolable = t => {
+                        const e = t.data;
+                        if (![e.tE, e.cE, e.tN, e.cN].every(v => typeof v === 'number' && isFinite(v))) return false;
+                        if (e.tN <= 0 || e.cN <= 0) return false;
+                        if (e.tE === 0 && e.cE === 0) return false;
+                        if (e.tE === e.tN && e.cE === e.cN) return false;
+                        return true;
+                    };
 
 
                     const _excluded00 = trials.filter(t => (t.data.tE === 0 && t.data.cE === 0) || (t.data.tE === t.data.tN && t.data.cE === t.data.cN));
@@ -31684,21 +31700,19 @@ const AnalysisEngine = {
                     }
 
 
-                    plotData = trials.filter(t => {
+                    plotData = trials.filter(t => _countPoolable(t) || RapidMeta.trialHasPublishedRatio(t)).map(t => {
 
 
-                        if (t.data.tE === 0 && t.data.cE === 0) return false;
-
-
-                        if (t.data.tE === t.data.tN && t.data.cE === t.data.cN) return false;
-
-
-                        return true;
-
-
-                    }).map(t => {
-
-
+                        if (!_countPoolable(t)) {
+                            /* Published relative effect, no usable 2x2 counts: pool on the
+                               log scale (null = 1). A published ratio CI is essentially
+                               always 95%, so se = (log UCI - log LCI) / (2 * 1.96)
+                               regardless of the dashboard's chosen output confidence level. */
+                            const _p = RapidMeta.trialPublishedRatio(t);
+                            const _se = (Math.log(_p.uci) - Math.log(_p.lci)) / (2 * Z95_HR);
+                            const _vi = _se * _se;
+                            return { logOR: Math.log(_p.est), vi: _vi, se: _se, w_fixed: 1 / _vi, id: RapidMeta.nctAcronyms[t.id] ?? t.data?.name ?? t.id, group: t.data?.group || 'Other', year: t.data.year ?? 2020, cer: NaN, ter: NaN, rob: safeRob(t.data.rob), tN: t.data.tN, cN: t.data.cN, tE: t.data.tE, cE: t.data.cE, phase: t.data?.phase ?? '', fromPublishedEffect: true };
+                        }
                         const hasZero = (t.data.tE === 0 || t.data.cE === 0 || t.data.tE === t.data.tN || t.data.cE === t.data.cN);
 
 
@@ -31998,7 +32012,9 @@ const AnalysisEngine = {
                 let fragIdx = 0;
 
 
-                if (useHR) { /* FI is N/A in HR mode; leave fragIdx = 0 */ }
+                const _fiHasCounts = plotData.every(d => [d.tE, d.cE, d.tN, d.cN].every(v => typeof v === 'number' && isFinite(v)));
+
+                if (useHR || !_fiHasCounts) { /* FI is N/A in HR mode or without 2x2 counts (e.g. rate ratios); leave fragIdx = 0 */ }
 
 
                 else if (overallSig && k >= 2) {
@@ -39633,6 +39649,13 @@ print(res_sub)`;
 
                         se = (Math.log(d.pubHR_UCI) - Math.log(d.pubHR_LCI)) / (2 * zCrit);
 
+
+                    } else if (RapidMeta.trialHasPublishedRatio(t) && ![d.tE, d.cE, d.tN, d.cN].every(v => typeof v === 'number' && isFinite(v))) {
+
+                        // Published relative effect with no usable 2x2 counts (e.g. rate ratio).
+                        const _p = RapidMeta.trialPublishedRatio(t);
+                        logOR = Math.log(_p.est);
+                        se = (Math.log(_p.uci) - Math.log(_p.lci)) / (2 * 1.959963985);
 
                     } else {
 

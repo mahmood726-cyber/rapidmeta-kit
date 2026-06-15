@@ -246,3 +246,65 @@ def test_continuous_measure_uses_linear_axis_null_zero():
     assert out["linearLabel"] is True
     assert out["hasDiamond"] is True
     assert out["rendered"] is True
+
+
+# Regression: a PUBLISHED RATE RATIO outcome (no 2x2 counts) must render whiskers +
+# a pooled diamond on a LOG axis. Before the published-ratio pooling fix, count-less
+# RR outcomes (e.g. dupilumab COPD annualized exacerbation rate, BOREAS+NOTUS)
+# produced NaN per-study se -> studyRows() dropped every row -> the forest rendered
+# with no whiskers and no diamond (the Figure-3 bug). This locks in the renderer
+# contract that the fixed pooling path now satisfies.
+RR_PRELUDE = r"""
+global.window = {};
+const fs = require('fs');
+eval(fs.readFileSync('template/assets/js/paper-figures-synthesis.js','utf8'));
+const PS = global.window.PaperStudio;
+// Published rate ratio + 95% CI, no event counts (tE/cE null) — the shape the
+// fixed published-ratio branch emits: finite logOR + se, isContinuous:false.
+function mkr(name,rr,lo,hi){
+  const logOR=Math.log(rr), se=(Math.log(hi)-Math.log(lo))/(2*1.959964);
+  return {id:name,name,logOR,se,vi:se*se,tE:null,tN:468,cE:null,cN:471,fromPublishedEffect:true};
+}
+const rrRes = {isContinuous:false,confLevel:95,or:0.68,lci:0.59,uci:0.79,k:2,
+  effectMeasure:'Rate ratio',tau2:0,
+  plotData:[ mkr('BOREAS',0.70,0.58,0.86), mkr('NOTUS',0.66,0.54,0.82) ]};
+// The PRE-FIX broken shape: null per-study se + NaN pooled estimate.
+const brokenRes = {isContinuous:false,confLevel:95,or:NaN,lci:NaN,uci:NaN,k:2,
+  effectMeasure:'Rate ratio',tau2:0,
+  plotData:[ {id:'BOREAS',name:'BOREAS',logOR:null,se:null,vi:null,tE:null,tN:468,cE:null,cN:471},
+             {id:'NOTUS',name:'NOTUS',logOR:null,se:null,vi:null,tE:null,tN:468,cE:null,cN:467} ]};
+"""
+
+
+def test_published_rate_ratio_forest_has_whiskers_and_diamond():
+    out = _node(RR_PRELUDE + r"""
+        const svg = PS.synthesisForestSVG(rrRes, {label:'Annualized exacerbation rate'});
+        console.log(JSON.stringify({
+          isSvg: svg.startsWith('<svg') && svg.trim().endsWith('</svg>'),
+          bothStudies: svg.includes('BOREAS') && svg.includes('NOTUS'),
+          whiskers: (svg.match(/stroke-width="1.3"/g)||[]).length === 2,  // 1 CI line per study
+          squares: (svg.match(/#2f7d34/g)||[]).length >= 2,
+          maroonDiamond: svg.includes('<polygon') && svg.includes('#9c2b27'),
+          pooledValue: svg.includes('0.68 (0.59'),
+          logAxis: svg.includes('Rate ratio (log scale)'),
+          nullAtOne: svg.includes('stroke-dasharray')
+        }));
+    """)
+    for k, v in out.items():
+        assert v is True, f"rate-ratio forest check failed: {k}"
+
+
+def test_pre_fix_nan_rateratio_renders_nothing():
+    # Documents the bug: NaN per-study se + NaN pooled estimate -> empty SVG
+    # (no whiskers, no diamond). The fix is what turns this into the test above.
+    out = _node(RR_PRELUDE + r"""
+        const svg = PS.synthesisForestSVG(brokenRes, {});
+        console.log(JSON.stringify({
+          empty: svg === "",
+          noDiamond: !svg.includes('<polygon'),
+          noWhiskers: (svg.match(/stroke-width="1.3"/g)||[]).length === 0
+        }));
+    """)
+    assert out["empty"] is True
+    assert out["noDiamond"] is True
+    assert out["noWhiskers"] is True
