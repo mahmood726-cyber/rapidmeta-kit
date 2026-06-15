@@ -183,24 +183,68 @@ T.append((
 ))
 
 
+def _variants(old):
+    """The kit template is triple-spaced (two blank lines between statements);
+    drifted clones (e.g. the finerenone e156 fleet) are single/zero-spaced. Try the
+    canonical triple-spaced anchor first, then the collapsed single-newline form."""
+    yield old
+    collapsed = old.replace("\n\n\n", "\n")
+    if collapsed != old:
+        yield collapsed
+
+
+# Safety invariants enforced BEFORE writing: a transform whose NEW code calls a
+# helper must not be applied unless the helper-defining transform is also present.
+# present(X) = X applied this run OR its sentinel already in the file.
+#   T5 main fallback uses _countPoolable (T4) and trialHasPublishedRatio (T1)
+#   T6 cumulative / T7 secondary use trialHasPublishedRatio (T1)
+INVARIANTS = [
+    ("T5-main-fallback", ["T1-helpers", "T4-countPoolable"]),
+    ("T6-cumulative", ["T1-helpers"]),
+    ("T7-secondary-forest", ["T1-helpers"]),
+]
+# Transforms that actually fix a bug (vs T4 which is an inert helper def on its own).
+CORE_FIXES = {"T5-main-fallback", "T6-cumulative", "T7-secondary-forest",
+              "T2-norm-def", "T3-norm-oc", "T8-fragility-na"}
+
+
 def apply_file(path, apply):
     with io.open(path, encoding="utf-8") as f:
         src = f.read()
     out = src
     log = []
+    status = {}
     for name, sentinel, old, new in T:
         if sentinel in out:
-            log.append((name, "already"))
+            status[name] = "already"; log.append((name, "already")); continue
+        matched = None
+        for cand in _variants(old):
+            if out.count(cand) == 1:
+                matched = cand; break
+            if out.count(cand) > 1:
+                status[name] = "ambiguous"; log.append((name, "ambiguous(%d)" % out.count(cand))); matched = False; break
+        if matched is False:
             continue
-        if old not in out:
-            log.append((name, "anchor-not-found"))
-            continue
-        if out.count(old) > 1:
-            log.append((name, "ambiguous(%d)" % out.count(old)))
-            continue
-        out = out.replace(old, new, 1)
-        log.append((name, "applied"))
+        if matched is None:
+            status[name] = "anchor-not-found"; log.append((name, "anchor-not-found")); continue
+        out = out.replace(matched, new, 1)
+        status[name] = "applied"; log.append((name, "applied"))
+
+    def present(n):
+        return status.get(n) in ("applied", "already")
+
+    # enforce safety invariants
+    violations = []
+    for dep, needs in INVARIANTS:
+        if present(dep) and not all(present(n) for n in needs):
+            violations.append("%s needs %s" % (dep, ",".join(n for n in needs if not present(n))))
     changed = out != src
+    has_core = any(present(n) for n in CORE_FIXES)
+    if violations:
+        return False, log + [("ABORT-INCONSISTENT", ";".join(violations))], src
+    if changed and not has_core:
+        # only inert/no-op changes (e.g. lone T4) — don't churn the file
+        return False, log + [("SKIP-no-core-fix", "")], src
     if apply and changed:
         with io.open(path, "w", encoding="utf-8", newline="") as f:
             f.write(out)
