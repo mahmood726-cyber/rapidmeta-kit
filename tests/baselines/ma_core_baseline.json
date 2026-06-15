@@ -1,0 +1,260 @@
+{
+  "schema_version": "1.0.0",
+  "description": "R-parity numerical baseline for the RapidMeta inline meta-analysis engine (random-effects, REML). Engine math ported verbatim from template/base_dupilumab_copd.html into tests/r_parity_harness.cjs. Regenerate with: node tests/r_parity_harness.cjs",
+  "generated_against_commit": "WORKDIR",
+  "engine_source": "template/base_dupilumab_copd.html (inline JS, RR engine ~L31794-31976; helpers ~L5468-5755)",
+  "harness": "tests/r_parity_harness.cjs",
+  "datasets": {
+    "bcg": {
+      "name": "dat.bcg (BCG vaccine, Colditz et al. 1994)",
+      "measure": "log relative risk (RR), random-effects REML",
+      "columns": "tpos,tneg,cpos,cneg  (mapped to tE=tpos, tN=tpos+tneg, cE=cpos, cN=cpos+cneg)",
+      "rows": [
+        [
+          4,
+          119,
+          11,
+          128
+        ],
+        [
+          6,
+          300,
+          29,
+          274
+        ],
+        [
+          3,
+          228,
+          11,
+          209
+        ],
+        [
+          62,
+          13536,
+          248,
+          12619
+        ],
+        [
+          33,
+          5036,
+          47,
+          5761
+        ],
+        [
+          180,
+          1361,
+          372,
+          1079
+        ],
+        [
+          8,
+          2537,
+          10,
+          619
+        ],
+        [
+          505,
+          87886,
+          499,
+          87892
+        ],
+        [
+          29,
+          7470,
+          45,
+          7232
+        ],
+        [
+          17,
+          1699,
+          65,
+          1600
+        ],
+        [
+          186,
+          50448,
+          141,
+          27197
+        ],
+        [
+          5,
+          2493,
+          3,
+          2338
+        ],
+        [
+          27,
+          16886,
+          29,
+          17825
+        ]
+      ]
+    },
+    "fixed_effect_exact": {
+      "name": "Hand-computable fixed-effect inverse-variance pool",
+      "measure": "log effect (generic), fixed-effect IV",
+      "yi": [
+        0.2,
+        0.4,
+        0.6
+      ],
+      "vi": [
+        0.04,
+        0.01,
+        0.04
+      ],
+      "hand_derivation": {
+        "sumW": 150,
+        "sumWY": 60,
+        "mu": 0.4,
+        "se_squared": "1/150",
+        "Q": 2
+      }
+    }
+  },
+  "engine_outputs": {
+    "bcg": {
+      "k": 13,
+      "df": 12,
+      "Q": 152.2330080823734,
+      "I2": 92.11734685456207,
+      "pooled_logRR": -0.7145323421581303,
+      "pooled_SE": 0.17978151610518348,
+      "ci_lo_logRR": -1.0668976390943778,
+      "ci_hi_logRR": -0.3621670452218829,
+      "pooled_RR": 0.4894209398260347,
+      "ci_lo_RR": 0.34407430600905065,
+      "ci_hi_RR": 0.6961660669131693,
+      "tau2_reml": 0.31324325813638454,
+      "tau2_dl": 0.30876026286237646,
+      "tau2_qprofile_lo": 0.11972110207661212,
+      "tau2_qprofile_hi": 1.1178823703458187,
+      "I2_qprofile_lo": 81.920913642753,
+      "I2_qprofile_hi": 97.69106797064475,
+      "pi_lo_logRR": -1.995295042774866,
+      "pi_hi_logRR": 0.5662303584586054,
+      "pi_lo_RR": 0.13597353024033249,
+      "pi_hi_RR": 1.7616138664402257,
+      "hksj_adj": 1.0112699719670792,
+      "hksj_lo_logRR": -1.108429284811094,
+      "hksj_hi_logRR": -0.3206353995051668,
+      "per_study": [
+        {
+          "trial": 1,
+          "logRR": -0.8893113339202054,
+          "vi": 0.3255847650039614
+        },
+        {
+          "trial": 2,
+          "logRR": -1.5853886572014306,
+          "vi": 0.19458112139814387
+        },
+        {
+          "trial": 3,
+          "logRR": -1.348073148299693,
+          "vi": 0.4153679653679654
+        },
+        {
+          "trial": 4,
+          "logRR": -1.4415511900213054,
+          "vi": 0.020010031902247573
+        },
+        {
+          "trial": 5,
+          "logRR": -0.2175473222112957,
+          "vi": 0.05121017216963086
+        },
+        {
+          "trial": 6,
+          "logRR": -0.786115585818864,
+          "vi": 0.0069056184559087574
+        },
+        {
+          "trial": 7,
+          "logRR": -1.6208982235983924,
+          "vi": 0.22301724757231517
+        },
+        {
+          "trial": 8,
+          "logRR": 0.011952333523841173,
+          "vi": 0.00396157929781773
+        },
+        {
+          "trial": 9,
+          "logRR": -0.4694176487381487,
+          "vi": 0.056434210463248966
+        },
+        {
+          "trial": 10,
+          "logRR": -1.3713448034727846,
+          "vi": 0.07302479361302891
+        },
+        {
+          "trial": 11,
+          "logRR": -0.33935882833839015,
+          "vi": 0.01241221397155972
+        },
+        {
+          "trial": 12,
+          "logRR": 0.4459134005713783,
+          "vi": 0.5325058452001528
+        },
+        {
+          "trial": 13,
+          "logRR": -0.017313948216879493,
+          "vi": 0.0714046596839863
+        }
+      ]
+    },
+    "fixed_effect_exact": {
+      "y": [
+        0.2,
+        0.4,
+        0.6
+      ],
+      "v": [
+        0.04,
+        0.01,
+        0.04
+      ],
+      "mu": 0.4,
+      "se": 0.08164965809277261,
+      "Q": 2,
+      "sumW": 150
+    }
+  },
+  "external_anchors": {
+    "bcg_metafor_published": {
+      "source": "Viechtbauer (2010) J Stat Soft 36(3), \"Conducting meta-analyses in R with the metafor package\", dat.bcg RE/REML log-RR worked example",
+      "type": "metafor-published",
+      "pooled_logRR": -0.7145,
+      "pooled_SE": 0.1798,
+      "ci_lo_logRR": -1.067,
+      "ci_hi_logRR": -0.362,
+      "tau2_reml": 0.3132,
+      "I2_pct": 92.2,
+      "Q": 152.2,
+      "df": 12
+    },
+    "bcg_scipy_rederived": {
+      "source": "Independent in-environment re-derivation (Python+scipy brentq on the REML estimating equation), 2026-06-15. NOT metafor; an independent implementation cross-check.",
+      "type": "independent-rederived",
+      "pooled_logRR": -0.7145323422,
+      "pooled_SE": 0.1797815161,
+      "ci_lo_logRR": -1.0668976388,
+      "ci_hi_logRR": -0.3621670455,
+      "tau2_reml": 0.3132432581,
+      "I2_pct": 92.117347,
+      "Q": 152.233008,
+      "df": 12
+    },
+    "fixed_effect_exact_byhand": {
+      "source": "Exact closed-form hand derivation (see datasets.fixed_effect_exact.hand_derivation)",
+      "type": "exact-by-hand",
+      "mu": 0.4,
+      "se": 0.08164965809277261,
+      "Q": 2.0,
+      "sumW": 150.0
+    }
+  }
+}

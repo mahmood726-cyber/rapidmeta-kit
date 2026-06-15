@@ -19,8 +19,51 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      # several tests (paper-figures, paper-studio, r-parity) shell out to node.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - run: pip install -e ".[dev]"
       - run: python -m pytest
+
+  engine-integrity:
+    name: engine integrity (single-source gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # 1) the canonical engine must carry every shipped correctness fix
+      - name: engine-drift self-check
+        run: python scripts/check_engine_drift.py --self-check
+      # 2) every inline <script> in the canonical engine + deployed copy must parse
+      - name: inline-JS syntax (node --check)
+        run: |
+          python - <<'PY'
+          import re, subprocess, tempfile, os, sys
+          bad = 0
+          for fn in ("template/base_dupilumab_copd.html", "docs/index.html"):
+              html = open(fn, encoding="utf-8").read()
+              for s in re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", html, re.S):
+                  st = s.strip()
+                  if not st or (st.startswith("{") and '"@context"' in st):
+                      continue
+                  with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
+                      f.write(s); p = f.name
+                  r = subprocess.run(["node", "--check", p], capture_output=True, text=True)
+                  os.unlink(p)
+                  if r.returncode:
+                      bad += 1; print("SYNTAX FAIL", fn, (r.stderr.splitlines() or [""])[0])
+          print("inline-JS syntax failures:", bad)
+          sys.exit(1 if bad else 0)
+          PY
+      # 3) R-parity harness must reproduce the metafor anchors (also covered by pytest)
+      - name: R-parity harness
+        run: node tests/r_parity_harness.cjs
 
   smoke-build:
     name: smoke build example dashboard
