@@ -68,6 +68,23 @@ def test_synthesis_forest_reproduces_pdf_figure1():
         assert v is True, f"forest SVG check failed: {k}"
 
 
+def test_figure_labels_honour_non_95_confidence_level():
+    """Regression: figure CI/PI labels must reflect res.confLevel, not a
+    hardcoded '95% CI'. At confLevel:90 the column header and PI bracket must
+    read 90%, never 95%."""
+    out = _node(PRELUDE.replace("confLevel:95", "confLevel:90") + r"""
+        const svg = PS.synthesisForestSVG(res, {label:'ACR20 response'});
+        console.log(JSON.stringify({
+          ciLabel90: svg.includes('(90% CI)'),
+          piLabel90: svg.includes('90% prediction interval'),
+          noHardcoded95: !svg.includes('95% CI') && !svg.includes('95% prediction')
+        }));
+    """)
+    assert out["ciLabel90"] is True
+    assert out["piLabel90"] is True
+    assert out["noHardcoded95"] is True
+
+
 def test_default_annotation_voice_and_toggle():
     out = _node(PRELUDE + r"""
         const ann = PS.defaultForestAnnotation(res);

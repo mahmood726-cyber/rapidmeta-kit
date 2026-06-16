@@ -6253,12 +6253,15 @@ const ContinuousMDEngine = {
             hksjUCI = pMD + tCritHKSJ * hksjSE;
         }
 
-        // Prediction interval (Cochrane Handbook v6.5 §10.10.4.3, t_{k-1}). NaN for k < 2.
+        // Prediction interval (Cochrane Handbook v6.5 §10.10.4.3, t_{k-1}).
+        // Undefined for k < 3: at k=2 the df=1 t-quantile (12.7) yields a
+        // degenerate, uninterpretable interval, so we suppress it (matches the
+        // pi-convention panel). NaN for k < 3.
         const piSE = Math.sqrt(tau2 + pSE * pSE);
         // PI df = k-1 per Cochrane Handbook v6.5 §10.10.4.3 (RevMan default).
-        const tCritPI = (k >= 2) ? tQuantile(1 - (1 - confLevel) / 2, k - 1) : NaN;
-        const piLCI = (k >= 2) ? (pMD - tCritPI * piSE) : NaN;
-        const piUCI = (k >= 2) ? (pMD + tCritPI * piSE) : NaN;
+        const tCritPI = (k >= 3) ? tQuantile(1 - (1 - confLevel) / 2, k - 1) : NaN;
+        const piLCI = (k >= 3) ? (pMD - tCritPI * piSE) : NaN;
+        const piUCI = (k >= 3) ? (pMD + tCritPI * piSE) : NaN;
 
 
         return {
@@ -14731,7 +14734,7 @@ const ContinuousMDEngine = {
                 'HKSJ correction applied with max(1, q*) safeguard.': 'تصحيح HKSJ مُطبّق مع حماية max(1, q*).',
 
 
-                'Prediction intervals computed with k\u22121 degrees of freedom per Cochrane Handbook v6.5.': 'فترات التنبؤ محسوبة بـ k−2 درجات حرية وفق Higgins وآخرون (2009).',
+                'Prediction intervals computed with k\u22121 degrees of freedom per Cochrane Handbook v6.5.': 'فترات التنبؤ محسوبة بـ k−1 درجة حرية وفق دليل Cochrane الإصدار 6.5.',
 
 
 
@@ -27983,7 +27986,7 @@ const ContinuousMDEngine = {
                 // QA7: Prediction interval
 
 
-                checks.push({ id: 'QA7', name: 'Prediction Interval', status: r && r.piLCI !== '--' ? 'pass' : 'warn', detail: r && r.piLCI !== '--' ? 'PI: ' + r.piLCI + '\u2014' + r.piUCI : 'Not available (k < 2)' });
+                checks.push({ id: 'QA7', name: 'Prediction Interval', status: r && r.piLCI !== '--' ? 'pass' : 'warn', detail: r && r.piLCI !== '--' ? 'PI: ' + r.piLCI + '\u2014' + r.piUCI : 'Not available (k < 3)' });
 
 
 
@@ -32423,7 +32426,7 @@ const AnalysisEngine = {
                 }
 
 
-                document.getElementById('res-pi').innerText = (c.k >= 2 && Number.isFinite(c.piLCI)) ? `${c.piLCI.toFixed(2)} \u2014 ${c.piUCI.toFixed(2)}` : 'N/A (k < 2)';
+                document.getElementById('res-pi').innerText = (c.k >= 3 && Number.isFinite(c.piLCI)) ? `${c.piLCI.toFixed(2)} \u2014 ${c.piUCI.toFixed(2)}` : 'N/A (k < 3)';
 
 
                 document.getElementById('res-qtest').innerText = `Q(${c.df}) = ${c.Q.toFixed(1)}, p = ${c.qPvalue < 0.001 ? '<0.001' : c.qPvalue.toFixed(3)}`;
@@ -42484,7 +42487,7 @@ except ImportError:
                 (k >= 3
 
 
-                    ? 'a ' + confLevel + '% prediction interval (Higgins 2009 t-distribution with df = k\u22122) was reported alongside the pooled CI. '
+                    ? 'a ' + confLevel + '% prediction interval (t-distribution with df = k\u22121 per Cochrane Handbook v6.5 \u00a710.10.4.3) was reported alongside the pooled CI. '
 
 
                     : 'a prediction interval is not defined for k < 3 and was therefore not reported. ') +

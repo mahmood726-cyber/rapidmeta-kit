@@ -42,6 +42,8 @@
   }
   function num(v) { var n = Number(v); return (v === "" || v == null || !isFinite(n)) ? null : n; }
   function zFor(res) { var cl = Number(res && res.confLevel); if (!isFinite(cl) || cl <= 0) cl = 95; if (cl > 1) cl /= 100; return normInv(1 - (1 - cl) / 2); }
+  // Confidence level as integer percent for labels (bars honour confLevel via zFor).
+  function clPct(res) { var cl = Number(res && res.confLevel); if (!isFinite(cl) || cl <= 0) cl = 95; if (cl <= 1) cl *= 100; return Math.round(cl); }
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   function f2(x) { return (Math.round(x * 100) / 100).toFixed(2); }
 
@@ -133,7 +135,7 @@
     // ---- column headers ----
     var hdr = 'font-size="10" letter-spacing="0.10em" fill="' + C.grey + '"';
     S.push('<text x="0" y="' + topPad + '" ' + hdr + '>STUDY</text>');
-    S.push('<text x="' + orX + '" y="' + topPad + '" ' + hdr + '>' + (cont ? "MD" : "OR") + ' (95% CI)</text>');
+    S.push('<text x="' + orX + '" y="' + topPad + '" ' + hdr + '>' + (cont ? "MD" : "OR") + ' (' + clPct(res) + '% CI)</text>');
     S.push('<text x="' + wtX + '" y="' + topPad + '" text-anchor="end" ' + hdr + '>WEIGHT</text>');
 
     // ---- no-effect dotted line ----
@@ -174,7 +176,7 @@
       S.push('<line x1="' + bl.toFixed(1) + '" y1="' + piY + '" x2="' + br.toFixed(1) + '" y2="' + piY + '" stroke="' + C.maroon + '" stroke-width="1.4"/>');
       S.push('<line x1="' + bl.toFixed(1) + '" y1="' + (piY - 4) + '" x2="' + bl.toFixed(1) + '" y2="' + (piY + 4) + '" stroke="' + C.maroon + '" stroke-width="1.4"/>');
       S.push('<line x1="' + br.toFixed(1) + '" y1="' + (piY - 4) + '" x2="' + br.toFixed(1) + '" y2="' + (piY + 4) + '" stroke="' + C.maroon + '" stroke-width="1.4"/>');
-      S.push('<text x="' + (br + 8).toFixed(1) + '" y="' + (piY + 3) + '" font-size="10.5" font-style="italic" fill="' + C.maroon + '">95% prediction interval ' + f2(piLo) + '–' + f2(piHi) + '</text>');
+      S.push('<text x="' + (br + 8).toFixed(1) + '" y="' + (piY + 3) + '" font-size="10.5" font-style="italic" fill="' + C.maroon + '">' + clPct(res) + '% prediction interval ' + f2(piLo) + '–' + f2(piHi) + '</text>');
     }
 
     // ---- x-axis ----
@@ -242,7 +244,7 @@
     var sides = rows.map(function (r) { return r.eff > nullX ? 1 : (r.eff < nullX ? -1 : 0); });
     var unanimous = rows.length >= 2 && sides.every(function (x) { return x !== 0 && x === sides[0]; });
     var s = "Pooled " + measure + " " + f2(pEff);
-    if (pLo != null && pHi != null) s += " (95% CI " + f2(pLo) + "–" + f2(pHi) + ")";
+    if (pLo != null && pHi != null) s += " (" + clPct(res) + "% CI " + f2(pLo) + "–" + f2(pHi) + ")";
     s += "; ";
     if (k && unanimous) s += "all " + k + " trials point the same way and the ";
     else if (rows.length >= 2) s += "the trials do not all point the same way, and the ";
@@ -345,7 +347,7 @@
     var S = [svgOpen(W, H)];
     var hdr = 'font-size="10" letter-spacing="0.10em" fill="' + C.grey + '"';
     S.push('<text x="0" y="' + topPad + '" ' + hdr + '>' + esc(cfg.colHeader || 'ANALYSIS') + '</text>');
-    S.push('<text x="' + orX + '" y="' + topPad + '" ' + hdr + '>' + (cont ? 'MD' : 'OR') + ' (95% CI)</text>');
+    S.push('<text x="' + orX + '" y="' + topPad + '" ' + hdr + '>' + (cont ? 'MD' : 'OR') + ' (' + clPct(res) + '% CI)</text>');
     // rose reference band + dashed all-trials line
     var bl = tx(ref.lo), br = tx(ref.hi), bm = tx(ref.est);
     S.push('<rect x="' + bl.toFixed(1) + '" y="' + (topPad + 4) + '" width="' + (br - bl).toFixed(1) + '" height="' + (axisY - topPad - 4) + '" fill="' + C.maroon + '" fill-opacity="0.10"/>');
