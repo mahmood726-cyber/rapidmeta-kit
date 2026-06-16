@@ -31970,13 +31970,15 @@ const AnalysisEngine = {
 
 
                 // PI df = k-1 per Cochrane Handbook v6.5 §10.10.4.3 (RevMan default).
-                const tCritPI = (k >= 2) ? tQuantile(1 - (1 - confLevel) / 2, k - 1) : NaN;
+                // PI undefined for k<3 (t_{k-1}=t_1=12.7 at k=2 is degenerate);
+                // suppress so it never feeds GRADE consistency / the forest whisker.
+                const tCritPI = (k >= 3) ? tQuantile(1 - (1 - confLevel) / 2, k - 1) : NaN;
 
 
-                const piLCI = (k >= 2) ? Math.exp(pLogOR - tCritPI * piSE) : NaN;
+                const piLCI = (k >= 3) ? Math.exp(pLogOR - tCritPI * piSE) : NaN;
 
 
-                const piUCI = (k >= 2) ? Math.exp(pLogOR + tCritPI * piSE) : NaN;
+                const piUCI = (k >= 3) ? Math.exp(pLogOR + tCritPI * piSE) : NaN;
 
 
                 const qPvalue = chi2Pvalue(Q, df);
