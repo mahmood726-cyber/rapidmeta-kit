@@ -107,11 +107,11 @@
     var logTerms = new Array(nodes.length);
     for (var q = 0; q < nodes.length; q++) {
       var u = nodes[q];
-      var logitT = mu + theta + tau * u;
+      // Change of variable u = √2 z maps ∫ f(z)φ(z)dz (φ = N(0,1) density)
+      // onto the Hermite form ∫ f(√2 u) e^{-u²}/√π du. The RE node must
+      // therefore be scaled by √2; the weight carries the 1/√π factor.
+      var logitT = mu + theta + tau * Math.SQRT2 * u;
       var ll = _logBin(eT, nT, logitT) + _logBin(eC, nC, mu);
-      // Hermite weights are for ∫ f(u) e^{-u²} du; convert to ∫ f(u) φ(u) du
-      // by multiplying by exp(u²)/√π (φ(u) = e^{-u²/2}/√(2π); the change
-      // of variable u = √2 z gives the standard transform).
       logTerms[q] = ll + Math.log(weights[q]) - 0.5 * Math.log(Math.PI);
     }
     return _logSumExp(logTerms);
@@ -158,66 +158,56 @@
     }
     theta = ls.reduce(function (a, b) { return a + b; }, 0) / ls.length;
 
-    // Damped Newton-Raphson on (θ, log τ).
-    var phi = [theta, Math.log(tau)];
-    var fOf = function (p) {
-      var th = p[0], t = Math.max(1e-6, Math.exp(p[1]));
-      return -_logL_total(rows, th, t);   // minimise the negative log-likelihood
-    };
-    var f0 = fOf(phi);
-    var damp = 1e-3;
-    for (var iter = 0; iter < 80; iter++) {
-      var h = 1e-4;
-      // gradient
-      var g = [
-        (fOf([phi[0] + h, phi[1]]) - fOf([phi[0] - h, phi[1]])) / (2 * h),
-        (fOf([phi[0], phi[1] + h]) - fOf([phi[0], phi[1] - h])) / (2 * h),
-      ];
-      // hessian (2×2)
-      var fpp = fOf([phi[0] + h, phi[1]]);
-      var fmm = fOf([phi[0] - h, phi[1]]);
-      var fpc = fOf([phi[0], phi[1] + h]);
-      var fmc = fOf([phi[0], phi[1] - h]);
-      var fpa = fOf([phi[0] + h, phi[1] + h]);
-      var fpb = fOf([phi[0] + h, phi[1] - h]);
-      var fma = fOf([phi[0] - h, phi[1] + h]);
-      var fmb = fOf([phi[0] - h, phi[1] - h]);
-      var H = [
-        [(fpp - 2 * f0 + fmm) / (h * h), (fpa - fpb - fma + fmb) / (4 * h * h)],
-        [(fpa - fpb - fma + fmb) / (4 * h * h), (fpc - 2 * f0 + fmc) / (h * h)],
-      ];
-      H[0][0] += damp; H[1][1] += damp;
-      var det = H[0][0] * H[1][1] - H[0][1] * H[1][0];
-      if (Math.abs(det) < 1e-12) break;
-      var step = [
-        -((H[1][1] * g[0] - H[0][1] * g[1]) / det),
-        -((-H[1][0] * g[0] + H[0][0] * g[1]) / det),
-      ];
-      // backtracking
-      var alpha = 1;
-      var phiNew = [phi[0] + alpha * step[0], phi[1] + alpha * step[1]];
-      var fNew = fOf(phiNew);
-      while (fNew > f0 - 1e-10 && alpha > 1e-6) {
-        alpha *= 0.5;
-        phiNew = [phi[0] + alpha * step[0], phi[1] + alpha * step[1]];
-        fNew = fOf(phiNew);
+    // ---- Robust ML by coarse grid + local refine. The CM.AL conditional-
+    // approximation log-likelihood is NON-CONCAVE in θ at large τ (the θ
+    // optimum can jump modes between adjacent τ), so the earlier damped
+    // Newton on (θ, log τ) — and a Newton-profiled golden section — converge
+    // to a wrong stationary point and mis-report τ². The marginal likelihood
+    // is cheap, so we scan a (θ, τ) grid for the global basin, then refine.
+    var TAU_EPS = 1e-6;
+    function _scan(thLo, thHi, thStep, tauLo, tauHi, tauStep) {
+      var best = { ll: -Infinity, th: theta, tau: TAU_EPS };
+      for (var tau = tauLo; tau <= tauHi + 1e-9; tau += tauStep) {
+        var t = tau < TAU_EPS ? TAU_EPS : tau;
+        for (var th = thLo; th <= thHi + 1e-9; th += thStep) {
+          var ll = _logL_total(rows, th, t);
+          if (ll > best.ll) best = { ll: ll, th: th, tau: t };
+        }
       }
-      if (Math.abs(f0 - fNew) < 1e-8) { phi = phiNew; f0 = fNew; break; }
-      phi = phiNew; f0 = fNew;
-      damp = Math.max(damp * 0.7, 1e-6);
+      return best;
     }
-
-    var thetaHat = phi[0];
-    var tauHat = Math.max(1e-6, Math.exp(phi[1]));
+    // Stage 1: coarse global scan (θ ∈ [-4,4] step 0.1, τ ∈ [0,3] step 0.05).
+    var c1 = _scan(-4, 4, 0.1, 0, 3, 0.05);
+    // Stage 2: fine local refine around the coarse optimum.
+    var c2 = _scan(c1.th - 0.12, c1.th + 0.12, 0.004,
+                   Math.max(0, c1.tau - 0.06), c1.tau + 0.06, 0.002);
+    var thetaHat = c2.th;
+    var tauHat = c2.tau < TAU_EPS ? 0 : c2.tau;
+    // τ = 0 boundary (RE variance bounded below by 0): take it on a tie/better.
+    var b0 = { ll: -Infinity, th: theta };
+    for (var thb = thetaHat - 1; thb <= thetaHat + 1 + 1e-9; thb += 0.004) {
+      var llb = _logL_total(rows, thb, TAU_EPS);
+      if (llb > b0.ll) b0 = { ll: llb, th: thb };
+    }
+    if (b0.ll >= c2.ll) { tauHat = 0; thetaHat = b0.th; }
     var tau2Hat = tauHat * tauHat;
 
-    // SE for θ from observed information (second derivative).
-    var hp = 1e-4;
-    var f_pp = -_logL_total(rows, thetaHat + hp, tauHat);
-    var f_mm = -_logL_total(rows, thetaHat - hp, tauHat);
-    var f_00 = -_logL_total(rows, thetaHat, tauHat);
-    var d2theta = (f_pp - 2 * f_00 + f_mm) / (hp * hp);
-    var seTheta = d2theta > 0 ? Math.sqrt(1 / d2theta) : NaN;
+    // SE(θ) from the inverse 2×2 observed information (Schur complement of the
+    // [θ,θ] block when τ̂²>0; θ-curvature only at the τ̂²=0 boundary).
+    var hT = 1e-4;
+    var _L = function (th, t) { return _logL_total(rows, th, Math.max(0, t)); };
+    var Ltt = (_L(thetaHat + hT, tauHat) - 2 * _L(thetaHat, tauHat) + _L(thetaHat - hT, tauHat)) / (hT * hT);
+    var seTheta;
+    if (tauHat > 1e-6) {
+      var hV = Math.max(1e-4, tauHat * 1e-2);
+      var Lvv = (_L(thetaHat, tauHat + hV) - 2 * _L(thetaHat, tauHat) + _L(thetaHat, tauHat - hV)) / (hV * hV);
+      var Ltv = (_L(thetaHat + hT, tauHat + hV) - _L(thetaHat + hT, tauHat - hV) - _L(thetaHat - hT, tauHat + hV) + _L(thetaHat - hT, tauHat - hV)) / (4 * hT * hV);
+      var Itt = -Ltt, Ivv = -Lvv, Itv = -Ltv;
+      var schur = (Ivv !== 0) ? (Itt - Itv * Itv / Ivv) : Itt;
+      seTheta = schur > 0 ? Math.sqrt(1 / schur) : (Itt > 0 ? Math.sqrt(1 / Itt) : NaN);
+    } else {
+      seTheta = Ltt < 0 ? Math.sqrt(1 / -Ltt) : NaN;
+    }
 
     var Z975 = 1.959963984540054;
     return {
@@ -249,7 +239,8 @@
     var logTerms = new Array(HG10_NODES.length);
     for (var q = 0; q < HG10_NODES.length; q++) {
       var u = HG10_NODES[q];
-      var logitT = mu + theta + tau * u;
+      // √2 change of variable (see _logL_study): node scaled by √2.
+      var logitT = mu + theta + tau * Math.SQRT2 * u;
       logTerms[q] = _logBin(eT, nT, logitT)
                   + Math.log(HG10_WEIGHTS[q]) - 0.5 * Math.log(Math.PI);
     }
