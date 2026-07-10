@@ -72,7 +72,7 @@
   };
   function tCrit975(df) {
     if (df < 1) return NaN;
-    if (df > 30) return 1.96;
+    if (df > 30) return 1.959963985 + 2.3721355/df + 2.82206/(df*df);
     return T_975[Math.round(df)] || 1.96;
   }
 

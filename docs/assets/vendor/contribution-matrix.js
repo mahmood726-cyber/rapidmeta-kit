@@ -134,8 +134,10 @@
         // Contribution: precision-share via inverse-variance.
         // Each leg's contribution to the total variance is var_leg / totalVar.
         // (Equivalent to weight allocation of 1/(var_a+var_b).)
-        const cA = ea.var_mu / totalVar;
-        const cB = eb.var_mu / totalVar;
+        // Papakonstantinou flow: each direct leg contributes 50% to a purely-
+        // indirect 2-edge comparison, regardless of edge precision (audit bug 6).
+        const cA = 0.5;
+        const cB = 0.5;
         indirectComparisons.push({
           a, b,
           ind_mu_log: ind_mu,
