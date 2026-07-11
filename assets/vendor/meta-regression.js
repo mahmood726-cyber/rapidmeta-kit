@@ -79,7 +79,7 @@
       rss += (1 / vi[i]) * Math.pow(yi[i] - fitted, 2);
     }
     const sumW2_after = vi.reduce((s, v) => s + Math.pow(1/v, 2), 0);
-    const c_after = Sw - sumW2_after / Sw;
+    const c_after = W0 - sumW2_after / W0;  // DL c-constant uses the FE total W0, not the RE total Sw (audit bug 7)
     const tau2_resid = Math.max(0, (rss - (k - 2)) / c_after);
     const pseudoR2 = tau2_total > 0 ? Math.max(0, 1 - tau2_resid / tau2_total) : 0;
 

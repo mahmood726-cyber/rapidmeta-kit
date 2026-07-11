@@ -1,3 +1,6 @@
+> **IMPLEMENTATION STATUS (2026-07-11):** 8 of 9 fixed & shipped in `correctness-fixes-2026-07-10` (bugs 2,4,6,9 then 3,5,7,8), across all 3 vendor copies, full suite green.
+> **Bug 1 (everything-model EM posterior variance) DEFERRED:** the fix breaks the model's documented exact-reduction-to-IV-pool invariant (`test_everything_model_gamma_ref_zero_and_reduces_to_re_pool`) — adding the posterior-variance term changes it from a method-of-moments IV-pool generalization to an ML-EM, a design decision rather than a clear bug fix. Left as-is; revisit only if the model is intentionally re-specified as ML-EM.
+
 All nine findings verified against the live code (line numbers, comments, and weight/quantile definitions all match). Here is the synthesized report.
 
 ---
