@@ -60,7 +60,7 @@
     const sigma2 = rss / Math.max(1, k - 2);
     const se_alpha = Math.sqrt(sigma2 * (1 / Sw + xbar * xbar / Sxx));
     const z_alpha = alpha / se_alpha;
-    const p_alpha = 2 * (1 - normalCDF(Math.abs(z_alpha)));
+    const p_alpha = 2 * (1 - _tcdf(Math.abs(z_alpha), Math.max(1, k - 2))); // t_{k-2}: WLS uses estimated dispersion (audit bug 4)
     return { alpha, beta, se_alpha, z_alpha, p_alpha };
   }
 
@@ -73,15 +73,19 @@
     return wlsReg(ti, xi, wi);
   }
 
-  // Peters: regress yi on 1/n with weights = ai*bi/n1i + ci*di/n2i (event-based)
+  // Peters: regress lnOR on 1/N, weights = 1/(1/(a+c)+1/(b+d)) (marginal-total event rate)
   function petersTest(points, trials) {
     if (points.length < 3) return null;
     const yi = points.map(p => p.yi);
     const xi = trials.map(t => 1 / (t.n1i + t.n2i));
     const wi = trials.map(t => {
-      const ai = t.ai + 0.5, bi = t.n1i - t.ai + 0.5;
-      const ci = t.ci + 0.5, di = t.n2i - t.ci + 0.5;
-      return 1 / (1/ai + 1/bi + 1/ci + 1/di);
+      // Peters (2006): inverse average-event-rate variance from MARGINAL totals
+      // (meta::metabias peters). The old 1/(1/a+1/b+1/c+1/d) was the log-OR IV
+      // weight, which re-introduces the lnOR-SE dependence Peters removes (audit
+      // bug 2). 0.5 continuity only if a marginal is 0.
+      const events = t.ai + t.ci, nonevents = (t.n1i - t.ai) + (t.n2i - t.ci);
+      const e = events > 0 ? events : 0.5, ne = nonevents > 0 ? nonevents : 0.5;
+      return 1 / (1/e + 1/ne);
     });
     return wlsReg(yi, xi, wi);
   }

@@ -15,6 +15,12 @@
  */
 (function (global) {
   'use strict';
+  // t_{df} two-sided tail via regularized incomplete beta (audit bugs 5): the WLS
+  // intercept uses an ESTIMATED dispersion so alpha/se is t_{k-2}, not z.
+  function _lg(x){var c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];var y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);var s=1.000000000190015;for(var j=0;j<6;j++){y++;s+=c[j]/y;}return -t+Math.log(2.5066282746310005*s/x);}
+  function _bcf(a,b,x){var FPMIN=1e-300,qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;if(Math.abs(d)<FPMIN)d=FPMIN;d=1/d;var h=d;for(var m=1;m<=200;m++){var m2=2*m,aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<FPMIN)d=FPMIN;c=1+aa/c;if(Math.abs(c)<FPMIN)c=FPMIN;d=1/d;h*=d*c;aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<FPMIN)d=FPMIN;c=1+aa/c;if(Math.abs(c)<FPMIN)c=FPMIN;d=1/d;var del=d*c;h*=del;if(Math.abs(del-1)<3e-12)break;}return h;}
+  function _betai(a,b,x){if(x<=0)return 0;if(x>=1)return 1;var bt=Math.exp(_lg(a+b)-_lg(a)-_lg(b)+a*Math.log(x)+b*Math.log(1-x));return x<(a+1)/(a+b+2)?bt*_bcf(a,b,x)/a:1-bt*_bcf(b,a,1-x)/b;}
+  function _tTail2(t,df){if(!(df>0))return NaN;return _betai(df/2,0.5,df/(df+t*t));}
   const STORAGE_KEY = 'dta-funnel-expanded';
 
   function parseCellsFromText(text) {
@@ -66,8 +72,9 @@
       return { lnDOR, varLnDOR, ess, x: 1 / Math.sqrt(ess), name: t.name };
     });
     // Weighted regression: lnDOR = α + β × (1/√ESS)
-    // Weights = 1/varLnDOR (Deeks 2005)
-    const w = points.map(p => 1 / p.varLnDOR);
+    // Weights = ESS (Deeks 2005): 1/Var(lnDOR) would re-introduce the effect-
+    // precision correlation the test is built to avoid (audit bug 3).
+    const w = points.map(p => p.ess);
     let Sw = 0, Swx = 0, Swy = 0, Swxx = 0, Swxy = 0;
     for (let i = 0; i < points.length; i++) {
       Sw += w[i];
@@ -93,15 +100,7 @@
     const t_stat = alpha / se_alpha;
     // Two-sided p via Acklam approximation (not exact for small df, but close)
     const df = points.length - 2;
-    const z = Math.abs(t_stat) * Math.sqrt(df / (df + t_stat * t_stat));
-    // Approximate normal-cdf-based p (good for df > 4)
-    function normalCDF(z) {
-      const t = 1 / (1 + 0.2316419 * Math.abs(z));
-      const d = 0.3989422804 * Math.exp(-z * z / 2);
-      let p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-      return z > 0 ? 1 - p : p;
-    }
-    const p_two = 2 * (1 - normalCDF(Math.abs(t_stat)));
+    const p_two = _tTail2(Math.abs(t_stat), df);  // t_{k-2}, not normal (audit bug 5)
     return { alpha, se_alpha, t_stat, p: p_two, beta, k: points.length, points, df };
   }
 

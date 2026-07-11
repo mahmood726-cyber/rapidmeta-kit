@@ -244,7 +244,11 @@
       // Direct: t1 vs t2 (current edge)
       // Indirect: e1.pooled - e2.pooled (Bucher)
       const direct = edge_pool.pooled;
-      const indirect = bucher(e1.pooled, e2.pooled);
+      // Reorient each reference leg to "<node> vs ref" before Bucher; an edge
+      // declared ref-first carries the inverted sign (audit bug 8).
+      const leg1 = e1.edge.t1 === ref ? { mu_log: -e1.pooled.mu_log, se: e1.pooled.se } : e1.pooled;
+      const leg2 = e2.edge.t1 === ref ? { mu_log: -e2.pooled.mu_log, se: e2.pooled.se } : e2.pooled;
+      const indirect = bucher(leg1, leg2);
       const diff = direct.mu_log - indirect.mu_log;
       const seD = Math.sqrt(direct.se * direct.se + indirect.se * indirect.se);
       const z = seD > 0 ? Math.abs(diff / seD) : 0;
