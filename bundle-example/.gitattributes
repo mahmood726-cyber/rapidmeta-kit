@@ -1,0 +1,5 @@
+# Bundles are content-addressed: protocol.md's sha256 is recorded in bundle.json.
+# Force LF on every bundle file so the hash still matches after a clone/fork on
+# any OS (git autocrlf must NOT rewrite line endings here).
+* text eol=lf
+*.html text eol=lf
