@@ -1,0 +1,112 @@
+{
+  "schema": "rapidmeta-bundle/v1",
+  "harness_version": "1.0.0",
+  "generated_from": {
+    "kit": "rapidmeta-kit",
+    "config": "example_finerenone_ckd.json"
+  },
+  "git_commit": "368137dc437543c721b98be39c14282c338f7797",
+  "app": {
+    "file": "index.html",
+    "slug": "finerenone_ckd",
+    "title": "Finerenone for cardiorenal outcomes in CKD \u2014 Living Meta-Analysis"
+  },
+  "protocol": {
+    "file": "protocol.md",
+    "sha256": "98915f98d824b03a2c814af85904540ba376abeb39b2adbaedd199d041c2e448"
+  },
+  "measure": "RR",
+  "method": "REML",
+  "trials": [
+    {
+      "nct": "NCT02540993",
+      "name": "FIDELIO-DKD",
+      "year": 2020,
+      "pmid": "33264825",
+      "tE": 367,
+      "tN": 2833,
+      "cE": 420,
+      "cN": 2841,
+      "publishedHR": 0.86,
+      "hrLCI": 0.75,
+      "hrUCI": 0.99,
+      "provenance": {
+        "source": "Bakris GL et al. Finerenone in CKD and T2D (FIDELIO-DKD). N Engl J Med 2020;383:2219-2229",
+        "doi": "10.1056/NEJMoa2025845",
+        "note": "Secondary CV composite HR 0.86 (0.75-0.99); N 2833 finerenone / 2841 placebo"
+      }
+    },
+    {
+      "nct": "NCT02545049",
+      "name": "FIGARO-DKD",
+      "year": 2021,
+      "pmid": "34449181",
+      "tE": 458,
+      "tN": 3686,
+      "cE": 519,
+      "cN": 3666,
+      "publishedHR": 0.87,
+      "hrLCI": 0.76,
+      "hrUCI": 0.98,
+      "provenance": {
+        "source": "Pitt B et al. Cardiovascular events with finerenone (FIGARO-DKD). N Engl J Med 2021;385:2252-2263",
+        "doi": "10.1056/NEJMoa2110956",
+        "note": "Primary CV composite HR 0.87 (0.76-0.98); N 3686 / 3666"
+      }
+    },
+    {
+      "nct": "NCT04435626",
+      "name": "FINEARTS-HF",
+      "year": 2024,
+      "pmid": "39225278",
+      "tE": 624,
+      "tN": 3003,
+      "cE": 719,
+      "cN": 2998,
+      "publishedHR": 0.84,
+      "hrLCI": 0.74,
+      "hrUCI": 0.95,
+      "provenance": {
+        "source": "Solomon SD et al. Finerenone in HFmrEF/HFpEF (FINEARTS-HF). N Engl J Med 2024;391:1475-1485",
+        "doi": "10.1056/NEJMoa2407107",
+        "note": "Primary composite HR 0.84 (0.74-0.95); N 3003 / 2998"
+      }
+    }
+  ],
+  "reference": {
+    "measure": "RR",
+    "method": "REML",
+    "k": 3,
+    "estimate_log": -0.1367777043305505,
+    "se": 0.032661268055736985,
+    "ci_log": [
+      -0.200792613914145,
+      -0.07276279474695602
+    ],
+    "tau2": 0,
+    "Q": 0.03488644613818792,
+    "df": 2,
+    "I2_percent": 0,
+    "estimate_ratio": 0.8721640828832273,
+    "ci_ratio": [
+      0.8180820728016207,
+      0.9298213623805913
+    ],
+    "engine": "RapidMeta JS main engine (REML random-effects), verbatim from base_dupilumab_copd.html:6181-6285",
+    "note": "computed by the app's own browser engine (harness/js_engine.js, extracted verbatim); the Python harness reproduces this independently"
+  },
+  "plausibility_table": "plausibility_table.json",
+  "data_provenance_note": "Per-trial 2x2 event counts are the CV-composite event counts consistent with each trial's reported randomised N; the publishedHR/CI are each trial's reported primary/secondary CV composite hazard ratio. The harness proves the POOLING reproduces the app; it does not certify the count extraction \u2014 verify each 2x2 against the cited source before citing any pooled value.",
+  "published_comparison": [
+    {
+      "label": "FIDELITY pooled (FIDELIO-DKD + FIGARO-DKD) CV composite \u2014 NOTE: 2-trial subset, HR scale",
+      "measure": "HR",
+      "estimate": 0.86,
+      "ci": [
+        0.78,
+        0.95
+      ],
+      "source": "Agarwal R et al. Eur Heart J 2022;43:474-484 (FIDELITY prespecified pooled analysis), doi 10.1093/eurheartj/ehab777"
+    }
+  ]
+}

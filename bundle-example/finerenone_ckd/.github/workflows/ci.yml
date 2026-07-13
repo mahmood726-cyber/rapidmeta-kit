@@ -1,0 +1,14 @@
+name: reproduce
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.x" }
+      # Tier 2 is pure standard library — nothing to install.
+      - name: Reproduce the app's pooled number
+        run: python -m rmharness reproduce bundle.json
+      - name: Run the deterministic gates
+        run: python -m rmharness gates bundle.json

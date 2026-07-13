@@ -1,0 +1,18 @@
+{
+  "_comment": "Provenance + published-MA comparison sidecar for the finerenone bundle. Consumed by harness/make_bundle.py --meta.",
+  "data_provenance_note": "Per-trial 2x2 event counts are the CV-composite event counts consistent with each trial's reported randomised N; the publishedHR/CI are each trial's reported primary/secondary CV composite hazard ratio. The harness proves the POOLING reproduces the app; it does not certify the count extraction — verify each 2x2 against the cited source before citing any pooled value.",
+  "provenance": [
+    { "nct": "NCT02540993", "source": "Bakris GL et al. Finerenone in CKD and T2D (FIDELIO-DKD). N Engl J Med 2020;383:2219-2229", "doi": "10.1056/NEJMoa2025845", "note": "Secondary CV composite HR 0.86 (0.75-0.99); N 2833 finerenone / 2841 placebo" },
+    { "nct": "NCT02545049", "source": "Pitt B et al. Cardiovascular events with finerenone (FIGARO-DKD). N Engl J Med 2021;385:2252-2263", "doi": "10.1056/NEJMoa2110956", "note": "Primary CV composite HR 0.87 (0.76-0.98); N 3686 / 3666" },
+    { "nct": "NCT04435626", "source": "Solomon SD et al. Finerenone in HFmrEF/HFpEF (FINEARTS-HF). N Engl J Med 2024;391:1475-1485", "doi": "10.1056/NEJMoa2407107", "note": "Primary composite HR 0.84 (0.74-0.95); N 3003 / 2998" }
+  ],
+  "published_comparison": [
+    {
+      "label": "FIDELITY pooled (FIDELIO-DKD + FIGARO-DKD) CV composite — NOTE: 2-trial subset, HR scale",
+      "measure": "HR",
+      "estimate": 0.86,
+      "ci": [0.78, 0.95],
+      "source": "Agarwal R et al. Eur Heart J 2022;43:474-484 (FIDELITY prespecified pooled analysis), doi 10.1093/eurheartj/ehab777"
+    }
+  ]
+}

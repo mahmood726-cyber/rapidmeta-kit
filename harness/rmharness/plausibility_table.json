@@ -1,0 +1,9 @@
+{
+  "_comment": "Offline plausibility table shipped with every bundle. Per-measure sane bounds for a POOLED clinical effect and its CI. These are deliberately wide: they exist to catch impossible/divergent numbers (e.g. a runaway tau2 giving a CI spanning many orders of magnitude), not to second-guess a legitimate large effect. Ratio measures (RR/OR/HR/IRR) are bounded away from 0 and infinity; a real pooled treatment effect essentially never falls outside [0.05, 20]. max_ci_width_ratio is the upper/lower CI ratio; a genuine meta-analytic CI rarely spans more than ~50x.",
+  "_source": "advanced-stats rules + empirical bounds over the RapidMeta corpus; conservative by design",
+  "RR": { "ratio_min": 0.05, "ratio_max": 20.0, "max_ci_width_ratio": 50.0, "max_se": 5.0 },
+  "OR": { "ratio_min": 0.02, "ratio_max": 50.0, "max_ci_width_ratio": 80.0, "max_se": 6.0 },
+  "HR": { "ratio_min": 0.05, "ratio_max": 20.0, "max_ci_width_ratio": 50.0, "max_se": 5.0 },
+  "IRR": { "ratio_min": 0.05, "ratio_max": 20.0, "max_ci_width_ratio": 50.0, "max_se": 5.0 },
+  "_default": { "ratio_min": 0.01, "ratio_max": 100.0, "max_ci_width_ratio": 100.0, "max_se": 10.0 }
+}
