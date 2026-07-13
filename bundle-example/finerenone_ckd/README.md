@@ -45,4 +45,4 @@ for whether the extracted trial counts are correct or whether the trials are
 clinically combinable — verify inputs against the source publications. See
 `bundle.json → data_provenance_note`.
 
-_Harness v1.0.0 · git 368137dc43_
+_Harness v1.0.0 · git 7ef7be4381_

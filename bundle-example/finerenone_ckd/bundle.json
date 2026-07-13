@@ -5,7 +5,7 @@
     "kit": "rapidmeta-kit",
     "config": "example_finerenone_ckd.json"
   },
-  "git_commit": "368137dc437543c721b98be39c14282c338f7797",
+  "git_commit": "7ef7be4381831f67efb112129cb271f7d8a762f0",
   "app": {
     "file": "index.html",
     "slug": "finerenone_ckd",
