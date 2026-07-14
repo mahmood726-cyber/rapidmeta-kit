@@ -45,6 +45,14 @@
     },
     harms: { present: false, items: [] },                 // harm-type outcomes among included studies
     outcomeConsistency: { labels: [], mismatch: false, harmMix: false }, // do the pooled primaries match in kind?
+    // Analysis TYPE derived from the data (never typed in). "nma" | "pairwise" | null(=undecidable→fail closed).
+    // The renderer and this generator read the SAME derived signal (window.NMA_CONFIG / PanelHelper.isNMA).
+    analysisType: undefined,
+    network: {           // network geometry when analysisType === "nma"; empty otherwise
+      nodes: [], edges: [], nNodes: "", nEdges: "", singleTrialEdges: [], hasLoops: null,
+      directPairs: [], indirectOnlyPairs: [], allPairsCount: "", league: [], leagueText: "",
+      consistencyVerdict: "", consistencyTestable: null, outcomeLabel: ""
+    },
     style: { methodsLength: "concise", resultsLength: "concise", journal: "generic", reportLength: "full" },
     studentText: {}
   };
@@ -517,6 +525,8 @@
   // app actually ran it (flags from captureAppFacts); no analysis is ever asserted that was
   // not performed, and no number is invented. Length adds detail, never fabrication.
   function methodsProse() {
+    // GATE: the pairwise Methods generator REFUSES to describe a network meta-analysis.
+    if (PS.deriveAnalysisType() === "nma") return [{ text: NMA_GATE_REFUSAL }];
     var c = ctx(), a = PS.state.analysis, len = PS.state.style.methodsLength, j = PS.state.style.journal, W = we(j);
     var moreThanConcise = (len !== "concise");
     var detailed = (len === "detailed");
@@ -618,6 +628,8 @@
   }
 
   function resultsPrimaryProse() {
+    // GATE: the pairwise Results generator REFUSES to present an NMA as a single pooled estimate.
+    if (PS.deriveAnalysisType() === "nma") return NMA_GATE_REFUSAL;
     var c = ctx(), len = PS.state.style.resultsLength, a = PS.state.analysis;
     var hasI2 = c.i2 && c.i2 !== "—";
     var i2num = Number(c.i2);
@@ -854,8 +866,175 @@
     }
   };
 
+  /* ================= NMA vs pairwise: derived analysis type + network facts =================
+     A network meta-analysis presented as a pairwise meta-analysis is a lie of presentation — the
+     reader assumes DIRECT evidence when the estimate is partly INDIRECT. The analysis type is
+     DERIVED FROM THE DATA (never typed in / templated), read from the SAME signal the renderer and
+     the NMA panels use (window.NMA_CONFIG / PanelHelper.isNMA), and FAILS CLOSED when a network is
+     declared but its structure is not resolvable. */
+  PS.deriveAnalysisType = function () {
+    try {
+      var W = (typeof window !== "undefined") ? window : {};
+      var cfg = W.NMA_CONFIG;
+      var isNMAflag = (W.PanelHelper && typeof W.PanelHelper.isNMA === "function") ? W.PanelHelper.isNMA() : null;
+      if (cfg || isNMAflag) {
+        // A network app is declared: it MUST resolve to "nma", or fail closed — NEVER silently pairwise.
+        var t = cfg && cfg.treatments, comps = (cfg && cfg.comparisons) || [];
+        if (t && t.length >= 2 && (t.length >= 3 || comps.length >= 2 || isNMAflag === true)) return "nma";
+        if (isNMAflag === true) return "nma";
+        return null; // network declared but geometry unclear -> FAIL CLOSED (do not guess pairwise)
+      }
+      return "pairwise"; // no network config anywhere -> a pairwise meta-analysis
+    } catch (e) { return null; }
+  };
+
+  // Read the network geometry + league + direct/indirect classification + inconsistency verdict
+  // from the SAME engine the on-screen NMA tab uses. Everything READ, never invented; a missing
+  // fact stays blank and the prose omits it.
+  PS.captureNMAFacts = function () {
+    var W = (typeof window !== "undefined") ? window : {};
+    var cfg = W.NMA_CONFIG || {};
+    var net = PS.state.network;
+    net.nodes = (cfg.treatments || []).slice();
+    net.outcomeLabel = cfg.outcome_label || cfg.outcome || "";
+    var comps = cfg.comparisons || [];
+    net.edges = comps.map(function (e) {
+      var trials = e.trials || e.studies || [];
+      return { pair: (e.t1 || e.a) + " vs " + (e.t2 || e.b), t1: e.t1 || e.a, t2: e.t2 || e.b, k: trials.length, trials: trials.slice() };
+    });
+    net.nNodes = net.nodes.length;
+    net.nEdges = net.edges.length;
+    net.singleTrialEdges = net.edges.filter(function (e) { return e.k === 1; }).map(function (e) { return e.pair; });
+    // A connected network with edges === nodes-1 is a tree (no closed loops); more edges => loops.
+    net.hasLoops = (net.nNodes > 0) ? (net.nEdges > net.nNodes - 1) : null;
+
+    // Direct vs indirect-only, from the engine's all-pairwise output (.direct present => direct exists).
+    net.directPairs = []; net.indirectOnlyPairs = []; net.league = [];
+    try {
+      var E = W.NMAEngine;
+      if (E && typeof E._getAllPairwise === "function") {
+        var pw = E._getAllPairwise();
+        var arr = Array.isArray(pw) ? pw : (pw && (pw.rows || pw.comparisons || Object.values(pw))) || [];
+        net.allPairsCount = arr.length;
+        arr.forEach(function (pp) {
+          var label = (pp.t1 || pp.a || pp.from) + " vs " + (pp.t2 || pp.b || pp.to);
+          if (pp.direct) net.directPairs.push(label); else net.indirectOnlyPairs.push(label);
+        });
+      }
+    } catch (e) { /* engine not ready — geometry from NMA_CONFIG still holds */ }
+    if (!net.allPairsCount && net.nNodes) net.allPairsCount = net.nNodes * (net.nNodes - 1) / 2;
+
+    // League table text (as rendered) + inconsistency verdict — read the engine's OWN output; never fabricate.
+    try {
+      var lc = (typeof document !== "undefined") && document.getElementById("nma-league-container");
+      net.leagueText = lc ? (lc.innerText || "").replace(/\s+/g, " ").trim() : "";
+    } catch (e) { net.leagueText = ""; }
+    try {
+      var cs = (typeof document !== "undefined") && (document.getElementById("nma-consistency-container") || document.getElementById("nmaConsResult") || document.getElementById("nma-consistency-summary"));
+      var ct = cs ? (cs.innerText || "").replace(/\s+/g, " ").trim() : "";
+      net.consistencyVerdict = ct;
+    } catch (e) { net.consistencyVerdict = ""; }
+    // Testable only if a closed loop exists (a comparison with BOTH direct and indirect evidence).
+    net.consistencyTestable = (net.hasLoops === true) ? true : (net.hasLoops === false ? false : null);
+  };
+
+  // The gate refusal marker (also asserted by the planted RED->GREEN test).
+  var NMA_GATE_REFUSAL = "[ANALYSIS-TYPE GATE] This is a NETWORK meta-analysis (indirect evidence present); the pairwise Methods/Results generator refuses to describe it as a pairwise pooled estimate. Rendering the network sections instead.";
+  var PAIRWISE_GATE_REFUSAL = "[ANALYSIS-TYPE GATE] This is a pairwise meta-analysis; the network generator refuses to describe it as an NMA.";
+
+  // Prettify a treatment node id (T_DXd -> DXd; TPC_Hplus_chemo -> TPC Hplus chemo).
+  function nodeLabel(id) { return String(id || "").replace(/^T_/, "").replace(/_/g, " "); }
+  function prettyPair(pair) { return String(pair || "").split(" vs ").map(nodeLabel).join(" vs "); }
+
+  // NMA Methods prose — NETWORK meta-analysis named, transitivity stated + author-defended (never
+  // templated), PRISMA-NMA. Only methods actually run are described.
+  function nmaMethodsProse() {
+    if (PS.deriveAnalysisType() !== "nma") return [{ text: PAIRWISE_GATE_REFUSAL }];
+    var net = PS.state.network, len = PS.state.style.methodsLength, j = PS.state.style.journal;
+    var detailed = (len === "detailed"), moreThanConcise = (len !== "concise");
+    var incomplete = (PS.state.flow && PS.state.flow.unscreenedCount !== "" && Number(PS.state.flow.unscreenedCount) > 0);
+    var geom = net.nNodes ? (net.nNodes + " treatment nodes connected by " + net.nEdges + " direct comparison" + (net.nEdges === 1 ? "" : "s")) : "the treatment network";
+    var paras = [];
+    paras.push({ text: "This was a <strong>network meta-analysis (NMA)</strong>, not a pairwise meta-analysis: the included trials form a connected network (" + geom + ") and treatments that were never compared head-to-head are estimated by combining <strong>direct and indirect</strong> evidence. It is reported following the <strong>PRISMA extension for network meta-analyses (PRISMA-NMA; Hutton 2015)</strong>" + (incomplete ? ", and — because screening is not yet complete (see Results) — as an INTERIM network analysis that does not yet meet PRISMA-NMA in full." : ".") });
+    paras.push({ text: "Relative treatment effects were estimated within a " + esc(PS.state.analysis.model || "random-effects").toLowerCase() + " network meta-analysis model that preserves randomisation within trials and combines evidence across the network; adjacent (single-loop) indirect contrasts use the Bucher method, and all pairwise contrasts are assembled into a league table on the log-effect scale. The effect measure is the " + esc(PS.state.analysis.effectMeasure || net.outcomeLabel || "relative effect") + "." });
+    // Transitivity — STATED and flagged as REQUIRING author defence; never auto-asserted/templated.
+    paras.push({ text: "The validity of every indirect and mixed estimate rests on the <strong>transitivity assumption</strong> — that the trials forming each part of the network are similar enough in their populations, co-interventions and outcome definitions that they could, in principle, have been part of one multi-arm trial. This assumption is <strong>not automatic and is not asserted by the tool</strong>; it must be argued from the actual trial characteristics. <em class=\"confirm-note no-clean-pdf\">(State and DEFEND transitivity here from your included trials — do not accept a templated sentence. If effect modifiers differ across the network, say so and treat the indirect estimates with caution.)</em>" });
+    if (moreThanConcise) {
+      paras.push({ text: "Inconsistency (whether direct and indirect evidence agree) was " + (net.consistencyTestable === true ? "assessed by node-splitting / a design-by-treatment interaction test." : "considered, but " + (net.consistencyTestable === false ? "<strong>could not be tested: the network is a tree with no closed loops</strong>, so no comparison carries both direct and indirect evidence to compare. Where a comparison rests wholly on indirect evidence, it cannot be checked against a head-to-head trial — this is stated, not hidden." : "its testability depends on the network having a closed loop (stated in Results).")) });
+    }
+    if (detailed) paras.push({ text: "Network geometry, the full league table of all pairwise contrasts, treatment rankings, and the direct/indirect contribution of each comparison are reported in the Results and are re-computable from the stored trial data; every contrast carries a locator back to the trials that inform it." });
+    if (j === "jama") { return paras.map(function (pp, i) { return { label: ["Design", "Network Model", "Transitivity", "Inconsistency", "Reporting"][i] || null, text: pp.text }; }); }
+    return paras;
+  }
+
+  // NMA Results block — geometry, league table, direct/indirect/mixed (indirect-only MUST say so),
+  // inconsistency. Returns HTML.
+  function nmaResultsBlock() {
+    if (PS.deriveAnalysisType() !== "nma") return '<p>' + esc(PAIRWISE_GATE_REFUSAL) + '</p>';
+    var net = PS.state.network;
+    var h = "";
+    h += '<h3>Network geometry</h3>';
+    h += helper("An NMA has a SHAPE. State the nodes (treatments), the edges (direct comparisons), and how many trials sit on each edge — an edge resting on one trial is a single-trial edge and its direct evidence is fragile.");
+    h += '<p>The evidence network for ' + esc(net.outcomeLabel || "the primary outcome") + ' comprised <strong>' + esc(net.nNodes || "?") + ' treatments</strong> (nodes) connected by <strong>' + esc(net.nEdges || "?") + ' direct comparisons</strong> (edges). ' +
+      (net.hasLoops === false ? 'The network is a <strong>tree (no closed loops)</strong>, so several treatment pairs are connected only through a common comparator.' :
+        (net.hasLoops === true ? 'The network contains at least one closed loop, so some comparisons carry both direct and indirect evidence.' : '')) + '</p>';
+    if (net.edges && net.edges.length) {
+      h += '<ul class="network-edge-list">' + net.edges.map(function (e) {
+        return '<li>' + esc(prettyPair(e.pair)) + ' — <strong>k = ' + e.k + '</strong> trial' + (e.k === 1 ? '' : 's') +
+          (e.k === 1 ? ' <strong>[single-trial edge — direct evidence rests on ONE trial]</strong>' : '') +
+          (e.trials && e.trials.length ? ' (' + esc(e.trials.join(", ")) + ')' : '') + '</li>';
+      }).join("") + '</ul>';
+      if (net.singleTrialEdges && net.singleTrialEdges.length === net.edges.length && net.edges.length > 0)
+        h += '<p class="dropped-warning">⚠️ <strong>Every edge in this network rests on a single trial.</strong> The network borrows strength across edges, but no direct comparison is itself replicated; the whole structure is therefore only as sound as its transitivity assumption.</p>';
+    }
+
+    h += '<h3>League table (all pairwise contrasts)</h3>';
+    h += helper("The NMA answer is NOT a single diamond — it is a league table of every treatment against every other, mixing direct and indirect evidence. Report it as such.");
+    if (net.leagueText) {
+      h += '<div class="nma-league-text"><pre>' + esc(net.leagueText) + '</pre></div>';
+      h += helper("Table above is read from the live network model. Cells marked with an asterisk (*) are estimated from INDIRECT evidence only.");
+    } else {
+      h += '<p>The league table of all ' + esc(net.allPairsCount || "pairwise") + ' contrasts is produced by the network model (see the on-screen NMA tab); paste or export it here.</p>';
+    }
+
+    h += '<h3>Direct, indirect and mixed evidence</h3>';
+    h += helper("The single most misleading thing an NMA can hide is a comparison with ZERO direct trials presented like a head-to-head result. Every indirect-only comparison must be named.");
+    var nDirect = (net.directPairs || []).length, nIndirect = (net.indirectOnlyPairs || []).length;
+    h += '<p>Of ' + esc(net.allPairsCount || (nDirect + nIndirect)) + ' pairwise contrasts in the network, <strong>' + nDirect + ' are supported by direct (head-to-head) evidence</strong> and <strong>' + nIndirect + ' rest on indirect evidence only</strong>.</p>';
+    if (nIndirect) h += '<p class="dropped-warning">⚠️ <strong>The following comparisons have NO direct trial</strong> and are estimated entirely indirectly through the network — they must not be read as head-to-head results: ' +
+      esc((net.indirectOnlyPairs || []).map(prettyPair).join("; ")) + '.</p>';
+
+    h += '<h3>Inconsistency (direct vs indirect agreement)</h3>';
+    h += helper("An NMA that hides its inconsistency is worse than a pairwise MA that admits its k=1. State whether direct and indirect evidence agree — or whether that could even be tested.");
+    if (net.consistencyTestable === false) {
+      h += '<p><strong>Inconsistency could not be assessed: the network is a tree with no closed loops</strong>, so no comparison carries both direct and indirect evidence to compare' +
+        (net.consistencyVerdict ? ' (network model: “' + esc(net.consistencyVerdict) + '”)' : '') +
+        '. This is a real limitation, not a clean bill of health: the indirect estimates above cannot be checked against a head-to-head trial and depend entirely on transitivity holding.</p>';
+    } else if (net.consistencyVerdict) {
+      h += '<p>' + esc(net.consistencyVerdict) + '</p>';
+    } else {
+      h += '<p>Inconsistency was ' + (net.consistencyTestable === true ? 'testable (the network has a closed loop); report the node-splitting / design-by-treatment result from the NMA tab here.' : 'not evaluated in this render; state the node-splitting / design-by-treatment result if the network has a closed loop.') + '</p>';
+    }
+    h += box("studentText.nmaInconsistencyInterpretation", "Interpret the network's consistency & rankings", "Direct and indirect evidence agreed / could not be compared because... The ranking should be read cautiously because...", "~2-3 sentences",
+      "Say whether direct and indirect evidence agree (or why that cannot be tested), how much weight to put on the indirect-only comparisons, and why treatment rankings from few trials are hypothesis-generating.");
+    return h;
+  }
+
+  // Public accessors to the section builders — used by the renderer and by the analysis-type
+  // gate test (the pairwise builders REFUSE an NMA; the NMA builders REFUSE a pairwise analysis).
+  PS.methodsProse = methodsProse;
+  PS.resultsPrimaryProse = resultsPrimaryProse;
+  PS.nmaMethodsProse = nmaMethodsProse;
+  PS.nmaResultsBlock = nmaResultsBlock;
+  PS.GATE_MARKER = "[ANALYSIS-TYPE GATE]";
+
   PS.render = function () {
     var a = PS.state.analysis, p = PS.state.pico;
+    // DERIVE the analysis type from the data (shared signal) and capture network facts if NMA.
+    var analysisType = PS.deriveAnalysisType();
+    PS.state.analysisType = analysisType;
+    var isNMA = (analysisType === "nma");
+    if (isNMA) { try { PS.captureNMAFacts(); } catch (e) { console.warn("PaperStudio: NMA capture failed", e); } }
     // Report-length preset gates whole SECTIONS. Short = lean paper; Full = + publication
     // bias, subgroup, and the sensitivity/diagnostics battery. RoB + GRADE are never gated
     // here (they live above the gated block). fewStudies marks k<10 analyses where the
@@ -870,6 +1049,13 @@
     html += orientationBanner();
     html += onboardingCard();
     html += glossaryCard();
+
+    // Analysis-type banner (renders on the page — verify by eye) / fail-closed notice.
+    if (isNMA) {
+      html += '<div class="analysis-type-banner nma-banner" role="note"><strong>Network meta-analysis (NMA).</strong> This paper describes a NETWORK meta-analysis combining direct and indirect evidence — it is not a pairwise meta-analysis, and its estimate is not a single pooled diamond. See Network geometry, the league table, and the direct/indirect breakdown in the Results.</div>';
+    } else if (analysisType === null) {
+      html += '<div class="analysis-type-banner failclosed-banner" role="alert"><strong>Analysis type could not be derived.</strong> A network configuration is present but its geometry is not resolvable, so this generator will NOT state whether the analysis is pairwise or network — describing it as either could mislead. Fix the network definition (treatments + comparisons) or the analysis before generating the paper. The auto-filled Methods/Results claims below are withheld.</div>';
+    }
 
     /* title block + cover */
     html += '<section class="paper-title-block">';
@@ -886,10 +1072,16 @@
       "In one plain sentence, say what the study found and how sure we are. Match the verb to your GRADE certainty: High = “reduces”, Moderate = “probably reduces”, Low = “may reduce”, Very low = “the evidence is very uncertain about whether it reduces”. Avoid the word “proves”.",
       "After combining the studies, the overall result suggests the intervention may improve this outcome, though how sure we can be depends on the certainty of the evidence.") + '</p>';
     html += helper("The “pooled estimate” (or “combined result”) is the single result you get after combining all the studies together. " + learnChip("pooling"));
-    html += '<p><strong>Evidence base.</strong> ' + auto("analysis.kStudies") + ' studies · ' + auto("analysis.totalParticipants") + ' participants · ' + esc(a.model) + ' meta-analysis</p>';
-    html += '<p><strong>Primary result.</strong> ' + esc(emEst) + ', ' + ciTxt + ' ' + learnChip("confidence_interval") + '</p>';
-    var coverI2 = auto("analysis.i2");
-    if (coverI2 && coverI2 !== "—") html += '<p><strong>Heterogeneity.</strong> I² = ' + coverI2 + '%' + (a.tau2 ? ' · τ² = ' + esc(a.tau2) : '') + ' ' + learnChip("heterogeneity") + '</p>';
+    var maKind = isNMA ? "network meta-analysis" : "meta-analysis";
+    html += '<p><strong>Evidence base.</strong> ' + auto("analysis.kStudies") + ' studies · ' + auto("analysis.totalParticipants") + ' participants · ' + esc(a.model) + ' ' + maKind +
+      (isNMA ? ' <span class="nma-tag">NMA — combines direct + indirect evidence</span>' : '') + '</p>';
+    if (isNMA) {
+      html += '<p><strong>Primary result.</strong> A network league table of all pairwise contrasts combining direct and indirect evidence (not a single pooled estimate) — see Results.</p>';
+    } else {
+      html += '<p><strong>Primary result.</strong> ' + esc(emEst) + ', ' + ciTxt + ' ' + learnChip("confidence_interval") + '</p>';
+      var coverI2 = auto("analysis.i2");
+      if (coverI2 && coverI2 !== "—") html += '<p><strong>Heterogeneity.</strong> I² = ' + coverI2 + '%' + (a.tau2 ? ' · τ² = ' + esc(a.tau2) : '') + ' ' + learnChip("heterogeneity") + '</p>';
+    }
     html += '<p><strong>Certainty.</strong> ' + auto("analysis.certainty", "(complete from GRADE)") + ' ' + learnChip("grade") + '</p>';
     html += '</div>';
     html += '<div class="evidence-summary-card"><div class="student-task-label no-clean-pdf">Evidence chips (auto)</div>' + PS.renderChips() + '</div>';
@@ -909,9 +1101,12 @@
       "This short review aimed to assess whether the intervention improves the main outcome compared with the comparator in this population.") + '</div>';
     html += example("We assessed whether finerenone reduces cardiovascular events compared with placebo in adults with CKD and type 2 diabetes.",
       "We looked at whether the drug works.");
-    html += '<p><strong>Methods.</strong> A systematic review and ' + esc(a.model).toLowerCase() +
-      ' meta-analysis combined ' + auto("analysis.kStudies") + ' studies (' + auto("analysis.totalParticipants") + ' participants) for ' + auto("pico.primaryOutcome", "the primary outcome") + '.</p>';
-    html += '<p><strong>Results.</strong> ' + abstractResultsProse() + '</p>';
+    html += '<p><strong>Methods.</strong> A systematic review and ' + esc(a.model).toLowerCase() + ' ' +
+      (isNMA ? 'network meta-analysis' : 'meta-analysis') + (isNMA ? ' connected ' : ' combined ') + auto("analysis.kStudies") + ' studies (' + auto("analysis.totalParticipants") + ' participants) ' +
+      (isNMA ? 'across the treatment network' : 'for ' + auto("pico.primaryOutcome", "the primary outcome")) + '.</p>';
+    html += '<p><strong>Results.</strong> ' + (isNMA
+      ? 'The evidence formed a connected network of ' + esc(PS.state.network.nNodes || auto("analysis.kStudies")) + ' treatments; relative effects for every treatment pair were estimated from direct and indirect evidence and are reported as a league table, with each indirect-only comparison flagged (see Results). A single pooled estimate is not reported because this is a network, not a pairwise, meta-analysis.'
+      : abstractResultsProse()) + '</p>';
     html += '<div class="abs-structured"><strong>Conclusion.</strong> ' + box("studentText.abstractConclusion", "Conclusion", "In patients with... the findings suggest... however this should be interpreted cautiously because...", "~2-3 sentences",
       "Answer your question in 1–2 sentences, then add a caution. Match the verb to your GRADE certainty and avoid “proves”.",
       "Taken together, the findings suggest the intervention may offer a modest benefit for this outcome. This should be read with caution because the certainty of the evidence is limited and only a small number of studies contributed.") + '</div>';
@@ -948,7 +1143,12 @@
       "We included randomised controlled trials comparing the intervention with the comparator in this population and reporting the main outcome. We excluded studies that were not randomised or did not report the outcome of interest.") + '</p>';
     html += example("We included randomised controlled trials of finerenone versus placebo in adults with CKD and type 2 diabetes that reported cardiovascular events; we excluded non-randomised studies and trials without that outcome.",
       "We included all the relevant studies about the drug.");
-    methodsProse().forEach(function (par) { html += '<p>' + (par.label ? '<strong>' + esc(par.label) + '.</strong> ' : '') + par.text + '</p>'; });
+    // DISPATCH on the derived analysis type. NMA -> network Methods; null -> fail closed (withhold).
+    if (analysisType === null) {
+      html += '<p class="dropped-warning">⚠️ The auto-generated Methods are withheld because the analysis type (pairwise vs network) could not be derived from the data. Resolve the network configuration first.</p>';
+    } else {
+      (isNMA ? nmaMethodsProse() : methodsProse()).forEach(function (par) { html += '<p>' + (par.label ? '<strong>' + esc(par.label) + '.</strong> ' : '') + par.text + '</p>'; });
+    }
     html += box("studentText.methodsStudentLimitation", "One limitation of this rapid workflow", "One limitation of this rapid workflow is...", "1-2 sentences",
       "Name one shortcut a rapid review takes (e.g. fewer databases, faster screening) and say how it could affect the result.",
       "One limitation of this rapid workflow is that the search covered fewer databases than a full systematic review, so a relevant study could have been missed, which may affect the result.");
@@ -979,6 +1179,13 @@
     html += helper("Every excluded record with its recorded reason — this is where wrong-comparison or out-of-scope trials are named, so a reader can see WHY each was left out.");
     html += excludedStudiesList();
 
+    // DISPATCH: NMA -> network geometry + league + direct/indirect + inconsistency (NOT a single diamond).
+    if (isNMA) {
+      html += nmaResultsBlock();
+    } else if (analysisType === null) {
+      html += '<h3>Primary outcome</h3>';
+      html += '<p class="dropped-warning">⚠️ The auto-generated primary-outcome result is withheld: the analysis type (pairwise vs network) could not be derived, and presenting a single pooled estimate could misrepresent a network as a pairwise result.</p>';
+    } else {
     html += '<h3>Primary outcome</h3>';
     html += helper("This sentence states the pooled result (already filled). Below the forest plot, write what it <em>means</em>: which way it points, how precise it is, and whether the size matters clinically.");
     html += '<p>' + resultsPrimaryProse() + '</p>';
@@ -1006,6 +1213,7 @@
       "RECOVERY Collaborative Group, New England Journal of Medicine 2021;384:693-704.");
 
     html += renderOutcomeSections();   // one section per secondary outcome
+    }   /* end pairwise primary-outcome block (NMA renders its own network block above) */
 
     /* Harms — reported SEPARATELY and prominently (never gated by report length) */
     html += '<h3>Harms and adverse events</h3>';
@@ -1019,6 +1227,9 @@
     html += helper("An honest statement of what could and could not be verified, and how much. A paper that states its own unverified fraction is more trustworthy than one that does not.");
     html += '<p>' + unverifiedProse() + '</p>';
 
+    // Heterogeneity is a PAIRWISE-pool concept; an NMA reports network geometry + inconsistency
+    // (above) instead, so this section renders only for a genuine pairwise analysis.
+    if (!isNMA && analysisType !== null) {
     html += '<h3>Heterogeneity</h3>';
     var kNum = Number(a.kStudies);
     html += '<p>Statistical heterogeneity was I² = ' + auto("analysis.i2") + '%' + ((a.tau2 !== "" && a.tau2 != null) ? ', τ² = ' + esc(a.tau2) : '') +
@@ -1043,6 +1254,7 @@
       "In 1992 Lau and colleagues re-ran the trials of a clot-buster for heart attacks cumulatively, adding each as it had appeared over the years. The benefit had become statistically clear by the mid-1970s — after only a few thousand patients — yet textbooks did not recommend the treatment until the late 1980s. The answer had been sitting in the assembled literature for over a decade while patients waited. Pooling is not just tidier; done in time, it saves lives.",
       "Evidence assembled in time is evidence that can still help someone.",
       "Lau et al., New England Journal of Medicine 1992;327:248-254.");
+    }   /* end pairwise Heterogeneity (NMA covers this via geometry + inconsistency) */
 
     html += '<h3>Risk of bias</h3>';
     html += helper("Risk of bias asks whether the way a study was run could have distorted its result — separate from whether the study is “good”. Link each concern to <em>how</em> it could change the answer.");
@@ -1075,7 +1287,7 @@
       "How a finding was obtained matters more than how often it was repeated.",
       "Writing Group for the Women’s Health Initiative, JAMA 2002;288:321-333.");
 
-    if (full) {
+    if (full && !isNMA) {   // funnel / subgroup / leave-one-out are pairwise-pool diagnostics; an NMA uses network diagnostics instead
     html += helper("<strong>Full report.</strong> The sections below — publication bias, subgroup, and the sensitivity/diagnostics battery — are optional extras this program generates for you. You may write about any that are useful and delete the rest. They are most informative when several studies contributed; with only a few, describe what you see and read them cautiously. (Switch “Report length” to “Short paper” above to omit them entirely.)");
     html += '<h3>Are small studies missing? (publication bias — optional' + (fewStudies ? ', few studies' : '') + ')</h3>';
     html += helper("Optional. A funnel plot explores whether small studies are missing, which can be a sign of publication bias — but an uneven (asymmetric) funnel can also come from real differences between studies or from chance, and the plot is unreliable with fewer than about 10 studies. With few studies, describe what you see but do not conclude there is publication bias.");
