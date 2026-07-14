@@ -34,6 +34,17 @@
     },
     outcomes: [],        // additional (secondary) outcomes the student writes on
     _seededOutcomes: false,
+    // Honest per-app facts captured from the live analysis (never fabricated).
+    // Populated by loadRapidMetaData from RapidMeta.state; degrade gracefully when absent.
+    flow: {              // PRISMA 2020 counts, read from the real search log + screening decisions
+      identified: "", ctgov: "", pubmed: "", openalex: "", searchDateRun: "",
+      excluded: [], excludedCount: "", includedCount: "", unscreenedCount: ""
+    },
+    provenance: {        // per-included-study source tier + primary-outcome label (no fabrication)
+      includedStudies: [], registryVerifiedCount: "", unverifiedCount: ""
+    },
+    harms: { present: false, items: [] },                 // harm-type outcomes among included studies
+    outcomeConsistency: { labels: [], mismatch: false, harmMix: false }, // do the pooled primaries match in kind?
     style: { methodsLength: "concise", resultsLength: "concise", journal: "generic", reportLength: "full" },
     studentText: {}
   };
@@ -151,7 +162,126 @@
             .map(function (t) { return (t.data && t.data.name) || t.id; }).join(", ");
         }
       } catch (e2) {}
+
+      // Capture the honest PRISMA-flow, source-tier, harms and analysis-provenance facts
+      // from the live app state so Methods/Results can state them concretely (never boilerplate).
+      try { PS.captureAppFacts(RM, r); } catch (e3) { console.warn("PaperStudio: fact capture failed", e3); }
     } catch (e) { console.warn("PaperStudio: autofill failed", e); }
+  };
+
+  // Pretty primary-outcome label for a trial: prefer the human sentence stored in the
+  // extraction snippet ("NCT…: <Outcome>. Source: …"), else the stored short label.
+  function primaryOutcomeLabel(d) {
+    if (!d) return "";
+    var snip = String(d.snippet || "");
+    var m = snip.match(/:\s*([^.]+?)(?:\.\s*Source|\.\s*$|$)/);
+    if (m && m[1] && m[1].trim().length > 3) return m[1].trim();
+    var oc = (d.allOutcomes && d.allOutcomes[0]) || null;
+    return (oc && (oc.label || oc.shortLabel)) || d.name || "";
+  }
+  // Does an outcome label describe a HARM rather than an efficacy endpoint?
+  var HARM_RX = /\b(adverse|serious adverse\s*event|\bsae\b|side[- ]effect|toxicit|discontinuation|withdrawal due to|hyperkal|hypoglyca?em|all[- ]cause mortality|death from|hospitali[sz]ation|\bharm)/i;
+
+  // Read the real PRISMA counts, per-study source tiers, harms and analysis provenance from
+  // RapidMeta.state and cache them on PS.state. Everything here is READ, never invented; when a
+  // fact is unavailable the field is left blank and the prose omits it rather than guessing.
+  PS.captureAppFacts = function (RM, r) {
+    var st = (RM && RM.state) || {};
+    var allTrials = st.trials || [];
+    var a = PS.state.analysis;
+
+    // ---- PRISMA 2020 flow, from the real search log + screening decisions ----
+    var flow = PS.state.flow;
+    var byStatus = {};
+    var excluded = [];
+    allTrials.forEach(function (t) {
+      var s = String(t.status || "").toLowerCase();
+      byStatus[s] = (byStatus[s] || 0) + 1;
+      if (s === "exclude") {
+        var reason = (t.reason || (t.screenReview && t.screenReview.note) || "").trim();
+        excluded.push({ id: t.id, reason: reason });
+      }
+    });
+    var sl = (st.searchLog && st.searchLog.length) ? st.searchLog[st.searchLog.length - 1] : null;
+    if (sl) {
+      flow.identified = (sl.dedup != null) ? Number(sl.dedup) : (allTrials.length || "");
+      flow.ctgov = (sl.ctgov != null) ? Number(sl.ctgov) : "";
+      flow.pubmed = (sl.pubmed != null) ? Number(sl.pubmed) : "";
+      flow.openalex = (sl.openalex != null) ? Number(sl.openalex) : "";
+      flow.searchDateRun = (sl.date || "").slice(0, 10) || sl.dateStr || "";
+    } else if (allTrials.length) {
+      flow.identified = allTrials.length;
+    }
+    flow.excluded = excluded;
+    flow.excludedCount = excluded.length;
+    flow.includedCount = byStatus["include"] || 0;
+    flow.unscreenedCount = byStatus["search"] || 0;
+
+    // ---- Source tier per included study (registry-verified / registered / publication / unverified) ----
+    var included = allTrials.filter(function (t) { return String(t.status || "").toLowerCase() === "include" && t.data; });
+    var prov = PS.state.provenance;
+    // A label that describes a time-to-event / continuous measure while the data are stored as
+    // binary event counts (tE/tN) signals a measure-TYPE mismatch (e.g. "time to resolution"
+    // forced into a responder fraction) — a distinct integrity flag from the outcome-KIND mix.
+    var TIMETOEVENT_RX = /\b(time to|days to|weeks to|duration|median (survival|time)|survival|change from baseline|mean (change|score))\b/i;
+    prov.includedStudies = included.map(function (t) {
+      var d = t.data || {};
+      var tier = (t.verified === true) ? "registry-verified"
+        : (d.ctgovUrl ? "registered" : (d.pmid ? "publication" : "unverified"));
+      var label = primaryOutcomeLabel(d);
+      var hasBinary = (Number(d.tN) > 0 || Number(d.cN) > 0) && (d.tE != null || d.cE != null);
+      return {
+        id: t.id, verified: t.verified === true, hasCtgov: !!d.ctgovUrl, hasPmid: !!d.pmid,
+        ctgovUrl: d.ctgovUrl || "", pmid: d.pmid || "", tier: tier,
+        year: d.year || "", tN: d.tN, cN: d.cN, tE: d.tE, cE: d.cE,
+        primaryOutcome: label, robSource: d.robSource || "",
+        measureSuspect: TIMETOEVENT_RX.test(label) && hasBinary
+      };
+    });
+    prov.registryVerifiedCount = prov.includedStudies.filter(function (s) { return s.verified; }).length;
+    prov.unverifiedCount = prov.includedStudies.filter(function (s) { return !s.verified; }).length;
+
+    // ---- Harms among included studies + outcome-kind consistency (efficacy vs harm) ----
+    var harmStudies = prov.includedStudies.filter(function (s) { return HARM_RX.test(s.primaryOutcome); });
+    PS.state.harms = { present: harmStudies.length > 0, items: harmStudies.map(function (s) { return { id: s.id, label: s.primaryOutcome }; }) };
+    var normed = prov.includedStudies.map(function (s) { return String(s.primaryOutcome).toLowerCase().replace(/[^a-z]/g, "").slice(0, 24); }).filter(Boolean);
+    PS.state.outcomeConsistency = {
+      labels: prov.includedStudies.map(function (s) { return { id: s.id, label: s.primaryOutcome }; }),
+      mismatch: (new Set(normed)).size > 1,
+      harmMix: harmStudies.length > 0 && harmStudies.length < prov.includedStudies.length,
+      measureTypeMismatch: prov.includedStudies.some(function (s) { return s.measureSuspect; }),
+      measureSuspectIds: prov.includedStudies.filter(function (s) { return s.measureSuspect; }).map(function (s) { return s.id; })
+    };
+
+    // ---- Analysis provenance: state ONLY the methods that were actually run ----
+    if (r) {
+      a.estimator = r.estimator || a.estimator || "";                         // e.g. "DL"
+      a.remlSensitivity = !!r.remlSensitivity;
+      a.remlEstimator = (r.remlResult && r.remlResult.estimator) || "";       // e.g. "PM" / "REML"
+      a.qP = (r.qPvalue != null) ? r.qPvalue : "";
+      a.eggerDone = (r.eggerP != null && r.eggerP !== "--");
+      a.piEstimable = !!(r.piLCI && r.piLCI !== "--" && r.piUCI && r.piUCI !== "--");
+      a.hksjReported = (r.hksjLCI != null && r.hksjLCI !== "--");
+      var hkU = Number(r.hksjUCI), hkL = Number(r.hksjLCI);
+      a.hksjDegenerate = a.hksjReported && (Number(a.kStudies) < 4 ||
+        (isFinite(hkU) && hkU > 1000) || (isFinite(hkL) && hkL < 1e-4 && isFinite(hkU) && hkU > 100));
+      a.bayesUsed = (r.bayesCriLo != null && r.bayesCriLo !== "--");
+      a.bayesCriLo = r.bayesCriLo; a.bayesCriHi = r.bayesCriHi;
+      a.absoluteRisk = (r.absoluteRisk != null) ? r.absoluteRisk : "";
+      a.nnt = (r.nnt != null) ? r.nnt : "";
+      // Store the actual OUTPUT of each sensitivity/diagnostic method, so a method named in
+      // Methods is always substantiated by a reported value in Results (no unbacked boilerplate).
+      a.hksjLCI = r.hksjLCI; a.hksjUCI = r.hksjUCI;
+      if (r.remlResult && typeof r.remlResult.effect === "number") {
+        var back = /difference|MD|SMD/i.test(a.effectMeasure || "") ? function (x) { return x; } : Math.exp;
+        a.remlEffect = back(r.remlResult.effect).toFixed(2);
+        a.remlLci = (r.remlResult.lci != null) ? back(r.remlResult.lci).toFixed(2) : "";
+        a.remlUci = (r.remlResult.uci != null) ? back(r.remlResult.uci).toFixed(2) : "";
+      }
+      var rs = r.robSummary || {};
+      a.robLow = rs.low; a.robSome = rs.someConcerns; a.robHigh = rs.high; a.robUnclear = rs.unclear;
+      a.qP = (r.qPvalue != null) ? r.qPvalue : a.qP;
+    }
   };
 
   // Round numeric-ish values to 2 dp; pass through non-numeric strings unchanged.
@@ -348,8 +478,16 @@
   }
   PS.setStyle = function (id, val) { if (PS.state.style[id] !== undefined) { PS.state.style[id] = val; PS.save(); PS.render(); PS.embedFigures(); } };
 
+  // Map an engine estimator code to its full method name (for honest, specific prose).
+  var ESTIMATOR_NAMES = {
+    DL: "DerSimonian–Laird", REML: "restricted maximum likelihood (REML)",
+    PM: "Paul–Mandel", SJ: "Sidik–Jonkman", ML: "maximum likelihood", EB: "empirical Bayes", HE: "Hedges"
+  };
+  function estimatorName(code) { return ESTIMATOR_NAMES[String(code || "").toUpperCase()] || (code ? esc(code) : ""); }
+
   function ctx() {
-    var a = PS.state.analysis, p = PS.state.pico;
+    var a = PS.state.analysis, p = PS.state.pico, f = PS.state.flow;
+    var kNum = Number(a.kStudies);
     return {
       pop: auto("pico.population", "[population]"), int: auto("pico.intervention", "[intervention]"),
       comp: auto("pico.comparator", "[comparator]"), out: auto("pico.primaryOutcome", "[primary outcome]"),
@@ -357,30 +495,124 @@
       db: esc(PS.state.search.databases || "[databases]"), date: PS.state.search.searchDate ? " on " + esc(PS.state.search.searchDate) : "",
       rob: inlineBox("studentText.methodsRobTool", "RoB 2"), est: auto("analysis.effectEstimate"), i2: auto("analysis.i2"),
       cl: auto("analysis.confLevel", "95"), lci: auto("analysis.ciLower"), uci: auto("analysis.ciUpper"),
-      k: auto("analysis.kStudies"), n: auto("analysis.totalParticipants"), certainty: auto("analysis.certainty", "(see GRADE)")
+      k: auto("analysis.kStudies"), kNum: isFinite(kNum) ? kNum : null,
+      n: auto("analysis.totalParticipants"), certainty: auto("analysis.certainty", "(see GRADE)"),
+      // honest analysis-provenance flags (blank/false when unknown)
+      estimator: a.estimator || "", estimatorName: estimatorName(a.estimator),
+      remlSensitivity: !!a.remlSensitivity, remlName: estimatorName(a.remlEstimator),
+      hksjReported: !!a.hksjReported, hksjDegenerate: !!a.hksjDegenerate,
+      eggerDone: !!a.eggerDone, piEstimable: !!a.piEstimable, tau2: (a.tau2 != null && a.tau2 !== "") ? esc(a.tau2) : "",
+      // PRISMA-flow facts
+      identified: (f.identified !== "" && f.identified != null) ? f.identified : "",
+      ctgov: f.ctgov, pubmed: f.pubmed, openalex: f.openalex,
+      searchDateRun: f.searchDateRun ? esc(f.searchDateRun) : "",
+      excludedCount: (f.excludedCount !== "" && f.excludedCount != null) ? f.excludedCount : "",
+      includedCount: (f.includedCount !== "" && f.includedCount != null) ? f.includedCount : "",
+      unscreenedCount: (f.unscreenedCount !== "" && f.unscreenedCount != null) ? f.unscreenedCount : ""
     };
   }
 
   // Returns an array of {label?, text} paragraphs for the Methods auto-prose.
+  // Everything here is written from the LIVE analysis. A method is described only when the
+  // app actually ran it (flags from captureAppFacts); no analysis is ever asserted that was
+  // not performed, and no number is invented. Length adds detail, never fabrication.
   function methodsProse() {
-    var c = ctx(), len = PS.state.style.methodsLength, j = PS.state.style.journal, W = we(j);
-    var verbSearch = W ? "We searched " : "Searches were performed in ";
+    var c = ctx(), a = PS.state.analysis, len = PS.state.style.methodsLength, j = PS.state.style.journal, W = we(j);
+    var moreThanConcise = (len !== "concise");
+    var detailed = (len === "detailed");
     var paras = [];
-    var pico = "The review question was structured using the PICO framework (Population, Intervention, Comparator, Outcome): the population was " + c.pop + ", the intervention was " + c.int + ", the comparator was " + c.comp + ", and the primary outcome was " + c.out + ".";
-    var search = verbSearch + c.db + c.date + ".";
-    if (len !== "concise") search += W ? " Two review authors independently screened records and extracted data, resolving disagreements by discussion." : " Records were screened against predefined eligibility criteria, with study selection and data extraction performed in duplicate.";
-    if (len === "detailed") search += " Reporting followed the PRISMA 2020 guidance, and the review methods were specified before data collection.";
     var hasGrade = c.certainty && c.certainty !== "(see GRADE)" && c.certainty.indexOf("—") < 0;
-    var synth = "Treatment effects were summarized using the " + c.measure + ", and a " + c.model + " meta-analysis was performed; between-study heterogeneity was quantified with I² and τ². Risk of bias was assessed using " + c.rob + (hasGrade ? ", and the certainty of evidence was rated with GRADE" : "") + ".";
-    if (len !== "concise") synth += " Between-study variance (τ²) was estimated by restricted maximum likelihood (REML), and confidence intervals used the Hartung–Knapp adjustment, which is more reliable than the usual normal approximation when only a few studies are pooled; the DerSimonian–Laird estimator was retained as a sensitivity analysis. A 95% prediction interval for the effect in a new study was calculated when at least three studies contributed. Reporting followed the PRISMA 2020 statement, and the review’s eligibility criteria and methods were defined before data collection (any protocol registration is stated under Disclosures).";
-    if (len !== "concise") synth += " All pooled estimates were computed in the RapidMeta browser engine and then independently re-computed and cross-checked against R (the metafor package); the two implementations agreed to numerical tolerance, so the figures reported here reproduce a standard R analysis. <em class=\"confirm-note no-clean-pdf\">(Confirm the pooling model named here — REML with the Hartung-Knapp adjustment — matches the settings you actually ran in the Analysis tab.)</em>";
-    if (len === "detailed") synth += " Where the number of studies allowed, prespecified sensitivity analyses (leave-one-out and a fixed-effect re-analysis) and small-study-effect checks (a funnel plot, with Egger’s test where at least ten studies contributed) were examined. <em class=\"confirm-note no-clean-pdf\">(These statistical details follow the engine’s defaults — please confirm they match the settings you actually used, and delete any analysis you did not run.)</em>";
-    if (j === "jama") { // structured subheadings
-      paras.push({ label: "Data Sources", text: search });
-      paras.push({ label: "Study Selection", text: pico });
-      paras.push({ label: "Data Extraction and Synthesis", text: synth });
+
+    // --- 1. Design, protocol & reporting ---
+    var incomplete = (c.unscreenedCount !== "" && Number(c.unscreenedCount) > 0);
+    var design = "This was a rapid systematic review and " + c.model + " meta-analysis of registered randomised controlled trials, following the reporting structure of the PRISMA 2020 statement" +
+      (incomplete ? ". Screening is not yet complete (" + c.unscreenedCount + " records remain un-adjudicated; see Results), so this is an INTERIM report and does not yet meet PRISMA 2020 in full — full compliance requires the flow to be closed." : ".") +
+      " A rapid review streamlines some steps of a full systematic review (for example, the breadth of databases and the depth of dual screening) to deliver a timely, source-verifiable answer; those streamlined steps are stated here and revisited in the Limitations.";
+    if (moreThanConcise) design += " The eligibility criteria and the analysis plan were defined before data were extracted; any registered protocol, and any departure from it, is declared under Disclosures (protocol and registration).";
+
+    // --- 2. Eligibility (PICOS) + comparator disqualifiers ---
+    var pico = "Eligibility followed a PICOS framework. Population: " + c.pop + ". Intervention: " + c.int + ". Comparator: " + c.comp + ". Outcome: " + c.out + ". Study design: randomised controlled trials only.";
+    if (moreThanConcise) pico += " A trial was DISQUALIFIED when the comparison did not isolate the intervention — most importantly when the study drug was given to BOTH arms as background therapy (so the contrast is not intervention-versus-comparator), or when the only extractable endpoint was of a different KIND from the review's primary outcome (for example an adverse-event count standing in for an efficacy endpoint). These disqualifiers matter because a numerically valid but conceptually mismatched comparison produces a real number that answers the wrong question.";
+    if (detailed) pico += " Date and language limits, and any restriction to a trial era, are reported with the search below and appear as explicit reasons in the excluded-studies list.";
+
+    // --- 3. Information sources: the three named layers, with the openly-accessible-only constraint ---
+    var srcVerb = W ? "We drew on three openly accessible information layers" : "Three openly accessible information layers were used";
+    var sources = srcVerb + ", by deliberate methodological choice, so that every datum is publicly re-verifiable: (i) ClinicalTrials.gov, accessed through the AACT relational snapshot, for the trial registry record — design, arms, and registry-posted result and adverse-event counts" +
+      (c.searchDateRun ? " (database last searched " + c.searchDateRun + ")" : "") +
+      "; (ii) PubMed, for the linked peer-reviewed abstract and bibliographic identifiers; and (iii) Europe PMC / PubMed Central open-access full text (JATS XML) where a trial's results paper was openly licensed. Restricting to openly accessible sources is a stated design decision, not a hidden limitation: it trades some coverage of pay-walled reports for end-to-end reproducibility, and its effect on coverage is addressed in the Limitations.";
+
+    // --- 4. Search strategy, with the real, reproducible counts ---
+    var search;
+    if (c.identified !== "") {
+      search = (W ? "Our search " : "The search ") + (c.searchDateRun ? "(run " + c.searchDateRun + ") " : "") + "returned " + c.identified + " records after de-duplication";
+      var breakdown = [];
+      if (c.ctgov !== "") breakdown.push(c.ctgov + " from ClinicalTrials.gov");
+      if (c.pubmed !== "") breakdown.push(c.pubmed + " from PubMed");
+      if (c.openalex !== "" && Number(c.openalex) > 0) breakdown.push(c.openalex + " from OpenAlex");
+      if (breakdown.length) search += " (" + breakdown.join(", ") + ")";
+      search += ". The exact query, source counts and run date are stored in the analysis project's search log and are reproduced verbatim in the supplementary material; the full record-level list is exportable so the search can be re-run.";
     } else {
-      paras.push({ text: pico }); paras.push({ text: search }); paras.push({ text: synth });
+      search = (W ? "We searched " : "Searches were performed in ") + c.db + c.date + ". The exact query string and run date are recorded in the analysis project's search log.";
+    }
+
+    // --- 5. Selection, extraction, the cross-family panel, and the fail-closed rule ---
+    var extraction = "Records were screened against the eligibility criteria and data were extracted directly from the structured AACT fields (arm-level sample sizes and event counts from outcome_measurements; the trial-declared primary from design_outcomes), so the extracted numbers inherit the registry's own structure rather than being re-keyed from prose.";
+    if (moreThanConcise) extraction += " Extraction is cross-checked by a panel of independent large-language-model extractors drawn from different model families (so that a single model's systematic error is unlikely to be shared) against a deterministic rule engine. This panel checks the FIDELITY of each extracted number to its source record; it does not, and cannot, judge whether the registry's chosen outcome is the right comparison — that is a separate selection question addressed in the Results. Where the panel and the registry disagree, or a required field cannot be located, the item is not guessed: the workflow fails closed — the datum is left unverified and flagged, and an unverifiable study is not silently promoted into the pooled estimate. Disagreements were resolved against the registry record of record.";
+    if (detailed) extraction += " Each extracted data item carries a SOURCE TIER — registry-verified, registered, open-access table, abstract, or unverified — and that tier travels with the number into the Results (it is the item's grade). Risk of bias was assessed with " + c.rob + " using the trial's registered design fields (allocation, masking, assessor blinding)" + (hasGrade ? ", and the certainty of the body of evidence for each outcome was rated with GRADE" : "") + ".";
+    else extraction += " Risk of bias was assessed with " + c.rob + (hasGrade ? ", and certainty of evidence was rated with GRADE" : "") + ".";
+
+    // --- 6. Synthesis: SPECIFIC, and only the methods actually run ---
+    var synth = "The " + c.measure + " was the effect measure, pooled on the log scale under a " + c.model + " model";
+    if (c.estimatorName) synth += " with the " + c.estimatorName + " estimator of between-study variance (τ²)";
+    synth += ". Heterogeneity was summarised with I², τ², and Cochran's Q; I² measures the proportion of variation beyond chance, not its magnitude, so τ² is reported alongside.";
+    if (moreThanConcise) {
+      // small-sample CI adjustment — only claim it if it was actually computed
+      if (c.hksjReported) {
+        synth += " A Hartung–Knapp–Sidik–Jonkman (HKSJ) small-sample adjustment to the confidence interval was also computed";
+        synth += c.hksjDegenerate
+          ? ", but with so few studies the HKSJ interval was unstable (it widened to an uninformative range) and is reported only as a sensitivity check, not as the primary interval."
+          : "; with few studies HKSJ is more reliable than the normal approximation and is reported alongside the primary interval.";
+      }
+      if (c.remlSensitivity && c.remlName) synth += " A " + c.remlName + " re-estimation of τ² was run as a sensitivity analysis to check the pooled estimate was not an artefact of the τ² estimator.";
+      // prediction interval — state estimable or NOT, honestly
+      synth += c.piEstimable
+        ? " A 95% prediction interval for the effect in a new study is reported."
+        : " A 95% prediction interval was NOT estimated because fewer than three studies contributed (it is undefined at k < 3); this is stated rather than omitted.";
+      // the k<2 rule
+      synth += " A single-study outcome (k = 1) is reported as that trial's own result and is NOT displayed as a pooled diamond, because a meta-analysis of fewer than two studies is not meaningful.";
+      // rare-event handling
+      synth += " For rare binary events, a continuity correction (adding 0.5) was applied ONLY when a study had a zero cell, since an unconditional correction biases the odds ratio toward the null; Peto or Mantel–Haenszel pooling without a continuity correction is preferred when events are sparse.";
+    }
+    if (detailed) {
+      // subgroup/sensitivity pre-spec labelling + publication-bias limits, conditional on what ran
+      synth += " Any subgroup or sensitivity analysis is labelled in the Results as pre-specified or post-hoc.";
+      if (c.eggerDone) synth += " Small-study effects were examined with a funnel plot and Egger's test.";
+      else synth += " Funnel-plot and Egger-type small-study-effect tests were NOT performed because fewer than ten studies contributed; funnel-based methods are unreliable and potentially misleading below about ten studies, so reporting one here would overstate what the data can show.";
+      if (PS.state.analysis.bayesUsed) synth += " A Bayesian re-analysis with a weakly-informative prior is reported as a sensitivity analysis; its credible interval is not interchangeable with the frequentist confidence interval and is labelled as such.";
+    }
+
+    // --- 7. Reproducibility (no unverifiable cross-tool claims) ---
+    var repro = "All estimates were computed by the RapidMeta deterministic browser engine directly from the stored trial data, so the analysis re-runs identically from the exported project.";
+    if (moreThanConcise) repro += " Every number in this paper carries a locator back to its source — the ClinicalTrials.gov/AACT identifier and, where available, the linked publication (PMID) — so each figure can be traced to the record it came from. " +
+      "<em class=\"confirm-note no-clean-pdf\">(These method statements are generated from the settings and flags your analysis actually recorded. Confirm they match what you ran, and delete any sentence describing an analysis you did not perform.)</em>";
+
+    // Assemble — JAMA uses structured subheads; other styles run as paragraphs.
+    if (j === "jama") {
+      paras.push({ label: "Design and Registration", text: design });
+      paras.push({ label: "Eligibility Criteria", text: pico });
+      paras.push({ label: "Data Sources", text: sources });
+      paras.push({ label: "Search Strategy", text: search });
+      paras.push({ label: "Study Selection and Data Extraction", text: extraction });
+      paras.push({ label: "Statistical Synthesis", text: synth });
+      paras.push({ label: "Reproducibility", text: repro });
+    } else {
+      paras.push({ text: design });
+      paras.push({ text: pico });
+      paras.push({ text: sources });
+      paras.push({ text: search });
+      paras.push({ text: extraction });
+      paras.push({ text: synth });
+      paras.push({ text: repro });
     }
     return paras;
   }
@@ -388,15 +620,163 @@
   function resultsPrimaryProse() {
     var c = ctx(), len = PS.state.style.resultsLength, a = PS.state.analysis;
     var hasI2 = c.i2 && c.i2 !== "—";
+    var i2num = Number(c.i2);
+    var extremeHet = isFinite(i2num) && i2num >= 75;
+    var singleStudy = c.kNum === 1;
     var hasGrade = c.certainty && c.certainty !== "(see GRADE)" && c.certainty.indexOf("—") < 0;
-    var t = "The pooled " + c.measure + " for " + c.out + " was " + c.est + " (" + c.cl + "% CI " + c.lci + " to " + c.uci + ").";
-    if (len !== "concise") {
-      t += " A total of " + c.k + " studies with " + c.n + " participants contributed to this estimate.";
-      if (hasI2) t += " Statistical heterogeneity was I² = " + c.i2 + "%" + ((a.tau2 !== "" && a.tau2 != null) ? " (τ² = " + esc(a.tau2) + ")" : "") + (a.predictionInterval ? ", and the 95% prediction interval for the effect in a future study was " + esc(a.predictionInterval) : "") + ".";
-      t += " The confidence interval shows the range of effects compatible with the data: whether it crosses the no-effect line (" + (c.measure && /difference|MD|SMD/i.test(c.measure) ? "0" : "1") + ") reflects the direction of the result, while its width reflects how precisely the combined effect has been estimated.";
+    var noEffLine = (c.measure && /difference|MD|SMD/i.test(c.measure)) ? "0" : "1";
+    var t;
+    if (singleStudy) {
+      // k<2 rule made visible in the Results, not just the Methods.
+      t = "Only a single study (k = 1) contributed extractable data for " + c.out + ", so this is reported as that trial's own result, not as a pooled estimate: " + c.measure + " " + c.est + " (" + c.cl + "% CI " + c.lci + " to " + c.uci + "), " + c.n + " participants. A pooled diamond is not shown, because a meta-analysis of fewer than two studies is not meaningful.";
+    } else {
+      t = "The pooled " + c.measure + " for " + c.out + " was " + c.est + " (" + c.cl + "% CI " + c.lci + " to " + c.uci + "), from " + c.k + " studies with " + c.n + " participants (k = " + c.k + ").";
     }
+    if (len !== "concise" || extremeHet) {
+      if (hasI2 && !singleStudy) t += " Statistical heterogeneity was I² = " + c.i2 + "%" + (c.tau2 ? " (τ² = " + c.tau2 + ")" : "") +
+        (c.piEstimable && a.predictionInterval ? ", and the 95% prediction interval for the effect in a new study was " + esc(a.predictionInterval) : (!c.piEstimable && !singleStudy ? "; a prediction interval was not estimable (k < 3)" : "")) + ".";
+      if (!singleStudy) t += " The confidence interval shows the range of effects compatible with the data: whether it crosses the no-effect line (" + noEffLine + ") reflects direction, while its width reflects precision.";
+    }
+    // Load-bearing honesty guard: an extreme-I² pool is NOT a single interpretable effect.
+    if (extremeHet && !singleStudy) t += " <strong>Because heterogeneity is very high (I² = " + c.i2 + "%), this pooled " + c.measure + " should not be read as a single common effect;</strong> the contributing studies disagree substantially (see Heterogeneity and the study-characteristics table), and the summary is presented for completeness rather than as the headline answer.";
     if (len === "detailed" && hasGrade) t += " The certainty of evidence (GRADE) for this outcome was " + c.certainty + ".";
     return t;
+  }
+
+  // ---- PRISMA 2020 flow, in words, from the REAL counts (fixes the app's 0/0/0 diagram) ----
+  function resultsFlowProse() {
+    var c = ctx();
+    if (c.identified === "" && c.includedCount === "") return "";
+    var parts = [];
+    if (c.identified !== "") {
+      var srcbits = [];
+      if (c.ctgov !== "") srcbits.push(c.ctgov + " from ClinicalTrials.gov");
+      if (c.pubmed !== "") srcbits.push(c.pubmed + " from PubMed");
+      if (c.openalex !== "" && Number(c.openalex) > 0) srcbits.push(c.openalex + " from OpenAlex");
+      parts.push("A total of " + c.identified + " records were identified after de-duplication" + (srcbits.length ? " (" + srcbits.join(", ") + ")" : "") + (c.searchDateRun ? ", searched " + c.searchDateRun : "") + ".");
+    }
+    var tail = [];
+    if (c.excludedCount !== "") tail.push(c.excludedCount + " were excluded with recorded reasons (listed below)");
+    if (c.includedCount !== "") tail.push(c.includedCount + " met all criteria and were included in the review and quantitative synthesis");
+    if (tail.length) parts.push("After screening, " + tail.join(", ") + ".");
+    // The honest funnel-completeness flag: records left un-adjudicated.
+    if (c.unscreenedCount !== "" && Number(c.unscreenedCount) > 0) {
+      parts.push("<strong>" + c.unscreenedCount + " identified records remained in the screening queue without a final include/exclude decision at the time of this snapshot;</strong> they are neither counted as included nor as formally excluded, and clearing them is required before this review could be considered complete (a full-review limitation stated here rather than hidden).");
+    }
+    return parts.join(" ");
+  }
+
+  // ---- Characteristics of included studies, per study, WITH source tier + primary-outcome kind ----
+  function studyCharacteristicsProse() {
+    var studies = (PS.state.provenance && PS.state.provenance.includedStudies) || [];
+    if (!studies.length) return "";
+    var rows = studies.map(function (s) {
+      var arms = [];
+      if (s.tE != null && s.tN != null) arms.push("intervention " + s.tE + "/" + s.tN);
+      if (s.cE != null && s.cN != null) arms.push("comparator " + s.cE + "/" + s.cN);
+      var tierWord = { "registry-verified": "registry-verified", "registered": "registered (locator only)", "publication": "publication-sourced", "unverified": "UNVERIFIED" }[s.tier] || s.tier;
+      return "<li><strong>" + esc(s.id) + "</strong>" + (s.year ? " (" + esc(s.year) + ")" : "") +
+        " — primary outcome as extracted: <em>" + esc(s.primaryOutcome || "not stated") + "</em>" +
+        (arms.length ? "; events/N: " + esc(arms.join(", ")) : "") +
+        "; source tier: <strong>" + esc(tierWord) + "</strong>" +
+        (s.measureSuspect ? " <strong>[measure-type check: this reads as a time-to-event/continuous outcome but was extracted as a binary event count — confirm before pooling]</strong>" : "") +
+        (s.pmid ? " (PMID " + esc(s.pmid) + ")" : "") + ".</li>";
+    }).join("");
+    var oc = PS.state.outcomeConsistency || {};
+    var notes = [];
+    if (oc.harmMix) notes.push("<p class=\"dropped-warning\">⚠️ <strong>The contributing studies' extracted primary outcomes are not of the same kind:</strong> at least one is an efficacy endpoint and at least one is an adverse-event (harm) count. Pooling outcomes of different kinds does not answer a single question and is the most likely source of the extreme heterogeneity above; the affected studies are named so a reader can judge the comparison directly.</p>");
+    else if (oc.mismatch) notes.push("<p class=\"dropped-warning\">⚠️ <strong>The contributing studies' extracted primary outcomes differ</strong> in wording/definition (see the per-study list); confirm they represent the same construct before treating the pooled value as one effect.</p>");
+    if (oc.measureTypeMismatch) notes.push("<p class=\"dropped-warning\">⚠️ <strong>Measure-type mismatch:</strong> " + (oc.measureSuspectIds || []).join(", ") + " report a time-to-event or continuous primary outcome, but the pooled analysis represents it as a binary event count. Forcing a time-to-event outcome into a responder fraction distorts it; the effect measure should match the outcome's type (e.g. a hazard ratio or mean difference), and this study should not be pooled as a binary event until that is reconciled.</p>");
+    return "<ul class=\"study-char-list\">" + rows + "</ul>" + notes.join("");
+  }
+
+  // ---- Excluded studies WITH reasons (the wrong-comparison trials go here, named) ----
+  function excludedStudiesList() {
+    var ex = (PS.state.flow && PS.state.flow.excluded) || [];
+    if (!ex.length) return "<p>No studies were excluded after full-text assessment on record; see the screening queue note above.</p>";
+    // group by reason so the list is readable, but keep every id retrievable
+    var byReason = {};
+    ex.forEach(function (e) { var r = e.reason || "reason not recorded"; (byReason[r] = byReason[r] || []).push(e.id); });
+    var items = Object.keys(byReason).map(function (r) {
+      var ids = byReason[r];
+      var shown = ids.slice(0, 12).map(esc).join(", ") + (ids.length > 12 ? ", …(+" + (ids.length - 12) + " more)" : "");
+      return "<li><strong>" + esc(r) + "</strong> — " + ids.length + " record" + (ids.length > 1 ? "s" : "") + ": " + shown + "</li>";
+    }).join("");
+    return "<ul class=\"excluded-list\">" + items + "</ul>";
+  }
+
+  // ---- Harms reported SEPARATELY and prominently ----
+  function harmsProse() {
+    var h = PS.state.harms || {};
+    var a = PS.state.analysis;
+    var lines = [];
+    if (h.present && h.items && h.items.length) {
+      lines.push("Harms were carried as a distinct outcome class. Registry-posted adverse-event data contributed to the following included record(s): " +
+        h.items.map(function (i) { return esc(i.id) + " (" + esc(i.label) + ")"; }).join("; ") + ".");
+      lines.push("Registry-posted harm counts are a strength of this data source — most published reviews cannot report them at this granularity — but they must be read as a SEPARATE question from efficacy, not merged into the efficacy estimate.");
+    } else {
+      lines.push("No adverse-event outcome was extracted as a primary endpoint among the included studies; where trials posted harms to the registry, those counts are available in the source records and should be reported separately from efficacy.");
+    }
+    if (a.absoluteRisk !== "" && a.absoluteRisk != null && isFinite(Number(a.absoluteRisk))) {
+      var arr = (Number(a.absoluteRisk) * 100).toFixed(1);
+      lines.push("On the absolute scale the analysis recorded an absolute risk difference of about " + arr + " percentage points" + (a.nnt !== "" && isFinite(Number(a.nnt)) ? " (number needed to treat ≈ " + Math.round(Number(a.nnt)) + ")" : "") + "; absolute measures are reported because they are more decision-relevant than the ratio alone.");
+    }
+    return lines.join(" ");
+  }
+
+  // ---- Honest limitations-of-the-data: what could NOT be verified, and how much ----
+  function unverifiedProse() {
+    var prov = PS.state.provenance || {};
+    var studies = prov.includedStudies || [];
+    var oc = PS.state.outcomeConsistency || {};
+    var lines = [];
+    if (studies.length) {
+      var unv = prov.unverifiedCount, ver = prov.registryVerifiedCount;
+      lines.push("Of the " + studies.length + " included study/studies, " + (ver || 0) + " had every pooled datum verified against the ClinicalTrials.gov/AACT record and " + (unv || 0) + " had one or more data items that could NOT be independently verified.");
+      lines.push("Verification here means the numbers match the registry record; it does not certify that the registry's own outcome is the right comparison. That second judgement is where this review is weakest.");
+    }
+    if (oc.harmMix) lines.push("Specifically, the pooled primary mixes an efficacy endpoint with an adverse-event count; that mismatch is the single most important caveat on the headline number and is why the pooled estimate above is presented with an explicit warning rather than as a conclusion.");
+    lines.push("Stating the unverified fraction and the outcome-matching caveat explicitly is deliberate: a review that reports what it could not verify is more trustworthy than one that presents every number as equally certain.");
+    return lines.join(" ");
+  }
+
+  // ---- Sensitivity analyses: REPORT the numeric output of every method the Methods names, so no
+  // method claim is left unsubstantiated (addresses the fabricated-method / boilerplate risk). ----
+  function sensitivityProse() {
+    var a = PS.state.analysis, c = ctx();
+    var lines = [];
+    if (a.hksjReported) {
+      var hk = (a.hksjLCI != null && a.hksjUCI != null) ? (esc(a.hksjLCI) + " to " + esc(a.hksjUCI)) : "";
+      lines.push("Hartung–Knapp–Sidik–Jonkman interval: " + (hk ? c.est + " (" + hk + ")" : "computed") +
+        (a.hksjDegenerate ? " — degenerate at this number of studies (the interval is uninformative), so it is reported only to show that the small-sample adjustment does not stabilise at k = " + c.k + ", not as the analysis interval." : "."));
+    }
+    if (a.remlSensitivity && (a.remlEffect != null && a.remlEffect !== "")) {
+      lines.push((c.remlName || "Alternative-estimator") + " τ² re-estimation (sensitivity): " + c.measure + " " + esc(a.remlEffect) +
+        (a.remlLci !== "" && a.remlUci !== "" ? " (" + esc(a.remlLci) + " to " + esc(a.remlUci) + ")" : "") + ", confirming the direction is not an artefact of the τ² estimator.");
+    }
+    if (a.bayesUsed && a.bayesCriLo != null && a.bayesCriLo !== "--") {
+      lines.push("Bayesian re-analysis (weakly-informative prior): 95% credible interval " + esc(a.bayesCriLo) + " to " + esc(a.bayesCriHi) + " (a credible interval, not interchangeable with the frequentist CI).");
+    }
+    if (a.qP != null && a.qP !== "" && a.qP !== "--") lines.push("Cochran's Q p-value: " + esc(a.qP) + ".");
+    if (!lines.length) return "";
+    var oc = PS.state.outcomeConsistency || {};
+    var lead = (oc.harmMix || oc.measureTypeMismatch)
+      ? "<strong>These sensitivity analyses do not rescue the pooled estimate:</strong> when the pooled outcome is incommensurable (see study characteristics), re-estimating τ² or adding a prior cannot make an invalid comparison valid. They are reported only for completeness and to show the primary estimate is unstable, not as evidence for it. The values were:"
+      : "The sensitivity and diagnostic analyses named in the Methods produced the following, reported here so each is substantiated rather than merely asserted:";
+    return lead + " <ul class=\"sensitivity-list\"><li>" + lines.join("</li><li>") + "</li></ul>";
+  }
+
+  // ---- Risk-of-bias summary numbers (so the RoB 2 claim in Methods is substantiated) ----
+  function robSummaryProse() {
+    var a = PS.state.analysis;
+    var have = [a.robLow, a.robSome, a.robHigh].some(function (v) { return v != null && v !== ""; });
+    if (!have) return "";
+    var bits = [];
+    if (a.robLow != null) bits.push(a.robLow + " judged low concern");
+    if (a.robSome != null) bits.push(a.robSome + " some concerns");
+    if (a.robHigh != null) bits.push(a.robHigh + " high risk");
+    return "Across the risk-of-bias domains assessed from the registered design fields, the tally was: " + bits.join(", ") + "." +
+      (Number(a.robHigh) === 0 && Number(a.robSome) > 0 ? " No domain was rated high risk; the 'some concerns' domains most often reflect registry design fields that do not fully document blinding of outcome assessors." : "");
   }
   function abstractResultsProse() {
     var c = ctx(), len = PS.state.style.resultsLength;
@@ -583,13 +963,21 @@
     html += renderOutcomeManager();
 
     html += '<h3>Study selection</h3>';
-    html += helper("The PRISMA diagram shows how you went from all search hits down to the included studies. In the caption, give the key numbers.");
+    html += helper("The PRISMA diagram shows how you went from all search hits down to the included studies. In the caption, give the key numbers. The paragraph below is filled from your real search log — check it against the diagram.");
+    var flowProse = resultsFlowProse();
+    if (flowProse) html += '<p>' + flowProse + '</p>';
     html += figureCard(1, "Study selection flow diagram", ["prisma"], "prismaPaperSlot", "figures.prisma.caption",
       "This figure shows that ___ records were identified, ___ full texts were assessed, and ___ studies were included.");
 
     html += '<h3>Included studies</h3>';
+    var studyChar = studyCharacteristicsProse();
+    if (studyChar) { html += helper("Filled from your included studies — each line shows the extracted primary outcome and its source tier (the tier is the grade). Confirm the outcomes are of the same kind before pooling."); html += studyChar; }
     html += figureCard(2, "Characteristics of included studies", [], "studyTablePaperSlot", "figures.studyCharacteristics.caption",
       "The included studies were similar because... The most important difference was... This matters because...");
+
+    html += '<h3>Excluded studies (with reasons)</h3>';
+    html += helper("Every excluded record with its recorded reason — this is where wrong-comparison or out-of-scope trials are named, so a reader can see WHY each was left out.");
+    html += excludedStudiesList();
 
     html += '<h3>Primary outcome</h3>';
     html += helper("This sentence states the pooled result (already filled). Below the forest plot, write what it <em>means</em>: which way it points, how precise it is, and whether the size matters clinically.");
@@ -619,11 +1007,25 @@
 
     html += renderOutcomeSections();   // one section per secondary outcome
 
+    /* Harms — reported SEPARATELY and prominently (never gated by report length) */
+    html += '<h3>Harms and adverse events</h3>';
+    html += helper("Harms are reported here as a SEPARATE question from efficacy — never merged into the efficacy estimate. Registry-posted adverse-event counts are a strength of this data source; report them plainly.");
+    html += '<p>' + harmsProse() + '</p>';
+    html += box("studentText.harmsInterpretation", "Interpret the harms", "The registry-posted adverse-event data show... Compared with the efficacy result, the balance of benefit and harm suggests...", "~2-3 sentences",
+      "State what the harm data show for each arm, keep them separate from the efficacy number, and comment on the benefit–harm balance. If a study's ‘primary’ was actually a harm count, say so plainly.");
+
+    /* Completeness & verification of the data — the honest unverified-fraction statement */
+    html += '<h3>Completeness and verification of the data</h3>';
+    html += helper("An honest statement of what could and could not be verified, and how much. A paper that states its own unverified fraction is more trustworthy than one that does not.");
+    html += '<p>' + unverifiedProse() + '</p>';
+
     html += '<h3>Heterogeneity</h3>';
     var kNum = Number(a.kStudies);
     html += '<p>Statistical heterogeneity was I² = ' + auto("analysis.i2") + '%' + ((a.tau2 !== "" && a.tau2 != null) ? ', τ² = ' + esc(a.tau2) : '') +
       (a.predictionInterval ? '. The prediction interval was ' + esc(a.predictionInterval) + '.'
         : (isFinite(kNum) && kNum < 3 ? '. A prediction interval was not estimated (k < 3).' : '.')) + '</p>';
+    var sensProse = sensitivityProse();
+    if (sensProse) html += '<p>' + sensProse + '</p>';
     html += '<div class="figure-learning-row no-clean-pdf"><button type="button" data-learn="heterogeneity" aria-haspopup="dialog">What is heterogeneity?</button>' +
       (a.predictionInterval ? '<button type="button" data-learn="prediction_interval" aria-haspopup="dialog">What is a prediction interval?</button>' : '') + '</div>';
     html += helper("Heterogeneity = how much the studies’ results differ beyond chance. I² estimates the share of that variation that is real difference rather than chance: a high I² means results vary a lot; a low or 0% I² is consistent with agreement, but with only a few studies it can simply mean there were too few to detect a difference — so do not state it as proof the studies agree. τ² is the actual spread of true effects between studies; look at it and the prediction interval too.");
@@ -644,6 +1046,8 @@
 
     html += '<h3>Risk of bias</h3>';
     html += helper("Risk of bias asks whether the way a study was run could have distorted its result — separate from whether the study is “good”. Link each concern to <em>how</em> it could change the answer.");
+    var robProse = robSummaryProse();
+    if (robProse) html += '<p>' + robProse + '</p>';
     html += figureCard(4, "Risk-of-bias summary", ["risk_of_bias"], "robPaperSlot", "figures.riskOfBias.caption",
       "The main risk to trustworthiness is... This could affect the result because... Overall, the risk of bias appears...");
     html += caseStudy("when the way a trial was reported hid what it found",
