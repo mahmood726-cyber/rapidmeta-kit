@@ -71,6 +71,18 @@ def test_ratio_must_be_explicitly_typed_as_hazard_ratio():
          "reportedEffectType": "HR"})
 
 
+def test_published_hr_cannot_be_declared_an_odds_ratio_outcome():
+    _blocked({"publishedHR": 0.86, "reportedEffectType": "HR",
+              "allOutcomes": [{"estimandType": "OR"}]})
+
+
+def test_rob_scores_require_valid_domains_and_source():
+    _blocked({"rob": ["some-concerns"] * 5, "robSource": "reviewer"})
+    _blocked({"rob": ["low"] * 5})
+    _ok({"rob": ["low", "some", "high", "low", "some"],
+         "robSource": "Reviewed Cochrane RoB 2 judgements, double checked"})
+
+
 # --- registry-ID handling: never emit a false clinicaltrials.gov link ---------
 
 def test_registry_url_recognizes_known_formats():

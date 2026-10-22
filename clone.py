@@ -162,6 +162,20 @@ def _validate_trial_values(i: int, t: dict):
                                   (arm_total is not None and v > arm_total)):
                 die(f"trial {i+1} ({nct}): allOutcomes[{j}].{field}={v!r} "
                     "must be a nonnegative integer no larger than its arm size.")
+        if any(t.get(k) is not None for k in ("publishedHR", "pubHR")):
+            if outcome.get("estimandType") not in (None, "HR"):
+                die(f"trial {i+1} ({nct}): allOutcomes[{j}].estimandType="
+                    f"{outcome['estimandType']!r} contradicts a published HR. "
+                    "Do not attach a published HR to an OR/RR/rate-ratio outcome.")
+    if "rob" in t:
+        rob = t["rob"]
+        if (not isinstance(rob, list) or len(rob) != 5 or
+                any(level not in ("low", "some", "high") for level in rob)):
+            die(f"trial {i+1} ({nct}): rob requires five assessed domain "
+                "values from 'low', 'some' or 'high'.")
+        if not isinstance(t.get("robSource"), str) or not t["robSource"].strip():
+            die(f"trial {i+1} ({nct}): supplied rob ratings require a "
+                "nonempty robSource documenting who/what assessed them.")
 
 
 def _check_swap_safe(field: str, value: str, unsafe: dict = _SWAP_UNSAFE):
@@ -265,8 +279,13 @@ def render_trial_entry(t, default_group):
         outcomes = [{"shortLabel": "Primary", "title": t.get("outcome_label", "Primary outcome"),
                      "type": "binary"}]
     outcomes_str = ",\n                        ".join(render_outcome(o) for o in outcomes)
-    rob = t.get("rob", ["some-concerns"] * 5)
+    # The template recognises low/some/high, NOT "some-concerns". Previously
+    # unrecognised placeholders could be read as LOW risk by UI/GRADE paths.
+    # 'some' here is a *provisional UI placeholder*, never a RoB 2 assessment;
+    # mark its provenance and show the global draft/UNASSESSED warnings.
+    rob = t.get("rob", ["some"] * 5)
     rob_str = "[" + ", ".join(f"'{js_escape(r)}'" for r in rob) + "]"
+    rob_source = t.get("robSource", "UNASSESSED — generator placeholder; no RoB 2 assessor")
     nct = t["nct"]
     return f"""'{js_escape(nct)}': {{
 
@@ -279,7 +298,7 @@ def render_trial_entry(t, default_group):
                     ],
 
 
-                    rob: {rob_str},
+                    rob: {rob_str}, robSource: '{js_escape(rob_source)}',
 
 
                     snippet: '{js_escape(t.get('snippet',''))}',
