@@ -57,6 +57,11 @@ def test_fractions_and_noninteger_counts_are_refused(field, value):
     _blocked({field: value})
 
 
+def test_int_above_javascript_safe_integer_is_blocked():
+    _blocked({"tN": 2**53})
+    _blocked({"cE": 10**400})
+
+
 def test_nested_outcome_counts_are_checked():
     _blocked({"tN": 100, "allOutcomes": [{"tE": 101}]})
     _blocked({"tN": 100, "allOutcomes": [{"tE": 1.5}]})
@@ -147,7 +152,7 @@ def test_unsafe_trial_ids_fail_even_with_source_url(bad_id, tmp_path):
     assert not out.exists()
 
 
-@pytest.mark.parametrize("bad_url", ["javascript:alert(1)", "data:text/html,x", "https://", "https://example.org/\nscript"])
+@pytest.mark.parametrize("bad_url", ["javascript:alert(1)", "data:text/html,x", "https://", "https://example.org/\nscript", "https://[invalid"])
 def test_untrusted_source_url_scheme_and_content_blocked(bad_url, tmp_path):
     r, out = _run_clone(_build_config([{"nct": "EU-CTR-2020-001", "name": "X",
         "sourceUrl": bad_url}]), tmp_path)

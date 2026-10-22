@@ -85,9 +85,14 @@ _SWAP_UNSAFE_CONDITION = dict(_SWAP_UNSAFE,
 
 
 def _num(v):
-    """A finite real number (not bool/None/str), else None."""
-    return v if (isinstance(v, (int, float)) and not isinstance(v, bool)
-                 and math.isfinite(v)) else None
+    """Finite, JS-exact numeric input (not bool/None/str), else None."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    # JS uses 53-bit precision for integers; accepting a larger patient count
+    # would silently round denominators when pasted as a numeric literal.
+    if isinstance(v, int):
+        return v if abs(v) <= (2**53 - 1) else None
+    return v if math.isfinite(v) else None
 
 
 def _validate_trial_values(i: int, t: dict):
@@ -231,6 +236,9 @@ def _jsnum(v):
         die(f"numeric trial field must be a number or null, got {v!r} "
             f"(a string/other type here is stamped into the JS literal and "
             f"would inject code or break the dashboard).")
+    if isinstance(v, int) and abs(v) > (2**53 - 1):
+        die(f"numeric trial field {v!r} exceeds JavaScript's exact integer "
+            "range and would silently corrupt patient/event denominators.")
     if isinstance(v, float) and not math.isfinite(v):
         die(f"numeric trial field must be finite, got {v!r} "
             f"(inf/nan is not valid JS).")
@@ -403,9 +411,13 @@ def main():
         seen_ids.add(tid)
         if t.get("sourceUrl") is not None:
             url = t["sourceUrl"]
+            try:
+                parsed = urlsplit(url) if isinstance(url, str) else None
+            except ValueError:
+                parsed = None
             if (not isinstance(url, str) or any(c.isspace() for c in url)
-                    or urlsplit(url).scheme not in ("http", "https")
-                    or not urlsplit(url).netloc):
+                    or parsed is None or parsed.scheme not in ("http", "https")
+                    or not parsed.netloc):
                 die(f"trial {i+1} ({tid}): sourceUrl must be an absolute HTTP(S) URL.")
         if _registry_url(tid) is None and not t.get("sourceUrl"):
             die(f"trial {i+1}: id {tid!r} is not a recognized registry ID "

@@ -35,6 +35,14 @@ def test_bundled_examples_build(cfg_name, tmp_path):
     assert (out.parent / "assets" / "plotly.min.js").exists()
 
 
+@pytest.mark.parametrize("cfg_name", sorted(p.name for p in CONFIGS.glob("*.json")))
+def test_every_bundled_topic_config_remains_buildable(cfg_name, tmp_path):
+    out = tmp_path / "topic.html"
+    res = run_clone([str(CONFIGS / cfg_name), "--out", str(out)])
+    assert res.returncode == 0, f"{cfg_name}: {res.stderr}"
+    assert out.exists()
+
+
 def test_served_demo_is_exactly_generated_from_reviewed_config(tmp_path):
     # Guard against a clinically corrected config leaving an older, inconsistent
     # 3-trial HTML page served on GitHub Pages after a merge.
