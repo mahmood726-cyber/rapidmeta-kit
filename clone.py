@@ -11,8 +11,8 @@ editable extraction, screening, risk-of-bias, live re-pooling, 28-panel
 statistics tab, GRADE SoF, WebR R-validation, PRISMA flow. You do NOT
 edit the template or this script; you only write configs.
 
-It is deterministic — zero network/LLM calls — so a free-tier CLI key can
-produce many dashboards without hitting rate limits.
+It makes zero network/LLM calls. For byte-for-byte repeatable output, pin the
+``date`` field in the JSON config; otherwise metadata uses the build date.
 
 The base template is template/base_dupilumab_copd.html (the validated
 DUPILUMAB_COPD base, unminified so the replacements below work). All
@@ -24,6 +24,7 @@ Exit codes: 0 = built, 2 = bad config (message says what to fix).
 """
 from __future__ import annotations
 import argparse, html, json, math, re, sys, io
+from urllib.parse import urlsplit
 from pathlib import Path
 
 # Guard the UTF-8 stdout shim: under pytest capture (no/odd .buffer) an
@@ -84,8 +85,9 @@ _SWAP_UNSAFE_CONDITION = dict(_SWAP_UNSAFE,
 
 
 def _num(v):
-    """A real number (not bool/None/str), else None."""
-    return v if (isinstance(v, (int, float)) and not isinstance(v, bool)) else None
+    """A finite real number (not bool/None/str), else None."""
+    return v if (isinstance(v, (int, float)) and not isinstance(v, bool)
+                 and math.isfinite(v)) else None
 
 
 def _validate_trial_values(i: int, t: dict):
@@ -107,6 +109,13 @@ def _validate_trial_values(i: int, t: dict):
                 f"(got {type(t[k]).__name__}). Numeric trial fields are stamped "
                 f"as bare JS literals; a string/bool here ships a malformed or "
                 f"JS-breaking dashboard.")
+    # Python accepts 4.5 as a number and JS would render it, but a trial cannot
+    # have fractional patients or events. jsonschema is dev-only, so enforce
+    # the integer schema here as well (including the trial year).
+    for k in ("tE", "tN", "cE", "cN", "year"):
+        if k in t and t[k] is not None and type(t[k]) is not int:
+            die(f"trial {i+1} ({nct}): {k}={t[k]!r} must be an integer, "
+                "not a fractional patient/event count or year.")
     tE, tN, cE, cN = (_num(t.get(k)) for k in ("tE", "tN", "cE", "cN"))
     for label, n in (("tN", tN), ("cN", cN)):
         if n is not None and n < 0:
@@ -126,6 +135,33 @@ def _validate_trial_values(i: int, t: dict):
     if hr is not None and hrL is not None and hrU is not None and not (hrL <= hr <= hrU):
         die(f"trial {i+1} ({nct}): published point estimate {hr} lies outside its "
             f"CI [{hrL}, {hrU}].")
+    # The engine's publishedHR/pubHR path interprets the supplied ratio as an
+    # HR. A published OR/RR/rate ratio entered here is a different estimand;
+    # the generator must not quietly label it a hazard ratio.
+    if any(t.get(k) is not None for k in ("publishedHR", "hrLCI", "hrUCI",
+                                              "pubHR", "pubHR_LCI", "pubHR_UCI")):
+        if t.get("reportedEffectType") != "HR":
+            die(f"trial {i+1} ({nct}): publishedHR/pubHR fields require "
+                "reportedEffectType='HR' verified against the publication. "
+                "Do not enter OR, RR, or recurrent-event rate ratios as HR. "
+                "For those measures use verified arm counts where applicable "
+                "or omit the incompatible published estimate.")
+    elif "reportedEffectType" in t and t["reportedEffectType"] != "HR":
+        die(f"trial {i+1} ({nct}): reportedEffectType={t['reportedEffectType']!r} "
+            "is not supported by the publishedHR pathway.")
+
+    outcomes = t.get("allOutcomes", [])
+    if not isinstance(outcomes, list):
+        die(f"trial {i+1} ({nct}): allOutcomes must be an array.")
+    for j, outcome in enumerate(outcomes):
+        if not isinstance(outcome, dict):
+            die(f"trial {i+1} ({nct}): allOutcomes[{j}] must be an object.")
+        for field, arm_total in (("tE", tN), ("cE", cN)):
+            v = outcome.get(field)
+            if v is not None and (type(v) is not int or v < 0 or
+                                  (arm_total is not None and v > arm_total)):
+                die(f"trial {i+1} ({nct}): allOutcomes[{j}].{field}={v!r} "
+                    "must be a nonnegative integer no larger than its arm size.")
 
 
 def _check_swap_safe(field: str, value: str, unsafe: dict = _SWAP_UNSAFE):
@@ -145,7 +181,12 @@ def _check_swap_safe(field: str, value: str, unsafe: dict = _SWAP_UNSAFE):
 
 # ---- JS literal rendering (reused, proven) ---------------------------------
 def js_escape(s):
-    return str(s).replace("\\", "\\\\").replace("'", "\\'")
+    """Safe for a single-quoted JavaScript literal embedded in inline HTML."""
+    return (str(s).replace("\\", "\\\\").replace("'", "\\'")
+            .replace("\r", "\\r").replace("\n", "\\n")
+            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+            .replace("<", "\\x3c").replace(">", "\\x3e")
+            .replace("&", "\\x26"))
 
 
 def render_outcome(o):
@@ -227,7 +268,7 @@ def render_trial_entry(t, default_group):
     rob = t.get("rob", ["some-concerns"] * 5)
     rob_str = "[" + ", ".join(f"'{js_escape(r)}'" for r in rob) + "]"
     nct = t["nct"]
-    return f"""'{nct}': {{
+    return f"""'{js_escape(nct)}': {{
 
 
                     {head},
@@ -327,10 +368,26 @@ def main():
         _check_swap_safe(_field, _val,
                          _SWAP_UNSAFE_CONDITION if _field == "condition" else _SWAP_UNSAFE)
 
+    seen_ids = set()
     for i, t in enumerate(trials):
+        if not isinstance(t, dict):
+            die(f"trial {i+1} must be a JSON object.")
         if "nct" not in t or "name" not in t:
             die(f"trial {i+1} needs at least 'nct' and 'name'.")
+        if not isinstance(t["nct"], str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,80}", t["nct"]):
+            die(f"trial {i+1}: 'nct' must be a safe, nonempty registry ID "
+                "(letters, digits, _, ., :, or -; max 80 characters).")
         tid = str(t["nct"]).strip()
+        if tid in seen_ids:
+            die(f"trial {i+1}: duplicate registry ID {tid!r}; "
+                "duplicate studies must not be silently double-counted.")
+        seen_ids.add(tid)
+        if t.get("sourceUrl") is not None:
+            url = t["sourceUrl"]
+            if (not isinstance(url, str) or any(c.isspace() for c in url)
+                    or urlsplit(url).scheme not in ("http", "https")
+                    or not urlsplit(url).netloc):
+                die(f"trial {i+1} ({tid}): sourceUrl must be an absolute HTTP(S) URL.")
         if _registry_url(tid) is None and not t.get("sourceUrl"):
             die(f"trial {i+1}: id {tid!r} is not a recognized registry ID "
                 f"(NCT########, ISRCTN########, ACTRN##############). Provide a "
@@ -356,14 +413,18 @@ def main():
 
     # 2) AUTO_INCLUDE_TRIAL_IDS
     ncts = [t["nct"] for t in trials]
-    new_set = ", ".join(f"'{n}'" for n in ncts)
+    new_set = ", ".join(f"'{js_escape(n)}'" for n in ncts)
     src = re.sub(r"AUTO_INCLUDE_TRIAL_IDS\s*=\s*new\s+Set\(\[[^\]]*\]\)",
-                 f"AUTO_INCLUDE_TRIAL_IDS = new Set([{new_set}])", src, count=1)
+                  lambda _m: f"AUTO_INCLUDE_TRIAL_IDS = new Set([{new_set}])", src, count=1)
 
     # 3) nctAcronyms
     acro = cfg.get("acronyms") or {t["nct"]: t["name"] for t in trials}
+    if not isinstance(acro, dict) or any(n not in seen_ids for n in acro):
+        die("acronyms must be an object whose keys are included trial IDs; "
+            "unrelated trial IDs cannot be inherited by a new review.")
     new_map = ", ".join(f"'{n}': '{js_escape(a)}'" for n, a in acro.items())
-    src = re.sub(r"nctAcronyms:\s*\{[^}]*\}", f"nctAcronyms: {{ {new_map} }}", src, count=1)
+    src = re.sub(r"nctAcronyms:\s*\{[^}]*\}",
+                 lambda _m: f"nctAcronyms: {{ {new_map} }}", src, count=1)
 
     # 4) PICO protocol. ALWAYS reset (not just when config supplies `pico`):
     # the base `protocol:{}` carries dupilumab estimand prose ("Adults with COPD
@@ -391,6 +452,48 @@ def main():
                 m.group(5) + js_escape(pico.get("subgroup", "")) +
                 m.group(6) + "}")
     src = proto_re.sub(repl, src, count=1)
+
+    # Never inherit authorship, prior registration, funding, conflict-of-interest
+    # or RoB/GRADE sign-off assertions from the dupilumab base. These are factual
+    # claims about a SPECIFIC review, not features that can be cloned by swapping
+    # drug names. The source template still carries them; refuse on drift.
+    _disclosures = (
+        ("v12.0 (Living Protocol &mdash; auto-updating)",
+         "Generated review draft — protocol version not supplied", "protocol version"),
+        ('<span id="proto-reg-date">2026-03-10</span>',
+         '<span id="proto-reg-date">Not prospectively registered</span>', "protocol registration date"),
+        ('<span id="proto-amend-date">2026-03-10</span>',
+         '<span id="proto-amend-date">Not supplied</span>', "protocol amendment date"),
+        ("Immutable timestamp via GitHub commit history at ",
+         "No prospective protocol registration has been established for this generated draft. "
+         "The inherited base previously said: ", "protocol registration qualifier"),
+        ("Per ICMJE 2023, GitHub commit hash + timestamp constitutes a verifiable "
+         "pre-registration record equivalent to PROSPERO for tracking outcome / eligibility / analysis-plan changes.",
+         "A Git commit is not equivalent to prospective PROSPERO registration.",
+         "false registration equivalence"),
+        ("Continuous (living review); formal snapshot at each new trial publication</td>",
+         "Not scheduled; manually generated snapshot</td>", "unearned living-review claim"),
+        ("No external funding (independent academic review)</td>",
+         "Not supplied; authors must declare actual funding</td>", "inherited funding assertion"),
+        ("None declared</td>", "Not supplied; authors must declare actual interests</td>",
+         "inherited conflict-of-interest assertion"),
+        ("MA &mdash; Conceptualization, Methodology, Data Curation, Writing "
+         "(Original Draft &amp; Review &amp; Editing), Supervision. Per ICMJE 2023: "
+         "human author takes full responsibility for accuracy and integrity of the work, "
+         "including all AI-assisted components.",
+         "Contributor roles not supplied; complete and confirm the CRediT statement "
+         "before submission.", "inherited contributor assertion"),
+        ("All AI-generated content was reviewed and verified by the human author.",
+         "This generated topic has not been independently human-verified.",
+         "inherited human-verification assertion"),
+        ("Provisional RoB-2 and GRADE — AI-drafted from the record excerpts; authors "
+         "confirm each domain against those excerpts before submission (Protocol §7 and §9)",
+         "UNASSESSED: RoB-2 and GRADE require independent source-based assessment. "
+         "Do not interpret the inherited placeholder scores as adjudicated ratings.",
+         "inherited RoB/GRADE sign-off assertion"),
+    )
+    for _old, _new, _reason in _disclosures:
+        src = _replace_exactly(src, _old, _new, _reason)
 
     # 5) realData
     entries = ",\n\n\n                ".join(
@@ -461,6 +564,10 @@ def main():
     _date = cfg.get("date") or _dt.date.today().isoformat()
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(_date)):
         die(f"config 'date' must be ISO YYYY-MM-DD (got {_date!r}).")
+    try:
+        _dt.date.fromisoformat(_date)
+    except (ValueError, TypeError):
+        die(f"config 'date' is not a valid calendar date: {_date!r}.")
     src = _replace_exactly(src, '"datePublished":"2026-05-24"',
                            f'"datePublished":{json.dumps(_date)}',
                            'the inherited datePublished')
@@ -626,6 +733,20 @@ def main():
     # (the slash form, distinct from the github.io URLs handled above).
     repo = cfg.get("repo", "mahmood726-cyber/rapidmeta-kit")
     src = src.replace("mahmood726-cyber/rapidmeta-finerenone", repo)
+
+    # Visible global status, not only a README caveat: every generated page is a
+    # DRAFT until trial identity, search, endpoint, RoB and GRADE are reviewed.
+    _draft_banner = (
+        '<div role="status" class="bg-amber-950 text-amber-100 text-center '
+        'text-xs px-3 py-1 border-b border-amber-500/50">'
+        'ILLUSTRATIVE REVIEW DRAFT — input values, eligibility, RoB-2 and GRADE '
+        'are not independently verified. Not for clinical or regulatory decisions.'
+        '</div>'
+    )
+    src = _replace_exactly(src,
+        '<body class="h-screen flex flex-col overflow-hidden">',
+        '<body class="h-screen flex flex-col overflow-hidden">' + _draft_banner,
+        'the global unverified-draft disclosure')
 
     out_path = Path(args.out) if args.out else (HERE / "output" / f"{slug}.html")
     out_path.parent.mkdir(parents=True, exist_ok=True)

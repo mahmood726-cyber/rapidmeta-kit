@@ -21,7 +21,7 @@
      "allOutcomes": [{"shortLabel": "ResidualNMB", "title": "Residual NMB (TOF<0.9 at PACU)", "type": "binary"}]},
     {"nct": "NCT02861131", "name": "Togioka 2020", "pmid": "32139135", "phase": "IV", "year": 2020,
      "tE": 10, "tN": 98, "cE": 49, "cN": 99, "group": "Sugammadex vs neostigmine (older adults)",
-     "publishedHR": 0.11, "hrLCI": 0.04, "hrUCI": 0.25,
+     "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/32139135/",
      "allOutcomes": [{"shortLabel": "ResidualNMB", "title": "Residual NMB (TOF<0.9 at PACU)", "type": "binary"}]}
   ]
 }
