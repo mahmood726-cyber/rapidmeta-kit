@@ -131,7 +131,13 @@ def _validate_trial_values(i: int, t: dict):
         if ev is not None and n is not None and ev > n:
             die(f"trial {i+1} ({nct}): {arm} events ({ev}) exceed arm size ({n}) "
                 f"— impossible 2x2 cell.")
-    hrL, hrU, hr = (_num(t.get(k)) for k in ("hrLCI", "hrUCI", "publishedHR"))
+    pairs = (("publishedHR", "pubHR"), ("hrLCI", "pubHR_LCI"), ("hrUCI", "pubHR_UCI"))
+    for a, b in pairs:
+        if t.get(a) is not None and t.get(b) is not None and t[a] != t[b]:
+            die(f"trial {i+1} ({nct}): conflicting {a} and {b} across panels.")
+    hr, hrL, hrU = (_num(t.get(a) if t.get(a) is not None else t.get(b)) for a, b in pairs)
+    if any(x is not None for x in (hr, hrL, hrU)) and not all(x is not None for x in (hr, hrL, hrU)):
+        die(f"trial {i+1} ({nct}): published HR requires point estimate and both CI bounds.")
     for label, v in (("publishedHR", hr), ("hrLCI", hrL), ("hrUCI", hrU)):
         if v is not None and v <= 0:
             die(f"trial {i+1} ({nct}): {label}={v} must be > 0 (ratio measure).")
