@@ -230,3 +230,21 @@ def test_non_nct_id_emits_no_ctgov_link(tmp_path):
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-q"]))
+
+def test_conflicting_hr_aliases_are_refused():
+    _blocked({"publishedHR": 0.8, "pubHR": 0.9, "hrLCI": 0.7,
+              "hrUCI": 0.95, "reportedEffectType": "HR"})
+    _blocked({"pubHR": 0.8, "pubHR_LCI": 0.7, "hrLCI": 0.75,
+              "pubHR_UCI": 0.95, "reportedEffectType": "HR"})
+
+
+def test_partial_hr_is_refused():
+    _blocked({"publishedHR": 0.8, "hrLCI": 0.7,
+              "reportedEffectType": "HR"})
+    _blocked({"pubHR": 0.8, "pubHR_UCI": 0.95,
+              "reportedEffectType": "HR"})
+
+
+def test_complete_alias_hr_passes():
+    _ok({"pubHR": 0.8, "pubHR_LCI": 0.7, "pubHR_UCI": 0.95,
+         "reportedEffectType": "HR"})
