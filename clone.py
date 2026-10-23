@@ -370,6 +370,8 @@ def main():
         die(f"config is not valid JSON: {e}")
 
     # Required fields
+    if not isinstance(cfg, dict):
+        die("config root must be a JSON object.")
     drug = cfg.get("drug")
     slug = cfg.get("slug")
     condition = cfg.get("condition")
@@ -379,7 +381,7 @@ def main():
         die("config needs 'drug' (e.g. \"Finerenone\").")
     if not slug:
         die("config needs 'slug' (lowercase id, e.g. \"finerenone_ckd\").")
-    if not re.fullmatch(r"[a-z0-9_]+", slug):
+    if not isinstance(slug, str) or not re.fullmatch(r"[a-z0-9_]+", slug):
         die("'slug' must be lowercase letters/digits/underscores only (e.g. finerenone_ckd).")
     if not condition:
         die("config needs 'condition' (e.g. \"CKD in type 2 diabetes\").")
@@ -398,6 +400,8 @@ def main():
     # the field-specific message, not an incidental trial-ID error.
     for _field, _val in (("drug", drug), ("drug_lower", drug_lower),
                          ("condition", condition)):
+        if not isinstance(_val, str):
+            die(f"config field {_field!r} must be a string.")
         _check_swap_safe(_field, _val,
                          _SWAP_UNSAFE_CONDITION if _field == "condition" else _SWAP_UNSAFE)
 
