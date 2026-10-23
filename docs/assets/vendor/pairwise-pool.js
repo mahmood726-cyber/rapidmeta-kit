@@ -92,9 +92,26 @@
 
   function pool2x2(trials, opts) {
     opts = opts || {};
-    const measure = (opts.measure || 'RR').toUpperCase();
+    // Only RR and OR are implemented for raw binomial 2x2 counts.
+    // Never silently present an RR as a requested HR/RD or another estimand.
+    const measureInput = opts.measure == null ? 'RR' : opts.measure;
+    const tau2Input = opts.tau2Method == null ? 'PM' : opts.tau2Method;
+    const measure = typeof measureInput === 'string' ? measureInput.toUpperCase() : '';
+    const tau2Method = typeof tau2Input === 'string' ? tau2Input.toUpperCase() : '';
     const haldane = opts.haldane != null ? opts.haldane : 0.5;
     const out = { k_used: 0, perStudy: [], measure, opts };
+    if (measure !== 'RR' && measure !== 'OR') {
+      out.error = 'Unsupported raw 2x2 effect measure ' + JSON.stringify(measureInput)
+        + '; expected RR or OR (HR requires time-to-event evidence)';
+      return out;
+    }
+    // REML and other methods are available in other engines, not in this
+    // PM/DL-only module. Do not claim the requested estimator was executed.
+    if (tau2Method !== 'PM' && tau2Method !== 'DL') {
+      out.error = 'Unsupported between-study variance method ' + JSON.stringify(tau2Input)
+        + '; expected PM or DL in PairwisePool';
+      return out;
+    }
 
     // Raw binomial event/arm counts must be exact non-fractional integers.
     // Previously, fractional counts and numeric strings reached effectAndVar()
@@ -155,7 +172,6 @@
     const df = k - 1;
 
     // tau^2 — Paule-Mandel by default (robust for small k); DL via opts.tau2Method='DL'.
-    const tau2Method = (opts.tau2Method || 'PM').toUpperCase();
     const tau2 = tau2Method === 'DL'
       ? tau2DL(wFE, sumWFE, Q, df)
       : tau2PM(yi, vi, df);
