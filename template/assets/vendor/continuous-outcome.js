@@ -46,8 +46,11 @@
       // Variant 2: mean1/mean2/sd1/sd2 + n1/n2 (computed from raw)
       const m1 = +t.mean1, m2 = +t.mean2, sd1 = +t.sd1, sd2 = +t.sd2;
       const n1 = +t.tN || +t.n1, n2 = +t.cN || +t.n2;
+      // Preserve finite but nonpositive/one-person arm counts as candidates.
+      // Otherwise the study vanishes and a seemingly valid k=2 pool is shown.
+      // md()/smdHedges() must refuse these inputs before inverse-variance pooling.
       const hasFull = isFinite(m1) && isFinite(m2) && isFinite(sd1) && isFinite(sd2)
-                      && isFinite(n1) && isFinite(n2) && n1 > 1 && n2 > 1;
+                      && isFinite(n1) && isFinite(n2);
       // Do not silently omit trials with zero/negative reported SDs.
       // Preserve the candidate so the common render gate refuses pooling.
       if (hasMD) {
@@ -71,7 +74,8 @@
     }
     // Per-arm N is a count of measured participants; fractional or unsafe
     // numeric counts must refuse, not enter inverse-variance weights.
-    if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)) {
+    if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)
+        || t.n1 <= 1 || t.n2 <= 1) {
       return { yi: NaN, vi: NaN };
     }
     // A negative reported SD cannot be made valid by squaring it.
@@ -90,7 +94,8 @@
     }
     // Per-arm N is a count of measured participants; fractional or unsafe
     // numeric counts must refuse, not enter inverse-variance weights.
-    if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)) {
+    if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)
+        || t.n1 <= 1 || t.n2 <= 1) {
       return { yi: NaN, vi: NaN };
     }
     // Enforce the same source-review gate on the SMD scale.
