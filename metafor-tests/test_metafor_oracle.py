@@ -43,8 +43,11 @@ def parse_metafor_result(output):
 
 
 def invoke_metafor(rows, measure, method, matched_cc05=False):
+    # Preserve the supplied count tokens. Integer interpolation (%d) silently
+    # truncated fractional inputs before the independently executed R script
+    # could enforce its fail-closed raw binomial count contract.
     tab = "tE\ttN\tcE\tcN\n" + "".join(
-        "%d\t%d\t%d\t%d\n" % row for row in rows
+        "\t".join(str(value) for value in row) + "\n" for row in rows
     )
     args = ["Rscript", str(R_SCRIPT), measure, method]
     if matched_cc05:
@@ -169,11 +172,29 @@ class ActualMetaforOracle(unittest.TestCase):
                 self.assertNotEqual(cp.returncode, 0)
                 self.assertIn("CC05 refuses uninformative", cp.stderr)
 
+    def test_oracle_tsv_encoding_preserves_invalid_count_tokens(self):
+        # Mock ONLY subprocess launch to inspect the actual TSV payload; this
+        # is a serializer regression, never an external-R numerical test.
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        raw_rows = (
+            (10.5, 100, 20, 100),             # must not become 10
+            (10, 100.5, 20, 100),             # must not become 100
+            (9007199254740992, 9007199254740994, 20, 100),
+        )
+        expected = ("tE\ttN\tcE\tcN\n"
+                    "10.5\t100\t20\t100\n"
+                    "10\t100.5\t20\t100\n"
+                    "9007199254740992\t9007199254740994\t20\t100\n")
+        with patch("subprocess.run", return_value=SimpleNamespace(returncode=1)) as fake:
+            invoke_metafor(raw_rows, "RR", "DL")
+        self.assertEqual(fake.call_args.kwargs["input"], expected)
+
     def test_native_metafor_refuses_fractional_and_unsafe_raw_counts(self):
-        # Transmit the original TSV tokens: invoke_metafor uses %d, which
-        # would silently truncate fractional inputs before they reach R.
-        # The independent R oracle must enforce the SAME count domain as JS,
-        # without depending on implicit metafor warning behaviour.
+        # Exercise the normal lossless oracle transport, not a separate
+        # hand-built TSV path. Native R must reject the SAME invalid raw count
+        # domain as JS, without relying on implicit metafor warnings.
         invalid = {
             "fractional event": (10.5, 100, 20, 100),
             "fractional denominator": (10, 100.5, 20, 100),
@@ -181,15 +202,11 @@ class ActualMetaforOracle(unittest.TestCase):
             "unsafe denominator": (10, 9007199254740992, 20, 100),
         }
         for label, first in invalid.items():
-            raw = "tE\ttN\tcE\tcN\n" + "\t".join(map(str, first)) + "\n"
-            raw += "14\t140\t28\t140\n"
             for measure in ("RR", "OR"):
                 for method in ("PM", "DL"):
                     with self.subTest(case=label, measure=measure, method=method):
-                        cp = subprocess.run(
-                            ["Rscript", str(R_SCRIPT), measure, method],
-                            input=raw, cwd=ROOT, capture_output=True,
-                            text=True, check=False, timeout=90,
+                        cp = invoke_metafor(
+                            (first, (14, 140, 28, 140)), measure, method
                         )
                         self.assertNotEqual(cp.returncode, 0)
                         self.assertIn("requires safe integer raw counts", cp.stderr)
