@@ -19,7 +19,7 @@
  * Cochrane Handbook). DL remains available via opts.tau2Method='DL'.
  *
  * Output (one shape, log-scale + back-transformed):
- *   { k_used, mu_log, mu, ci_lo, ci_hi, pi_lo, pi_hi, tau2, Q, I2, perStudy: [...] }
+ *   { k_used, excludedStudies: [{trial_index, name, reason}], mu_log, mu, ci_lo, ci_hi, pi_lo, pi_hi, tau2, Q, I2, perStudy: [...] }
  *
  * Conventions: Cochrane Handbook v6.5 (Nov 2024 §10.10.4.3) — PI uses t_{k-1};
  * HKSJ floor = max(1, q*) where q* is the RE-weighted statistic
@@ -99,7 +99,7 @@
     const measure = typeof measureInput === 'string' ? measureInput.toUpperCase() : '';
     const tau2Method = typeof tau2Input === 'string' ? tau2Input.toUpperCase() : '';
     const haldane = opts.haldane != null ? opts.haldane : 0.5;
-    const out = { k_used: 0, perStudy: [], measure, opts };
+    const out = { k_used: 0, perStudy: [], excludedStudies: [], measure, opts };
     // This inverse-variance route requires a strictly positive correction:
     // zero would leave boundary cells uncomputable and silently remove trials.
     // Do not coerce numeric-looking strings or booleans (JS "+" concatenates).
@@ -164,7 +164,17 @@
       if (tN <= 0 || cN <= 0) return;
       if (!isFinite(tE) || !isFinite(tN) || !isFinite(cE) || !isFinite(cN)) return;
       if (tE > tN || cE > cN || tE < 0 || cE < 0) return; // GRIM violation
-      if (tE === 0 && cE === 0) return;                   // both-zero — uninformative
+      if (tE === 0 && cE === 0) {
+        // Neither-arm events give no direction/magnitude for RR or OR. Preserve
+        // the established exclusion policy but disclose the study and reason.
+        // This is an analysis exclusion, not removal from the evidence review.
+        out.excludedStudies.push({
+          trial_index: idx + 1,
+          name: t.name || ('Study ' + (idx + 1)),
+          reason: 'DOUBLE_ZERO_EVENTS'
+        });
+        return;
+      }
       let tEa = tE, tNa = tN, cEa = cE, cNa = cN;
       if (tE === 0 || cE === 0 || tE === tN || cE === cN) {
         tEa = tE + haldane; tNa = tN + 2 * haldane;
