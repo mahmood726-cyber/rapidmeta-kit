@@ -63,7 +63,7 @@
   // t-distribution two-sided critical value at p=0.025 (95% interval).
   // Exact 97.5th percentiles from R stats::qt(.975, df), for integer df 1..30.
   // Cochrane k-1 confidence/prediction intervals must not be silently distorted
-  // by 3-decimal critical values; df>30 retains a documented approximation.
+  // by 3-decimal critical values; df>30 uses a fourth-order expansion.
   const T_975 = {
     1: 12.706204736175, 2: 4.302652729749, 3: 3.182446305284, 4: 2.776445105198, 5: 2.570581835636,
     6: 2.446911851145, 7: 2.364624251593, 8: 2.306004135204, 9: 2.262157162798, 10: 2.228138851986,
@@ -74,7 +74,17 @@
   };
   function tCrit975(df) {
     if (df < 1) return NaN;
-    if (df > 30) return 1.959963985 + 2.3721355/df + 2.82206/(df*df);
+    // Fourth-order Cornish-Fisher expansion for integer df >= 31, using the
+    // N(0,1) 97.5th quantile and Student-t correction coefficients. Check
+    // against actually executed R stats::qt(.975, df) in oracle-tests;
+    // unlike the previous truncated formula, terms through df^-4 remain.
+    if (df > 30) {
+      const v = df, v2 = v * v;
+      return 1.959963984540054 + 2.372271230298562/v
+        + 2.8224986157396112/v2
+        + 2.555849679507722/(v2*v)
+        + 1.5895340533938225/(v2*v2);
+    }
     return T_975[Math.round(df)] || 1.96;
   }
 
