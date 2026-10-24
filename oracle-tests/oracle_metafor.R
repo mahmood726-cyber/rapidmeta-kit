@@ -7,7 +7,7 @@ if (as.character(getRversion()) != "4.4.3") {
   stop("requires exactly R 4.4.3", call. = FALSE)
 }
 if (!requireNamespace("metafor", quietly = TRUE) ||
-    as.character(utils::packageVersion("metafor")) != "4.8-0") {
+    utils::packageDescription("metafor", fields = "Version") != "4.8-0") {
   stop("requires exactly metafor 4.8-0 (never skip)", call. = FALSE)
 }
 args <- commandArgs(trailingOnly = TRUE)
