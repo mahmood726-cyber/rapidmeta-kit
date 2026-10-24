@@ -157,6 +157,29 @@
       return out;
     }
 
+    // Comparisons from one registered trial may share participants/arms.
+    // This simple inverse-variance model has no multi-arm covariance handling;
+    // do not silently double-count an NCT identifier (Cochrane ch. 6 s 6.2.9,
+    // ch. 23 s 23.3.4). Manual resolution/aggregation is required.
+    const seenNct = new Map();
+    for (let i = 0; i < trials.length; i++) {
+      const raw = trials[i].nct;
+      if (raw == null || raw === '') continue;
+      if (typeof raw !== 'string' || !raw.trim()) {
+        out.error = 'Invalid NCT identifier in trial ' + (i + 1)
+          + '; pooling refused (study identity must be a non-empty string)';
+        return out;
+      }
+      const id = raw.trim().toUpperCase();
+      if (seenNct.has(id)) {
+        out.error = 'Repeated NCT study identifier ' + id + ' in trials '
+          + seenNct.get(id) + ' and ' + (i + 1)
+          + '; pooling refused pending multi-arm/shared-participant assessment';
+        return out;
+      }
+      seenNct.set(id, i + 1);
+    }
+
     const yi = [], vi = [], names = [], origIdx = [];
     trials.forEach(function (t, idx) {
       const tE = t.tE, tN = t.tN, cE = t.cE, cN = t.cN;
