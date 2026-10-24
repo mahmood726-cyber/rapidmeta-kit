@@ -169,6 +169,33 @@ class ActualMetaforOracle(unittest.TestCase):
                 self.assertNotEqual(cp.returncode, 0)
                 self.assertIn("CC05 refuses uninformative", cp.stderr)
 
+    def test_native_metafor_refuses_fractional_and_unsafe_raw_counts(self):
+        # Transmit the original TSV tokens: invoke_metafor uses %d, which
+        # would silently truncate fractional inputs before they reach R.
+        # The independent R oracle must enforce the SAME count domain as JS,
+        # without depending on implicit metafor warning behaviour.
+        invalid = {
+            "fractional event": (10.5, 100, 20, 100),
+            "fractional denominator": (10, 100.5, 20, 100),
+            "unsafe event": (9007199254740992, 9007199254740994, 20, 100),
+            "unsafe denominator": (10, 9007199254740992, 20, 100),
+        }
+        for label, first in invalid.items():
+            raw = "tE\\ttN\\tcE\\tcN\\n" + "\\t".join(map(str, first)) + "\\n"
+            raw += "14\\t140\\t28\\t140\\n"
+            for measure in ("RR", "OR"):
+                for method in ("PM", "DL"):
+                    with self.subTest(case=label, measure=measure, method=method):
+                        cp = subprocess.run(
+                            ["Rscript", str(R_SCRIPT), measure, method],
+                            input=raw, cwd=ROOT, capture_output=True,
+                            text=True, check=False, timeout=90,
+                        )
+                        self.assertNotEqual(cp.returncode, 0)
+                        self.assertIn("requires safe integer raw counts", cp.stderr)
+                        with self.assertRaisesRegex(AssertionError, "Non-integer or unsafe"):
+                            run_js((first, (14, 140, 28, 140)), measure, method)
+
     def test_refuses_unrecognised_correction_modes(self):
         # Never allow a typo to change the quantitative correction silently.
         tab = "tE\ttN\tcE\tcN\n0\t100\t8\t100\n" + "".join(
