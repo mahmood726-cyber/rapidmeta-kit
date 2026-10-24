@@ -30,7 +30,7 @@ def test_nonpositive_raw_sd_refuses_instead_of_dropping_study(copy, label, chang
     result = run_panel(copy, GOOD + ({**RAW, **changed},))
     assert result["rendered"] is True, label
     assert result["badge"] == "Continuous · REFUSED", label
-    assert "unrepresentable MD effect or variance" in result["summary"], label
+    assert "nonpositive reported SD needs source review" in result["summary"], label
     assert "trial 3" in result["summary"], label
     assert "No continuous outcome pooled" in result["bodyHtml"], label
     assert "nonpositive reported SD" in result["bodyHtml"], label
