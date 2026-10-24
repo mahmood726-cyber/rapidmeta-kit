@@ -47,8 +47,9 @@
       const m1 = +t.mean1, m2 = +t.mean2, sd1 = +t.sd1, sd2 = +t.sd2;
       const n1 = +t.tN || +t.n1, n2 = +t.cN || +t.n2;
       const hasFull = isFinite(m1) && isFinite(m2) && isFinite(sd1) && isFinite(sd2)
-                      && isFinite(n1) && isFinite(n2) && n1 > 1 && n2 > 1
-                      && sd1 > 0 && sd2 > 0;
+                      && isFinite(n1) && isFinite(n2) && n1 > 1 && n2 > 1;
+      // Do not silently omit trials with zero/negative reported SDs.
+      // Preserve the candidate so the common render gate refuses pooling.
       if (hasMD) {
         out.push({ name: t.name, kind: 'md_pre', md: +t.md, se: +t.md_se });
       } else if (hasSMD) {
@@ -73,6 +74,9 @@
     if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)) {
       return { yi: NaN, vi: NaN };
     }
+    // A negative reported SD cannot be made valid by squaring it.
+    // A zero reported SD needs manual source review before joint MD/SMD use.
+    if (t.sd1 <= 0 || t.sd2 <= 0) return { yi: NaN, vi: NaN };
     // From means/SDs: variance = sd1²/n1 + sd2²/n2
     const yi = t.m1 - t.m2;
     const vi = t.sd1 * t.sd1 / t.n1 + t.sd2 * t.sd2 / t.n2;
@@ -89,6 +93,8 @@
     if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)) {
       return { yi: NaN, vi: NaN };
     }
+    // Enforce the same source-review gate on the SMD scale.
+    if (t.sd1 <= 0 || t.sd2 <= 0) return { yi: NaN, vi: NaN };
     // Pooled SD
     const dfp = t.n1 + t.n2 - 2;
     const sp = Math.sqrt(((t.n1 - 1) * t.sd1 * t.sd1 + (t.n2 - 1) * t.sd2 * t.sd2) / dfp);
@@ -304,7 +310,7 @@
         summary,
         bodyHtml: '<div style="color:#fbbf24;font-size:11.5px;">'
           + 'No continuous outcome pooled: trial ' + trialIndex
-          + ' has an invalid, underflowed, or overflowed effect variance. '
+          + ' has a nonpositive reported SD or an invalid, underflowed, or overflowed effect variance. '
           + 'Review the original effect estimate, standard error, sample size and SD before synthesis.'
           + '</div>',
         storageKey: STORAGE_KEY,
