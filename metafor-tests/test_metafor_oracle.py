@@ -181,8 +181,8 @@ class ActualMetaforOracle(unittest.TestCase):
             "unsafe denominator": (10, 9007199254740992, 20, 100),
         }
         for label, first in invalid.items():
-            raw = "tE\\ttN\\tcE\\tcN\\n" + "\\t".join(map(str, first)) + "\\n"
-            raw += "14\\t140\\t28\\t140\\n"
+            raw = "tE\ttN\tcE\tcN\n" + "\t".join(map(str, first)) + "\n"
+            raw += "14\t140\t28\t140\n"
             for measure in ("RR", "OR"):
                 for method in ("PM", "DL"):
                     with self.subTest(case=label, measure=measure, method=method):
