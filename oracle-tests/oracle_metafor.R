@@ -40,8 +40,12 @@ if (any(!is.finite(es$yi)) || any(!is.finite(es$vi)) ||
 }
 # test="adhoc" in metafor enforces the same non-shrinking HKSJ SE
 # (floor at the unadjusted SE) as PairwisePool's max(1,qstar).
+# metafor's default PM uniroot tol=.Machine$double.eps^0.25 is
+# materially looser than the JS bisection on heterogeneous synthetic data.
+# Source-documented control$tol, not a relaxed comparison threshold.
 fit <- metafor::rma.uni(yi = es$yi, vi = es$vi,
-                        method = args[2L], test = "adhoc", level = 95)
+                        method = args[2L], test = "adhoc", level = 95,
+                        control = list(tol = 1e-12, maxiter = 500))
 result <- c(
   k_used = fit$k,
   mu_log = as.numeric(fit$beta),
