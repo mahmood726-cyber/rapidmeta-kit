@@ -266,8 +266,40 @@
     const trials = pickContinuousTrials(rd);
     if (trials.length < 2) return false;
 
-    const mdPoints = trials.map(md).filter(p => isFinite(p.yi) && p.vi > 0);
-    const smdPoints = trials.map(smdHedges).filter(p => isFinite(p.yi) && p.vi > 0);
+    // An overflowing SE² yields Infinity: its inverse-variance weight is
+    // zero, yet the previous code still counted it in k/df, HKSJ and PI.
+    // Underflowed or invalid variances were silently omitted instead.
+    // Keep MD and SMD on distinct scales, and REFUSE either whole panel if
+    // a supplied candidate cannot be represented as a finite positive variance.
+    const mdTrials = trials.filter(t => t.kind !== 'smd_pre');
+    const smdTrials = trials.filter(t => t.kind !== 'md_pre');
+    const mdPoints = mdTrials.map(md);
+    const smdPoints = smdTrials.map(smdHedges);
+    const validPoint = p => Number.isFinite(p.yi) && Number.isFinite(p.vi) && p.vi > 0;
+    const badMd = mdPoints.findIndex(p => !validPoint(p));
+    const badSmd = smdPoints.findIndex(p => !validPoint(p));
+    if (badMd !== -1 || badSmd !== -1) {
+      const kind = badMd !== -1 ? 'MD' : 'SMD';
+      const invalidTrial = badMd !== -1 ? mdTrials[badMd] : smdTrials[badSmd];
+      const trialIndex = trials.indexOf(invalidTrial) + 1;
+      const summary = 'Pooling REFUSED: unrepresentable ' + kind
+        + ' effect or variance in continuous trial ' + trialIndex;
+      const panel = P.buildCollapsiblePanel({
+        id: 'continuous-outcome-panel',
+        badge: 'Continuous · REFUSED',
+        summary,
+        bodyHtml: '<div style="color:#fbbf24;font-size:11.5px;">'
+          + 'No continuous outcome pooled: trial ' + trialIndex
+          + ' has an invalid, underflowed, or overflowed effect variance. '
+          + 'Review the original effect estimate, standard error, sample size and SD before synthesis.'
+          + '</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('continuous-outcome-panel');
+      if (existing) existing.replaceWith(panel);
+      else P.insertAfterRBadge(panel);
+      return true;
+    }
     const mdPool = poolRE(mdPoints);
     const smdPool = poolRE(smdPoints);
 
