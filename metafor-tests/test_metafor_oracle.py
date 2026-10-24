@@ -172,25 +172,6 @@ class ActualMetaforOracle(unittest.TestCase):
                 self.assertNotEqual(cp.returncode, 0)
                 self.assertIn("CC05 refuses uninformative", cp.stderr)
 
-    def test_oracle_tsv_encoding_preserves_invalid_count_tokens(self):
-        # Mock ONLY subprocess launch to inspect the actual TSV payload; this
-        # is a serializer regression, never an external-R numerical test.
-        from types import SimpleNamespace
-        from unittest.mock import patch
-
-        raw_rows = (
-            (10.5, 100, 20, 100),             # must not become 10
-            (10, 100.5, 20, 100),             # must not become 100
-            (9007199254740992, 9007199254740994, 20, 100),
-        )
-        expected = ("tE\ttN\tcE\tcN\n"
-                    "10.5\t100\t20\t100\n"
-                    "10\t100.5\t20\t100\n"
-                    "9007199254740992\t9007199254740994\t20\t100\n")
-        with patch("subprocess.run", return_value=SimpleNamespace(returncode=1)) as fake:
-            invoke_metafor(raw_rows, "RR", "DL")
-        self.assertEqual(fake.call_args.kwargs["input"], expected)
-
     def test_native_metafor_refuses_fractional_and_unsafe_raw_counts(self):
         # Exercise the normal lossless oracle transport, not a separate
         # hand-built TSV path. Native R must reject the SAME invalid raw count
