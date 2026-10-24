@@ -34,7 +34,9 @@
       if (md === undefined && t.data && typeof t.data.md === 'number' && typeof t.data.se === 'number') {
         md = t.data.md; se = t.data.se;
       }
-      if (md !== undefined && se !== undefined && isFinite(md) && isFinite(se) && se > 0) {
+      // Retain an explicitly extracted numeric MD/SE even when its SE is invalid.
+      // The render-time gate must REFUSE it, not silently omit the study.
+      if (md !== undefined && se !== undefined) {
         out.push({ name: t.name, kind: 'md_pre', md, se });
         return;
       }
@@ -63,7 +65,8 @@
 
   function md(t) {
     if (t.kind === 'md_pre') {
-      return { yi: t.md, vi: t.se * t.se };
+      // A negative SE must not become a valid positive variance by squaring.
+      return { yi: t.md, vi: t.se > 0 ? t.se * t.se : NaN };
     }
     // From means/SDs: variance = sd1²/n1 + sd2²/n2
     const yi = t.m1 - t.m2;
@@ -73,7 +76,8 @@
 
   function smdHedges(t) {
     if (t.kind === 'smd_pre') {
-      return { yi: t.smd, vi: t.se * t.se };
+      // Apply the same pre-extracted SE domain gate on the SMD scale.
+      return { yi: t.smd, vi: t.se > 0 ? t.se * t.se : NaN };
     }
     // Pooled SD
     const dfp = t.n1 + t.n2 - 2;
