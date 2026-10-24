@@ -60,8 +60,10 @@ def test_render_trial_entry_defaults(clone_mod):
     assert "group: 'Drug vs Placebo'" in entry
     assert "allOutcomes:" in entry          # synthesised default outcome
     assert "clinicaltrials.gov/study/NCT01234567" in entry
-    # Default risk-of-bias is 5 "some-concerns" domains.
-    assert entry.count("'some-concerns'") == 5
+    # The engine supports 'some', not 'some-concerns'. All defaults are
+    # explicitly marked unassessed and cannot be mistaken for reviewed RoB 2.
+    assert entry.count("'some'") == 5
+    assert "UNASSESSED" in entry
 
 
 def test_render_trial_entry_published_hr_aliases(clone_mod):

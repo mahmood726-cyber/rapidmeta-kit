@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "rapidmeta-kit clone config",
   "type": "object",
-  "required": ["drug", "slug", "condition", "title", "trials"],
+  "required": ["drug", "slug", "condition", "title", "hero_h2", "nyt_headline", "trials"],
   "properties": {
     "drug": { "type": "string", "minLength": 1 },
     "drug_lower": { "type": "string" },
@@ -10,8 +10,9 @@
     "condition": { "type": "string", "minLength": 1 },
     "comparator": { "type": "string" },
     "title": { "type": "string", "minLength": 1 },
-    "hero_h2": { "type": "string" },
-    "nyt_headline": { "type": "string" },
+    "hero_h2": { "type": "string", "minLength": 1 },
+    "nyt_headline": { "type": "string", "minLength": 1 },
+    "date": { "type": "string", "format": "date", "description": "Pin this date for reproducible JSON-LD metadata; otherwise the local build date is used." },
     "canonical_url": { "type": "string", "description": "Published URL of this dashboard for JSON-LD provenance. Default: <slug>.html (relative)." },
     "publisher_url": { "type": "string", "description": "JSON-LD publisher org URL. Default: the rapidmeta-kit Pages site." },
     "orcid": { "type": "string", "description": "Author ORCID (id or full URL). Omit to drop the empty identifier." },
@@ -32,9 +33,9 @@
         "type": "object",
         "required": ["nct", "name"],
         "properties": {
-          "nct": { "type": "string", "description": "Trial registry ID. Auto-linked ONLY for recognized formats (NCT########, ISRCTN########, ACTRN##############). Any other ID must be paired with an explicit 'sourceUrl' or the build fails closed (clone.py refuses to fabricate a clinicaltrials.gov link from an arbitrary string)." },
+          "nct": { "type": "string", "pattern": "^[A-Za-z0-9_.:-]{1,80}$", "description": "Unique registry ID. Auto-linked ONLY for recognized formats (NCT########, ISRCTN########, ACTRN##############). Other IDs require an explicit sourceUrl." },
           "name": { "type": "string" },
-          "sourceUrl": { "type": "string", "description": "Explicit registry/source URL for the trial. REQUIRED when 'nct' is not a recognized auto-linked registry ID (e.g. EU-CTR, PACTR, ChiCTR, jRCT)." },
+          "sourceUrl": { "type": "string", "pattern": "^https?://", "description": "Absolute HTTP(S) primary-source/registry URL. REQUIRED for trial IDs not auto-linked by clone.py." },
           "pmid": { "type": "string" },
           "phase": { "type": "string" },
           "year": { "type": "integer" },
@@ -43,10 +44,11 @@
           "tN": { "type": ["integer", "null"] },
           "cE": { "type": ["integer", "null"] },
           "cN": { "type": ["integer", "null"] },
+          "reportedEffectType": { "type": "string", "enum": ["HR"], "description": "Required whenever any publishedHR/pubHR field is supplied. Confirm in the paper that the reported effect is truly a hazard ratio; odds/risk/rate ratios cannot be input through this path." },
           "publishedHR": { "type": ["number", "null"] },
           "hrLCI": { "type": ["number", "null"] },
           "hrUCI": { "type": ["number", "null"] },
-          "allOutcomes": { "type": "array" },
+          "allOutcomes": { "type": "array", "items": { "type": "object", "properties": { "tE": { "type": "integer", "minimum": 0 }, "cE": { "type": "integer", "minimum": 0 } } } },
           "kmAnchors": { "type": "object", "description": "OPTIONAL registry KM anchors for survival/pseudo-IPD reconstruction (registry-ipd engine). Shape: { time_unit, arms:[{arm_id,label,role,N,total_events,follow_up_max,km_points:[{t,S}],median}], hr }. Omit entirely for non-survival reviews — the Survival/Pseudo-IPD panel stays hidden and inert when absent." }
         }
       }

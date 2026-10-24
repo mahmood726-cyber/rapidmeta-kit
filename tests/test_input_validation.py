@@ -40,12 +40,52 @@ def test_nonpositive_ratio_blocked():
 
 def test_valid_trial_passes():
     _ok({"tE": 5, "tN": 100, "cE": 12, "cN": 100,
-         "publishedHR": 0.8, "hrLCI": 0.7, "hrUCI": 0.92})
+         "publishedHR": 0.8, "hrLCI": 0.7, "hrUCI": 0.92,
+         "reportedEffectType": "HR"})
 
 
 def test_missing_values_pass():
     # absent numeric fields are allowed (not all configs carry 2x2 + HR)
     _ok({})
+
+
+@pytest.mark.parametrize("field,value", [
+    ("tE", 4.5), ("tN", 100.2), ("cE", 1.01), ("cN", 80.1),
+    ("year", 2021.5), ("tE", True), ("tE", "5"),
+])
+def test_fractions_and_noninteger_counts_are_refused(field, value):
+    _blocked({field: value})
+
+
+def test_int_above_javascript_safe_integer_is_blocked():
+    _blocked({"tN": 2**53})
+    _blocked({"cE": 10**400})
+
+
+def test_nested_outcome_counts_are_checked():
+    _blocked({"tN": 100, "allOutcomes": [{"tE": 101}]})
+    _blocked({"tN": 100, "allOutcomes": [{"tE": 1.5}]})
+    _blocked({"allOutcomes": ["not an outcome object"]})
+
+
+def test_ratio_must_be_explicitly_typed_as_hazard_ratio():
+    _blocked({"publishedHR": 1.05, "hrLCI": 0.81, "hrUCI": 1.37})
+    _blocked({"publishedHR": 1.05, "hrLCI": 0.81, "hrUCI": 1.37,
+              "reportedEffectType": "OR"})
+    _ok({"publishedHR": 0.86, "hrLCI": 0.75, "hrUCI": 0.99,
+         "reportedEffectType": "HR"})
+
+
+def test_published_hr_cannot_be_declared_an_odds_ratio_outcome():
+    _blocked({"publishedHR": 0.86, "reportedEffectType": "HR",
+              "allOutcomes": [{"estimandType": "OR"}]})
+
+
+def test_rob_scores_require_valid_domains_and_source():
+    _blocked({"rob": ["some-concerns"] * 5, "robSource": "reviewer"})
+    _blocked({"rob": ["low"] * 5})
+    _ok({"rob": ["low", "some", "high", "low", "some"],
+         "robSource": "Reviewed Cochrane RoB 2 judgements, double checked"})
 
 
 # --- registry-ID handling: never emit a false clinicaltrials.gov link ---------
@@ -94,6 +134,42 @@ def test_invalid_id_with_explicit_source_url_builds(tmp_path):
         {"nct": "EU-CTR-2020-001", "name": "Ok", "sourceUrl": "https://www.clinicaltrialsregister.eu/",
          "tE": 5, "tN": 100, "cE": 10, "cN": 100}]), tmp_path)
     assert r.returncode == 0, r.stderr
+
+
+def test_duplicate_registry_ids_fail_closed(tmp_path):
+    trial = {"nct": "NCT01234567", "name": "A", "tE": 1, "tN": 10, "cE": 2, "cN": 10}
+    r, out = _run_clone(_build_config([trial, dict(trial, name="B")]), tmp_path)
+    assert r.returncode == 2
+    assert "duplicate registry ID" in r.stderr
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("bad_id", ["EU-CTR'alert(1)", "bad</script>", "", "\nNCT01234567"])
+def test_unsafe_trial_ids_fail_even_with_source_url(bad_id, tmp_path):
+    r, out = _run_clone(_build_config([{"nct": bad_id, "name": "X",
+        "sourceUrl": "https://example.org/source"}]), tmp_path)
+    assert r.returncode == 2
+    assert not out.exists()
+
+
+@pytest.mark.parametrize("bad_url", ["javascript:alert(1)", "data:text/html,x", "https://", "https://example.org/\nscript", "https://[invalid"])
+def test_untrusted_source_url_scheme_and_content_blocked(bad_url, tmp_path):
+    r, out = _run_clone(_build_config([{"nct": "EU-CTR-2020-001", "name": "X",
+        "sourceUrl": bad_url}]), tmp_path)
+    assert r.returncode == 2
+    assert "sourceUrl" in r.stderr
+    assert not out.exists()
+
+
+def test_inline_script_special_characters_are_escaped(tmp_path):
+    r, out = _run_clone(_build_config([{
+        "nct": "NCT01234567", "name": "O'Neil </script>\nTrial",
+        "tE": 1, "tN": 10, "cE": 2, "cN": 10,
+    }]), tmp_path)
+    assert r.returncode == 0, r.stderr
+    html = out.read_text(encoding="utf-8")
+    assert "O\\'Neil \\x3c/script\\x3e\\nTrial" in html
+    assert "O'Neil </script>" not in html
 
 
 def test_cloned_dashboard_bundles_local_plotly(tmp_path):
@@ -154,3 +230,21 @@ def test_non_nct_id_emits_no_ctgov_link(tmp_path):
 if __name__ == "__main__":
     import sys
     sys.exit(pytest.main([__file__, "-q"]))
+
+def test_conflicting_hr_aliases_are_refused():
+    _blocked({"publishedHR": 0.8, "pubHR": 0.9, "hrLCI": 0.7,
+              "hrUCI": 0.95, "reportedEffectType": "HR"})
+    _blocked({"pubHR": 0.8, "pubHR_LCI": 0.7, "hrLCI": 0.75,
+              "pubHR_UCI": 0.95, "reportedEffectType": "HR"})
+
+
+def test_partial_hr_is_refused():
+    _blocked({"publishedHR": 0.8, "hrLCI": 0.7,
+              "reportedEffectType": "HR"})
+    _blocked({"pubHR": 0.8, "pubHR_UCI": 0.95,
+              "reportedEffectType": "HR"})
+
+
+def test_complete_alias_hr_passes():
+    _ok({"pubHR": 0.8, "pubHR_LCI": 0.7, "pubHR_UCI": 0.95,
+         "reportedEffectType": "HR"})

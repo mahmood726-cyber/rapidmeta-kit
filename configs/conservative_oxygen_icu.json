@@ -4,21 +4,20 @@
   "slug": "conservative_oxygen_icu",
   "condition": "critically ill adults in the intensive care unit",
   "comparator": "liberal / conventional oxygen therapy",
-  "title": "RapidMeta Critical Care | Conservative vs liberal oxygen therapy in the ICU",
+  "title": "RapidMeta Critical Care | Illustrative oxygen trials (mixed follow-up; not a validated pooled review)",
   "hero_h2": "Conservative vs liberal oxygen targets in critically ill adults",
-  "nyt_headline": "How Much Oxygen in Intensive Care?",
+  "nyt_headline": "Different populations and mortality windows: interpretation needs review",
   "pico": {
     "pop": "Critically ill adults in the ICU (mechanically ventilated or with acute hypoxaemic respiratory failure)",
     "int": "Conservative / lower oxygenation target (PaO2 ~55-90 mmHg or SpO2 ~88-96%)",
     "comp": "Liberal / conventional / higher oxygenation target",
-    "out": "All-cause mortality at the longest follow-up each trial reports (HOT-ICU 90d, ICU-ROX 180d, LOCO2 28d, Oxygen-ICU ICU-stay)",
+    "out": "All-cause mortality at differing windows (HOT-ICU 90d, LOCO2 28d, Oxygen-ICU ICU-stay); exploratory only, not a timepoint-aligned pool",
     "subgroup": "ARDS (LOCO2) vs general ICU vs acute hypoxaemic respiratory failure"
   },
   "acronyms": {
     "NCT03174002": "HOT-ICU",
     "NCT02713451": "LOCO2",
-    "NCT01319643": "Oxygen-ICU",
-    "ACTRN12615000957594": "ICU-ROX"
+    "NCT01319643": "Oxygen-ICU"
   },
   "trials": [
     {"nct": "NCT03174002", "name": "HOT-ICU", "pmid": "33471452", "phase": "III", "year": 2021,
@@ -32,10 +31,11 @@
     {"nct": "NCT01319643", "name": "Oxygen-ICU", "pmid": "27706466", "phase": "III", "year": 2016,
      "tE": 25, "tN": 216, "cE": 44, "cN": 218,
      "group": "Conservative (PaO2 70-100) vs conventional oxygen; single-centre, stopped early",
-     "allOutcomes": [{"shortLabel": "Mortality", "title": "ICU mortality", "type": "binary", "estimandType": "OR"}]},
-    {"nct": "ACTRN12615000957594", "name": "ICU-ROX", "pmid": "31613432", "phase": "III", "year": 2020,
-     "publishedHR": 1.05, "hrLCI": 0.81, "hrUCI": 1.37,
-     "group": "Conservative vs usual oxygen; mechanically ventilated. ANZCTR-registered (no NCT); 180-day mortality reported as an odds ratio, pooled by generic inverse-variance",
-     "allOutcomes": [{"shortLabel": "Mortality", "title": "All-cause mortality (180-day; published OR)", "type": "binary", "estimandType": "OR"}]}
+     "allOutcomes": [{"shortLabel": "Mortality", "title": "ICU mortality", "type": "binary", "estimandType": "OR"}]}
+  ],
+  "excludedTrials": [
+    {"nct": "ACTRN12615000957594", "name": "ICU-ROX", "pmid": "31613432",
+     "reason": "The publication supplies an unadjusted 180-day odds ratio (1.05, 95% CI 0.81–1.37), not a hazard ratio. Exact counts have not been verified for this demo; the HR-only input pathway cannot represent it.",
+     "sourceUrl": "https://pubmed.ncbi.nlm.nih.gov/31613432/"}
   ]
 }

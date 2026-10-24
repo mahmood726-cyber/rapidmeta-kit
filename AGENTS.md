@@ -14,17 +14,17 @@ JSON config, then run one command.
 3. Run: `python clone.py configs/<your_topic>.json`
 4. The finished dashboard appears at `output/<slug>.html`. Open it in a browser.
 
-That's the entire task. **Do not** edit `template/` (the 1 MB engine + the
-`assets/` folder of stylesheets and stat-panel scripts) or `clone.py`. They
-are complete and tested.
+That's the normal **new-topic** workflow. Do not edit `template/` (the 1 MB
+engine + assets) or `clone.py` when only creating a topic; these files may be
+changed for explicit generator/engine maintenance, with regression tests.
 
 ## Token discipline (important on free / low-quota API keys)
 
 - The config is the ONLY thing you generate. Keep it tight.
 - Never read, paste, or rewrite the template, the assets, or the built HTML
   — they are large and unchanging.
-- `clone.py` is deterministic and makes zero API calls, so you can build
-  many dashboards without burning quota.
+- `clone.py` makes zero API calls; pin `date` for byte-for-byte deterministic
+  metadata. You can build dashboards without spending API quota.
 - On a `[CONFIG ERROR]`, fix only the field it names.
 
 ## Config format
@@ -35,14 +35,14 @@ are complete and tested.
   "slug": "finerenone_ckd",
   "condition": "CKD in type 2 diabetes",
   "comparator": "Placebo",
-  "title": "Finerenone for cardiorenal outcomes in CKD — Living Meta-Analysis",
+  "title": "Finerenone CKD — illustrative two-trial dashboard",
   "hero_h2": "Finerenone for cardiorenal outcomes in type 2 diabetes with CKD",
-  "nyt_headline": "Finerenone cuts cardiorenal events in diabetic kidney disease",
+  "nyt_headline": "Two trials of finerenone in diabetic kidney disease",
   "pico": {
     "pop": "Adults with type 2 diabetes and CKD",
     "int": "Finerenone",
     "comp": "Placebo",
-    "out": "Cardiovascular death or HF hospitalisation",
+    "out": "CV death, nonfatal MI, nonfatal stroke, or HF hospitalisation",
     "subgroup": "By baseline eGFR"
   },
   "acronyms": { "NCT02540993": "FIDELIO-DKD" },
@@ -52,8 +52,9 @@ are complete and tested.
       "tE": 367, "tN": 2833, "cE": 420, "cN": 2841,
       "group": "Finerenone vs placebo",
       "publishedHR": 0.86, "hrLCI": 0.75, "hrUCI": 0.99,
+      "reportedEffectType": "HR",
       "allOutcomes": [{ "shortLabel": "CV composite",
-                        "title": "CV death or HF hospitalisation",
+                        "title": "CV death, nonfatal MI/stroke, or HF hospitalisation",
                         "type": "binary" }] }
   ]
 }
@@ -67,11 +68,14 @@ are complete and tested.
 - `trials` — at least 1 (use 2+ to get a pooled meta-analysis)
 
 ### Each trial needs at minimum
-- `nct` (registry id, or any unique id) and `name`.
+- `nct` (registry id, or other safe unique id with a verified `sourceUrl`)
+  and `name`.
 Strongly recommended for a real analysis:
 - Event counts `tE`/`tN` (intervention events/total) and `cE`/`cN`
   (comparator events/total) — these drive the live pooling; OR
-- A published effect `publishedHR` with `hrLCI` / `hrUCI`.
+- A published **hazard ratio** `publishedHR` with `hrLCI` / `hrUCI` and
+  `reportedEffectType: "HR"` (verified from the publication). This field
+  cannot carry odds ratios, risk ratios, or recurrent-event rate ratios.
 - `pmid`, `phase`, `year`, `group`, and an `allOutcomes` entry are optional
   but make the dashboard richer.
 
@@ -82,9 +86,11 @@ Strongly recommended for a real analysis:
 ## Rules
 
 - Use real numbers from the source the user gives you. Never invent trial data.
+- Confirm the outcome definition, follow-up, unit of analysis, and effect
+  measure *across every trial*; a green build cannot validate clinical pooling.
 - One config = one topic. The dashboard handles multiple outcomes internally.
-- The page already carries an "auto-generated, verify against source"
-  banner — you don't need to add disclaimers.
+- The page is an auto-generated **draft**, not an independently screened,
+  RoB-2-adjudicated, GRADE-verified, or regulatory-ready systematic review.
 
 ## Don't
 
