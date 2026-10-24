@@ -196,6 +196,7 @@
     }
 
     const yi = [], vi = [], names = [], origIdx = [];
+    let unrepresentableTrial = -1;
     trials.forEach(function (t, idx) {
       const tE = t.tE, tN = t.tN, cE = t.cE, cN = t.cN;
       if (tE == null || tN == null || cE == null || cN == null) return;
@@ -231,7 +232,12 @@
         cEa = cE + haldane; cNa = cN + 2 * haldane;
       }
       const e = effectAndVar(tEa, tNa, cEa, cNa, measure);
-      if (!isFinite(e.logEff) || !isFinite(e.varLog) || e.varLog <= 0) return;
+      if (!Number.isFinite(e.logEff) || !Number.isFinite(e.varLog) || e.varLog <= 0) {
+        // Never silently remove a study because double-precision arithmetic
+        // cannot represent its log effect or strictly positive variance.
+        unrepresentableTrial = idx + 1;
+        return;
+      }
       yi.push(e.logEff);
       vi.push(e.varLog);
       names.push(t.name || ('Study ' + (idx + 1)));
@@ -244,6 +250,14 @@
         weight: null  // filled below
       });
     });
+
+    if (unrepresentableTrial !== -1) {
+      out.error = 'Numerically unrepresentable 2x2 log effect or non-positive variance in trial '
+        + unrepresentableTrial + '; entire pool refused rather than silently omitting a study';
+      out.perStudy = [];
+      out.excludedStudies = [];
+      return out;
+    }
 
     const k = yi.length;
     out.k_used = k;
