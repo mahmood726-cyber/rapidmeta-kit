@@ -60,7 +60,7 @@ if (tau_method == "DL") {
   while (q_general(hi) > df && hi < 2^100) hi <- 2 * hi
   if (q_general(hi) > df) stop("PM failed to bracket tau2", call. = FALSE)
   tau2 <- uniroot(function(x) q_general(x) - df,
-                  interval = c(0, hi), tol = 1e-12)$root
+                  interval = c(0, hi), tol = 1e-20)$root
 }
 w_re <- 1 / (vi + tau2)
 mu_log <- sum(w_re * yi) / sum(w_re)
