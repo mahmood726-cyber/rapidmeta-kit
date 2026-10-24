@@ -121,19 +121,39 @@
       return out;
     }
 
-    // Raw binomial event/arm counts must be exact non-fractional integers.
-    // Previously, fractional counts and numeric strings reached effectAndVar()
-    // and could change the pooled estimate, or be silently dropped. Reject
-    // the entire pool rather than declaring success from a selected subset.
-    // Missing 2x2 fields retain the existing skip behaviour (separate policy).
+    // Raw 2x2 pooling must not silently drop studies with missing or
+    // impossible summary data. Keep such studies in the *review* and resolve
+    // their eligibility before pooling (Cochrane Handbook, section 10.12).
     const countFields = ['tE', 'tN', 'cE', 'cN'];
-    const badCountIndex = Array.isArray(trials)
-      ? trials.findIndex(t => t && countFields.some(key =>
-          t[key] != null && !Number.isSafeInteger(t[key])))
-      : -1;
+    if (!Array.isArray(trials)) {
+      out.error = 'Invalid raw 2x2 input; expected an array of trials (pooling refused)';
+      return out;
+    }
+    const incompleteIndex = trials.findIndex(t =>
+      t == null || typeof t !== 'object' || Array.isArray(t) ||
+      countFields.some(key => t[key] == null));
+    if (incompleteIndex !== -1) {
+      out.error = 'Missing raw 2x2 counts or malformed record in trial '
+        + (incompleteIndex + 1) + '; pooling refused (requires tE, tN, cE, cN)';
+      return out;
+    }
+    // Raw binomial counts must be exact non-fractional integers.
+    const badCountIndex = trials.findIndex(t =>
+      countFields.some(key => !Number.isSafeInteger(t[key])));
     if (badCountIndex !== -1) {
       out.error = 'Non-integer or unsafe 2x2 raw count in trial ' + (badCountIndex + 1)
         + '; pooling refused (requires exact integer event and arm counts)';
+      return out;
+    }
+
+    // Impossible 2x2 tables must not disappear from the analysis silently.
+    // The established double-zero exclusion policy is separate (below).
+    const badBoundsIndex = trials.findIndex(t =>
+      t.tN <= 0 || t.cN <= 0 || t.tE < 0 || t.cE < 0 ||
+      t.tE > t.tN || t.cE > t.cN);
+    if (badBoundsIndex !== -1) {
+      out.error = 'Impossible raw 2x2 counts in trial ' + (badBoundsIndex + 1)
+        + '; pooling refused (requires positive denominators and 0 <= events <= total)';
       return out;
     }
 
