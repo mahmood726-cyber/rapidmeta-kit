@@ -209,6 +209,23 @@ class ActualRPairwiseOracle(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "pi_hi differs"):
             compare_results(forged, independent_r, endpoint_tolerance=1e-7)
 
+    def test_oracle_refuses_rounded_zero_variance_precision_boundary(self):
+        # Independent base-R reference also refuses this synthetic RR edge
+        # case: safe-integer counts whose 1/events - 1/total differences
+        # round to zero in IEEE-754 doubles. This is a refusal test, NOT
+        # numerical parity for an estimable study.
+        n = 2**53 - 1
+        rows = ((n - 1, n, n - 1, n),) + CASESETS["near_homogeneous"]
+        cp = subprocess.run(
+            ["Rscript", str(R_SCRIPT), "RR", "PM"],
+            input="tE\\ttN\\tcE\\tcN\\n" +
+                  "".join("%d\\t%d\\t%d\\t%d\\n" % row for row in rows),
+            cwd=ROOT, capture_output=True, text=True,
+            check=False, timeout=30,
+        )
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("invalid study-level log effects or variances", cp.stderr)
+
     def test_oracle_refuses_unmatched_zero_cell_correction(self):
         # JS applies the configured continuity correction. This oracle does
         # not implement that correction: it must refuse, never fake parity.
