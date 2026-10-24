@@ -72,7 +72,7 @@ class ActualMetaforOracle(unittest.TestCase):
         cp = subprocess.run(
             ["Rscript", "-e",
              'stopifnot(as.character(getRversion())=="4.4.3"); '
-             'stopifnot(as.character(packageVersion("metafor"))=="4.8-0"); '
+             'stopifnot(packageDescription("metafor",fields="Version")=="4.8-0"); '
              'cat("pinned")'],
             capture_output=True, text=True, check=False, timeout=30,
         )
