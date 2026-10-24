@@ -164,6 +164,18 @@
       if (tN <= 0 || cN <= 0) return;
       if (!isFinite(tE) || !isFinite(tN) || !isFinite(cE) || !isFinite(cN)) return;
       if (tE > tN || cE > cN || tE < 0 || cE < 0) return; // GRIM violation
+      if (tE === tN && cE === cN) {
+        // Both arms have 100% events. As with neither arm having an event,
+        // these data do not identify a relative effect (Cochrane Handbook
+        // chapter 6, section 6.4.1.2). Do not manufacture an RR/OR and
+        // inverse-variance weight by applying an arbitrary 0.5 correction.
+        out.excludedStudies.push({
+          trial_index: idx + 1,
+          name: t.name || ('Study ' + (idx + 1)),
+          reason: 'BOTH_ARMS_ALL_EVENTS'
+        });
+        return;
+      }
       if (tE === 0 && cE === 0) {
         // Neither-arm events give no direction/magnitude for RR or OR. Preserve
         // the established exclusion policy but disclose the study and reason.
