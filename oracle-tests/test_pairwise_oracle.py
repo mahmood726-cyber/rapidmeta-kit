@@ -102,16 +102,17 @@ def run_r(rows, measure, method):
     return parse_reference(cp.stdout)
 
 
-def compare_results(shipped, reference):
+def compare_results(shipped, reference, endpoint_tolerance=1e-6):
     # Exact method-matching for 2x2 log effects, PM/DL, floored HKSJ,
-    # and Cochrane t(k-1) PI. Shipped JS rounds t criticals to 3 d.p.,
-    # (now full-precision for df 1..30), so strict endpoint parity is required.
+    # and Cochrane t(k-1) PI. High-precision table for df<=30 and
+    # independently R-checked asymptotic expansion for df>30.
     for key in EXPECTED_KEYS:
         a, b = shipped[key], reference[key]
         if not isinstance(a, (int, float)) or not math.isfinite(a):
             raise AssertionError(key + ": non-finite shipped result")
         if key in {"ci_lo", "ci_hi", "pi_lo", "pi_hi"}:
-            ok = math.isclose(a, b, rel_tol=1e-6, abs_tol=1e-6)
+            ok = math.isclose(a, b, rel_tol=endpoint_tolerance,
+                              abs_tol=endpoint_tolerance)
         else:
             ok = math.isclose(a, b, rel_tol=1e-8, abs_tol=1e-8)
         if not ok:
@@ -139,6 +140,38 @@ class ActualRPairwiseOracle(unittest.TestCase):
                             run_js(rows, measure, method),
                             run_r(rows, measure, method),
                         )
+
+    def test_high_study_counts_against_actual_r_t_quantiles(self):
+        # The former two-term df>30 approximation understated qt(.975, df).
+        # Three independent synthetic comparison sets cross RR/OR with DL.
+        # This really invokes R 4.4.3; it cannot pass by replaying snapshots.
+        for k in (32, 45, 104):  # df 31, 44, 103: below and above 100
+            rows = tuple(
+                (7 + (i * 11) % 36, 140 + i % 9,
+                 11 + (i * 13) % 34, 145 + i % 11)
+                for i in range(k)
+            )
+            for measure in ("RR", "OR"):
+                with self.subTest(k=k, measure=measure, method="DL"):
+                    compare_results(
+                        run_js(rows, measure, "DL"),
+                        run_r(rows, measure, "DL"),
+                        endpoint_tolerance=1e-7,
+                    )
+
+    def test_high_df_oracle_fails_on_tampered_prediction_interval(self):
+        k = 32
+        rows = tuple(
+            (7 + (i * 11) % 36, 140 + i % 9,
+             11 + (i * 13) % 34, 145 + i % 11)
+            for i in range(k)
+        )
+        shipped = run_js(rows, "RR", "DL")
+        independent_r = run_r(rows, "RR", "DL")
+        # Deliberately change a numerical endpoint; no silent false PASS.
+        forged = dict(shipped, pi_hi=shipped["pi_hi"] * 1.0001)
+        with self.assertRaisesRegex(AssertionError, "pi_hi differs"):
+            compare_results(forged, independent_r, endpoint_tolerance=1e-7)
 
     def test_oracle_refuses_unmatched_zero_cell_correction(self):
         # JS applies the configured continuity correction. This oracle does
