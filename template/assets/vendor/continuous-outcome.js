@@ -45,7 +45,11 @@
       const hasSMD = (typeof t.smd === 'number' && typeof t.smd_se === 'number');
       // Variant 2: mean1/mean2/sd1/sd2 + n1/n2 (computed from raw)
       const m1 = +t.mean1, m2 = +t.mean2, sd1 = +t.sd1, sd2 = +t.sd2;
-      const n1 = +t.tN || +t.n1, n2 = +t.cN || +t.n2;
+      // A present zero/blank count must not be replaced by a positive alias.
+      // The prior truthy || fallback silently legitimised invalid group N.
+      // Preserve supplied values for the existing MD/SMD refusal gate.
+      const n1 = t.tN === undefined ? +t.n1 : +t.tN;
+      const n2 = t.cN === undefined ? +t.n2 : +t.cN;
       // Preserve finite but nonpositive/one-person arm counts as candidates.
       // Otherwise the study vanishes and a seemingly valid k=2 pool is shown.
       // md()/smdHedges() must refuse these inputs before inverse-variance pooling.
