@@ -47,8 +47,11 @@
     while (genQ(yi, vi, hi) > df && guard++ < 200) hi *= 2;
     for (let it = 0; it < 200; it++) {
       const mid = 0.5 * (lo + hi);
+      // An absolute tolerance of 1e-12 grossly overestimates PM tau2
+      // when Q(0) is just above df and the true root is ~1e-15.
+      // Converge until the bracket cannot be split in floating-point.
+      if (mid === lo || mid === hi) break;
       if (genQ(yi, vi, mid) > df) lo = mid; else hi = mid;
-      if (hi - lo < 1e-12) break;
     }
     return 0.5 * (lo + hi);
   }

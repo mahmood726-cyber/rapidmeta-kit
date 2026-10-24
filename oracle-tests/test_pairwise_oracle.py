@@ -159,6 +159,42 @@ class ActualRPairwiseOracle(unittest.TestCase):
                         endpoint_tolerance=1e-7,
                     )
 
+    def test_pm_near_zero_boundary_matches_high_precision_native_r(self):
+        # Three deliberately synthetic, very-large-count studies stress the
+        # absolute-tolerance defect; these are NOT plausible clinical trials.
+        # Q(0) crosses df=2 between deltas 70710 and 70711. The positive
+        # Paule-Mandel tau2 root is ~1.8e-15, not ~4.55e-13.
+        n = 10_000_000_000
+        mid = n // 2
+
+        def rows(delta):
+            return (
+                (mid + delta, n, mid, n),
+                (mid, n, mid, n),
+                (mid - delta, n, mid, n),
+            )
+
+        below_js = run_js(rows(70710), "RR", "PM")
+        below_r = run_r(rows(70710), "RR", "PM")
+        self.assertLess(below_r["Q"], 2)
+        self.assertEqual(below_js["tau2"], 0)
+        self.assertEqual(below_r["tau2"], 0)
+        compare_results(below_js, below_r)
+
+        above_js = run_js(rows(70711), "RR", "PM")
+        above_r = run_r(rows(70711), "RR", "PM")
+        self.assertGreater(above_r["Q"], 2)
+        self.assertGreater(above_r["tau2"], 0)
+        self.assertLess(above_r["tau2"], 1e-13)
+        # The default oracle comparison's 1e-8 absolute tolerance would
+        # miss this defect: an explicit small-scale check is required.
+        self.assertLess(abs(above_js["tau2"] - above_r["tau2"]), 2e-16)
+        compare_results(above_js, above_r)
+        # Failure injection: the old prematurely terminated JS root must
+        # remain distinguishable from the independently computed R root.
+        old_premature_root = 4.547473508864641e-13
+        self.assertGreater(abs(old_premature_root - above_r["tau2"]), 1e-13)
+
     def test_high_df_oracle_fails_on_tampered_prediction_interval(self):
         k = 32
         rows = tuple(
