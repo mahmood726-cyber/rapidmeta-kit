@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 # External, version-pinned metafor oracle: NOT base-R self-reference.
-# Scope: independent interior 2x2 studies, RR/OR, DL/PM, 95% floored HKSJ.
-# Synthetic inputs only. No rare-event correction, REML, or trial validation.
+# Scope: independent interior 2x2 studies plus explicitly matched per-study
+# 0.5 continuity correction, RR/OR, DL/PM, and 95% floored HKSJ.
+# Synthetic inputs only; NOT REML, GLMM, multi-arm, or trial validation.
 options(warn = 2)
 if (as.character(getRversion()) != "4.4.3") {
   stop("requires exactly R 4.4.3", call. = FALSE)
@@ -11,10 +12,15 @@ if (!requireNamespace("metafor", quietly = TRUE) ||
   stop("requires exactly metafor 4.8-0 (never skip)", call. = FALSE)
 }
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2L || !args[1L] %in% c("RR", "OR") ||
-    !args[2L] %in% c("DL", "PM")) {
-  stop("usage: Rscript oracle_metafor.R RR|OR DL|PM", call. = FALSE)
+if (!(length(args) %in% c(2L, 3L)) || !args[1L] %in% c("RR", "OR") ||
+    !args[2L] %in% c("DL", "PM") ||
+    (length(args) == 3L && args[3L] != "CC05")) {
+  stop("usage: Rscript oracle_metafor.R RR|OR DL|PM [CC05]", call. = FALSE)
 }
+# The opt-in CC05 mode matches shipped PairwisePool's per-study all-four-cell
+# correction, and deliberately does NOT attempt to arbitrate which correction
+# is clinically appropriate for rare events. It MUST never be implicit.
+matched_cc05 <- length(args) == 3L
 d <- read.table(file("stdin"), header = TRUE, sep = "\t",
                 check.names = FALSE, stringsAsFactors = FALSE)
 if (!identical(names(d), c("tE", "tN", "cE", "cN")) ||
@@ -23,16 +29,30 @@ if (!identical(names(d), c("tE", "tN", "cE", "cN")) ||
     any(!is.finite(as.matrix(d)))) {
   stop("requires >=3 complete finite 2x2 rows", call. = FALSE)
 }
-# No unspecified or mismatched continuity correction is ever allowed.
-if (any(d$tE <= 0 | d$tE >= d$tN |
-        d$cE <= 0 | d$cE >= d$cN)) {
+# Refuse malformed tables before any escalc correction can make them appear
+# estimable. JS already validates safe-integer/arm-count bounds separately.
+if (any(d$tN <= 0 | d$cN <= 0 | d$tE < 0 | d$cE < 0 |
+        d$tE > d$tN | d$cE > d$cN)) {
+  stop("invalid binomial table: refusing correction", call. = FALSE)
+}
+# Both-zero and both-full tables are excluded in the JS module. The oracle
+# cannot silently include them as if they were matched; reject whole request.
+if (matched_cc05 && any((d$tE == 0 & d$cE == 0) |
+                         (d$tE == d$tN & d$cE == d$cN))) {
+  stop("CC05 refuses uninformative dual-arm table; JS exclusion policy not reproduced",
+       call. = FALSE)
+}
+# Without explicit CC05, keep the original interior-only protection.
+if (!matched_cc05 && any(d$tE <= 0 | d$tE >= d$tN |
+                          d$cE <= 0 | d$cE >= d$cN)) {
   stop("interior-only: correction convention not matched", call. = FALSE)
 }
 es <- metafor::escalc(
   measure = args[1L],
   ai = d$tE, bi = d$tN - d$tE,
   ci = d$cE, di = d$cN - d$cE,
-  add = 0, to = "none", drop00 = FALSE
+  add = if (matched_cc05) 0.5 else 0,
+  to = if (matched_cc05) "only0" else "none", drop00 = FALSE
 )
 if (any(!is.finite(es$yi)) || any(!is.finite(es$vi)) ||
     any(es$vi <= 0)) {
