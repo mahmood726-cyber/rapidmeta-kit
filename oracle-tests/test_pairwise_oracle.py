@@ -218,8 +218,8 @@ class ActualRPairwiseOracle(unittest.TestCase):
         rows = ((n - 1, n, n - 1, n),) + CASESETS["near_homogeneous"]
         cp = subprocess.run(
             ["Rscript", str(R_SCRIPT), "RR", "PM"],
-            input="tE\\ttN\\tcE\\tcN\\n" +
-                  "".join("%d\\t%d\\t%d\\t%d\\n" % row for row in rows),
+            input="tE\ttN\tcE\tcN\n" +
+                  "".join("%d\t%d\t%d\t%d\n" % row for row in rows),
             cwd=ROOT, capture_output=True, text=True,
             check=False, timeout=30,
         )
