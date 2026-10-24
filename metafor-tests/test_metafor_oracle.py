@@ -3,7 +3,7 @@
 This test MUST run native R. It is deliberately separate from our self-written
 base-R oracle and cannot pass from stored/cached numerical anchors.
 Scope: synthetic independent 2x2 tables, RR/OR, DL/PM, floored HKSJ,
-plus an explicitly matched 0.5 per-study correction for informative
+two-study t(df=1) intervals, plus an explicitly matched 0.5 per-study\ncorrection for informative
 single-arm-zero/all-events cells. Cochrane PI and I2 conventions are not
 asserted equal to metafor; REML, GLMM and clinical data remain NOT TESTED.
 """
@@ -95,6 +95,45 @@ class ActualMetaforOracle(unittest.TestCase):
                         shipped = run_js(rows, measure, method)
                         self.assertEqual(shipped["k_used"], len(rows))
                         match_model(shipped, external)
+
+    def test_two_study_rr_or_pm_dl_matches_exact_version_metafor(self):
+        # Coverage gap: PairwisePool accepts k=2 and reports a t(df=1)
+        # floored-HKSJ CI, but the former external R oracle refused k<3.
+        # Independent synthetic comparisons include identical and differing
+        # effects. This is *not* a claim that two-study estimates are robust.
+        cases = {
+            "same_proportions": (
+                (8, 100, 16, 100),
+                (16, 200, 32, 200),
+            ),
+            "heterogeneous": (
+                (18, 120, 24, 120),
+                (26, 130, 18, 135),
+            ),
+        }
+        for label, rows in cases.items():
+            for measure in ("RR", "OR"):
+                for method in ("PM", "DL"):
+                    with self.subTest(case=label, measure=measure, method=method):
+                        cp = invoke_metafor(rows, measure, method)
+                        self.assertEqual(cp.returncode, 0, cp.stderr)
+                        external = parse_metafor_result(cp.stdout)
+                        shipped = run_js(rows, measure, method)
+                        self.assertEqual(external["k_used"], 2)
+                        self.assertEqual(shipped["k_used"], 2)
+                        self.assertIsNone(shipped["pi_lo"])
+                        self.assertIsNone(shipped["pi_hi"])
+                        match_model(shipped, external)
+
+    def test_k_less_than_two_refuses_real_metafor_oracle(self):
+        # Fail closed on invalid sample sizes; expanding parity coverage must
+        # not let a one-study synthesis masquerade as k=2 pooling.
+        for rows in ((), ((8, 100, 16, 100),)):
+            for measure in ("RR", "OR"):
+                with self.subTest(k=len(rows), measure=measure):
+                    cp = invoke_metafor(rows, measure, "PM")
+                    self.assertNotEqual(cp.returncode, 0)
+                    self.assertIn("requires >=2 complete finite 2x2 rows", cp.stderr)
 
     def test_pinned_metafor_matches_informative_single_zero_and_all_event_cells(self):
         # Synthetic comparisons; R genuinely executes metafor::escalc with
