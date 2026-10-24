@@ -100,6 +100,14 @@
     const tau2Method = typeof tau2Input === 'string' ? tau2Input.toUpperCase() : '';
     const haldane = opts.haldane != null ? opts.haldane : 0.5;
     const out = { k_used: 0, perStudy: [], measure, opts };
+    // This inverse-variance route requires a strictly positive correction:
+    // zero would leave boundary cells uncomputable and silently remove trials.
+    // Do not coerce numeric-looking strings or booleans (JS "+" concatenates).
+    if (typeof haldane !== 'number' || !Number.isFinite(haldane) || haldane <= 0) {
+      out.error = 'Invalid zero-cell continuity correction; expected a finite positive number'
+        + ' (pooling refused rather than silently omitting boundary studies)';
+      return out;
+    }
     if (measure !== 'RR' && measure !== 'OR') {
       out.error = 'Unsupported raw 2x2 effect measure ' + JSON.stringify(measureInput)
         + '; expected RR or OR (HR requires time-to-event evidence)';
