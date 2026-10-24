@@ -3,7 +3,8 @@
 This test MUST run native R. It is deliberately separate from our self-written
 base-R oracle and cannot pass from stored/cached numerical anchors.
 Scope: synthetic independent 2x2 tables, RR/OR, DL/PM, floored HKSJ,
-two-study t(df=1) intervals, plus an explicitly matched 0.5 per-study\ncorrection for informative
+two-study t(df=1) intervals, plus an explicitly matched 0.5 per-study
+correction for informative
 single-arm-zero/all-events cells. Cochrane PI and I2 conventions are not
 asserted equal to metafor; REML, GLMM and clinical data remain NOT TESTED.
 """
