@@ -19,17 +19,19 @@ COPIES = (
     "template/assets/vendor/continuous-outcome.js",
 )
 JS = r"""
-require('./' + process.argv[1]); // No document yet: prevents auto-bootstrap.
+const moduleScope = require('./' + process.argv[1]); // No document yet: prevents auto-bootstrap.
 const rows = JSON.parse(process.argv[2]);
 let captured = null;
-globalThis.PanelHelper = {
+// The script passes `this` (CommonJS module.exports), not globalThis,
+// to its IIFE when no browser window exists.
+moduleScope.PanelHelper = {
   getRealData: () => rows,
   fmt: (x, n) => Number(x).toFixed(n === undefined ? 2 : n),
   buildCollapsiblePanel: (opts) => (captured = opts, opts),
   insertAfterRBadge: () => {}
 };
 globalThis.document = { getElementById: () => null };
-const rendered = globalThis.ContinuousOutcome.render();
+const rendered = moduleScope.ContinuousOutcome.render();
 console.log(JSON.stringify({
   rendered, badge: captured && captured.badge,
   summary: captured && captured.summary,
