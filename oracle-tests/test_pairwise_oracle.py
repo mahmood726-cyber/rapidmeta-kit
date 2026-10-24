@@ -105,13 +105,13 @@ def run_r(rows, measure, method):
 def compare_results(shipped, reference):
     # Exact method-matching for 2x2 log effects, PM/DL, floored HKSJ,
     # and Cochrane t(k-1) PI. Shipped JS rounds t criticals to 3 d.p.,
-    # so reported-scale CI/PI endpoints need a stated looser tolerance.
+    # (now full-precision for df 1..30), so strict endpoint parity is required.
     for key in EXPECTED_KEYS:
         a, b = shipped[key], reference[key]
         if not isinstance(a, (int, float)) or not math.isfinite(a):
             raise AssertionError(key + ": non-finite shipped result")
         if key in {"ci_lo", "ci_hi", "pi_lo", "pi_hi"}:
-            ok = math.isclose(a, b, rel_tol=5e-4, abs_tol=1e-3)
+            ok = math.isclose(a, b, rel_tol=1e-6, abs_tol=1e-6)
         else:
             ok = math.isclose(a, b, rel_tol=1e-8, abs_tol=1e-8)
         if not ok:
