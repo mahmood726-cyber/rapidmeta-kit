@@ -96,6 +96,22 @@
     const haldane = opts.haldane != null ? opts.haldane : 0.5;
     const out = { k_used: 0, perStudy: [], measure, opts };
 
+    // Raw binomial event/arm counts must be exact non-fractional integers.
+    // Previously, fractional counts and numeric strings reached effectAndVar()
+    // and could change the pooled estimate, or be silently dropped. Reject
+    // the entire pool rather than declaring success from a selected subset.
+    // Missing 2x2 fields retain the existing skip behaviour (separate policy).
+    const countFields = ['tE', 'tN', 'cE', 'cN'];
+    const badCountIndex = Array.isArray(trials)
+      ? trials.findIndex(t => t && countFields.some(key =>
+          t[key] != null && !Number.isSafeInteger(t[key])))
+      : -1;
+    if (badCountIndex !== -1) {
+      out.error = 'Non-integer or unsafe 2x2 raw count in trial ' + (badCountIndex + 1)
+        + '; pooling refused (requires exact integer event and arm counts)';
+      return out;
+    }
+
     const yi = [], vi = [], names = [], origIdx = [];
     trials.forEach(function (t, idx) {
       const tE = t.tE, tN = t.tN, cE = t.cE, cN = t.cN;
