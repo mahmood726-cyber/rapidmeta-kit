@@ -144,4 +144,4 @@ jobs:
           python --version
           node --version
           Rscript --version
-          python -m unittest discover -s oracle-tests -p 'test_metafor_oracle.py' -v
+          python -m unittest discover -s metafor-tests -p 'test_metafor_oracle.py' -v
