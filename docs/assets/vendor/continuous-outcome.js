@@ -50,6 +50,12 @@
       // Preserve supplied values for the existing MD/SMD refusal gate.
       const n1 = t.tN === undefined ? +t.n1 : +t.tN;
       const n2 = t.cN === undefined ? +t.n2 : +t.cN;
+      // Both fields may be independently populated from different sources or
+      // estimands. Do not silently choose one conflicting measured arm count.
+      const aliasConflict = (primary, alternate) => primary !== undefined
+        && alternate !== undefined && Number.isFinite(+primary)
+        && Number.isFinite(+alternate) && +primary !== +alternate;
+      const countConflict = aliasConflict(t.tN, t.n1) || aliasConflict(t.cN, t.n2);
       // Preserve finite but nonpositive/one-person arm counts as candidates.
       // Otherwise the study vanishes and a seemingly valid k=2 pool is shown.
       // md()/smdHedges() must refuse these inputs before inverse-variance pooling.
@@ -64,7 +70,7 @@
       } else if (hasFull) {
         out.push({
           name: t.name, kind: 'full',
-          m1, m2, sd1, sd2, n1, n2,
+          m1, m2, sd1, sd2, n1, n2, countConflict,
         });
       }
     });
@@ -72,6 +78,7 @@
   }
 
   function md(t) {
+    if (t.countConflict) return { yi: NaN, vi: NaN };
     if (t.kind === 'md_pre') {
       // A negative SE must not become a valid positive variance by squaring.
       return { yi: t.md, vi: t.se > 0 ? t.se * t.se : NaN };
@@ -92,6 +99,7 @@
   }
 
   function smdHedges(t) {
+    if (t.countConflict) return { yi: NaN, vi: NaN };
     if (t.kind === 'smd_pre') {
       // Apply the same pre-extracted SE domain gate on the SMD scale.
       return { yi: t.smd, vi: t.se > 0 ? t.se * t.se : NaN };
@@ -313,7 +321,10 @@
       const trialIndex = trials.indexOf(invalidTrial) + 1;
       const sourceSdReview = invalidTrial.kind === 'full'
         && (invalidTrial.sd1 <= 0 || invalidTrial.sd2 <= 0);
-      const summary = sourceSdReview
+      const sourceCountConflict = invalidTrial.kind === 'full' && invalidTrial.countConflict;
+      const summary = sourceCountConflict
+        ? 'Pooling REFUSED: conflicting arm sample-size aliases in continuous trial ' + trialIndex
+        : sourceSdReview
         ? 'Pooling REFUSED: nonpositive reported SD needs source review in continuous trial ' + trialIndex
         : 'Pooling REFUSED: unrepresentable ' + kind
           + ' effect or variance in continuous trial ' + trialIndex;
@@ -323,7 +334,7 @@
         summary,
         bodyHtml: '<div style="color:#fbbf24;font-size:11.5px;">'
           + 'No continuous outcome pooled: trial ' + trialIndex
-          + ' has a nonpositive reported SD or an invalid, underflowed, or overflowed effect variance. '
+          + ' has conflicting arm sample-size aliases, a nonpositive reported SD, or an invalid effect variance. '
           + 'Review the original effect estimate, standard error, sample size and SD before synthesis.'
           + '</div>',
         storageKey: STORAGE_KEY,
