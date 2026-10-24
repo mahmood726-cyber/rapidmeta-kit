@@ -208,7 +208,9 @@
     const zStudy = 1.959963984540054;
     const yi = [], vi = [], names = [], origIdx = [];
     let unrepresentableTrial = -1;
+    let unrepresentableStudyInterval = false;
     trials.forEach(function (t, idx) {
+      if (unrepresentableTrial !== -1) return;
       const tE = t.tE, tN = t.tN, cE = t.cE, cN = t.cN;
       if (tE == null || tN == null || cE == null || cN == null) return;
       if (tN <= 0 || cN <= 0) return;
@@ -249,22 +251,37 @@
         unrepresentableTrial = idx + 1;
         return;
       }
+      // Finite log effects and variances do not guarantee representable
+      // exponentiated Wald limits. Refuse instead of serializing Infinity
+      // as JSON null or publishing an underflowed zero confidence limit.
+      const halfWidth = zStudy * Math.sqrt(e.varLog);
+      const studyEff = Math.exp(e.logEff);
+      const studyCiLo = Math.exp(e.logEff - halfWidth);
+      const studyCiHi = Math.exp(e.logEff + halfWidth);
+      if ([studyEff, studyCiLo, studyCiHi].some(v => !Number.isFinite(v) || v <= 0)) {
+        unrepresentableTrial = idx + 1;
+        unrepresentableStudyInterval = true;
+        return;
+      }
       yi.push(e.logEff);
       vi.push(e.varLog);
       names.push(t.name || ('Study ' + (idx + 1)));
       origIdx.push(idx);
       out.perStudy.push({
         name: t.name || ('Study ' + (idx + 1)),
-        eff: Math.exp(e.logEff),
-        ci_lo: Math.exp(e.logEff - zStudy * Math.sqrt(e.varLog)),
-        ci_hi: Math.exp(e.logEff + zStudy * Math.sqrt(e.varLog)),
+        eff: studyEff,
+        ci_lo: studyCiLo,
+        ci_hi: studyCiHi,
         weight: null  // filled below
       });
     });
 
     if (unrepresentableTrial !== -1) {
-      out.error = 'Numerically unrepresentable 2x2 log effect or non-positive variance in trial '
-        + unrepresentableTrial + '; entire pool refused rather than silently omitting a study';
+      out.error = unrepresentableStudyInterval
+        ? 'Unrepresentable individual-study 2x2 ratio or 95% Wald CI in trial '
+          + unrepresentableTrial + '; entire pool refused rather than publishing zero, Infinity, or JSON null'
+        : 'Numerically unrepresentable 2x2 log effect or non-positive variance in trial '
+          + unrepresentableTrial + '; entire pool refused rather than silently omitting a study';
       out.perStudy = [];
       out.excludedStudies = [];
       return out;
