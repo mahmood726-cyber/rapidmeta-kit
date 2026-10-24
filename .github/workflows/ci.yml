@@ -136,9 +136,9 @@ jobs:
           curl --fail --location --show-error --silent --retry 2 \
             "https://cran.r-project.org/src/contrib/Archive/metafor/metafor_4.8-0.tar.gz" \
             --output /tmp/metafor_4.8-0.tar.gz
-          sha256sum /tmp/metafor_4.8-0.tar.gz
+          echo "59003bece34b2ed39f29dce61ca5a68287be07ec683f2f6c51f17bb50ca87801  /tmp/metafor_4.8-0.tar.gz" | sha256sum --check -
           R CMD INSTALL /tmp/metafor_4.8-0.tar.gz
-          Rscript -e 'stopifnot(as.character(getRversion())=="4.4.3", as.character(packageVersion("metafor"))=="4.8-0")'
+          Rscript -e 'stopifnot(as.character(getRversion())=="4.4.3", packageDescription("metafor",fields="Version")=="4.8-0")'
       - name: Live external method-matched R parity (no cached anchors)
         run: |
           python --version
