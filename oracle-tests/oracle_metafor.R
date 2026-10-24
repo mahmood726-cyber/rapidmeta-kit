@@ -24,10 +24,10 @@ matched_cc05 <- length(args) == 3L
 d <- read.table(file("stdin"), header = TRUE, sep = "\t",
                 check.names = FALSE, stringsAsFactors = FALSE)
 if (!identical(names(d), c("tE", "tN", "cE", "cN")) ||
-    nrow(d) < 3L || anyNA(d) ||
+    nrow(d) < 2L || anyNA(d) ||
     !all(vapply(d, is.numeric, logical(1L))) ||
     any(!is.finite(as.matrix(d)))) {
-  stop("requires >=3 complete finite 2x2 rows", call. = FALSE)
+  stop("requires >=2 complete finite 2x2 rows", call. = FALSE)
 }
 # Refuse malformed tables before any escalc correction can make them appear
 # estimable. JS already validates safe-integer/arm-count bounds separately.
