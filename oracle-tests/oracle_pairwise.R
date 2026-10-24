@@ -51,7 +51,10 @@ q_general <- function(t2) {
   sum(w * (yi - m)^2)
 }
 if (tau_method == "DL") {
-  C <- sum(w_fe) - sum(w_fe^2) / sum(w_fe)
+  # Independent base-R implementation of the algebraically equivalent
+  # cross-weight DL denominator, avoiding subtraction of almost equal values.
+  products <- outer(w_fe, w_fe, "*")
+  C <- 2 * sum(products[upper.tri(products)]) / sum(w_fe)
   tau2 <- max(0, (Q - df) / C)
 } else if (Q <= df) {
   tau2 <- 0
