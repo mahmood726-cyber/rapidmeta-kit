@@ -87,3 +87,25 @@ jobs:
           assert "rapid_meta_dupilumab_copd" not in html
           print("smoke build OK", len(html), "bytes")
           PY
+
+  native-r-pairwise-oracle:
+    name: native R 4.4.3 pairwise oracle (RR/OR, PM/DL)
+    runs-on: ubuntu-24.04
+    steps:
+      # Pinned action revisions: no mutable @vN tags in the oracle job.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11.9"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20.19.5"
+      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
+        with:
+          r-version: "4.4.3"
+      - name: Fail-closed independent base-R oracle
+        run: |
+          python --version
+          node --version
+          Rscript --version
+          python -m unittest discover -s oracle-tests -p 'test_*.py' -v
