@@ -2,9 +2,10 @@
 
 This test MUST run native R. It is deliberately separate from our self-written
 base-R oracle and cannot pass from stored/cached numerical anchors.
-Scope: synthetic, independent interior 2x2 tables, RR/OR, DL/PM, floored
-HKSJ. The separate Cochrane PI and I2 conventions are NOT asserted equal
-to metafor. Zero-cell policies, REML and published clinical data NOT TESTED.
+Scope: synthetic independent 2x2 tables, RR/OR, DL/PM, floored HKSJ,
+plus an explicitly matched 0.5 per-study correction for informative
+single-arm-zero/all-events cells. Cochrane PI and I2 conventions are not
+asserted equal to metafor; REML, GLMM and clinical data remain NOT TESTED.
 """
 import math
 import subprocess
@@ -40,12 +41,15 @@ def parse_metafor_result(output):
     return result
 
 
-def invoke_metafor(rows, measure, method):
+def invoke_metafor(rows, measure, method, matched_cc05=False):
     tab = "tE\ttN\tcE\tcN\n" + "".join(
         "%d\t%d\t%d\t%d\n" % row for row in rows
     )
+    args = ["Rscript", str(R_SCRIPT), measure, method]
+    if matched_cc05:
+        args.append("CC05")
     return subprocess.run(
-        ["Rscript", str(R_SCRIPT), measure, method],
+        args,
         input=tab, cwd=ROOT, capture_output=True, text=True,
         check=False, timeout=90,
     )
@@ -91,6 +95,52 @@ class ActualMetaforOracle(unittest.TestCase):
                         shipped = run_js(rows, measure, method)
                         self.assertEqual(shipped["k_used"], len(rows))
                         match_model(shipped, external)
+
+    def test_pinned_metafor_matches_informative_single_zero_and_all_event_cells(self):
+        # Synthetic comparisons; R genuinely executes metafor::escalc with
+        # add=0.5,to='only0', matching PairwisePool's per-table correction.
+        # These are inverse-variance tests, NOT validation of rare-event GLMMs.
+        cases = {
+            "zero_treatment": ((0, 100, 8, 100),) + CASESETS["near_homogeneous"],
+            "zero_control": ((7, 90, 0, 105),) + CASESETS["near_homogeneous"],
+            "all_treatment": ((40, 40, 11, 45),) + CASESETS["near_homogeneous"],
+        }
+        for label, rows in cases.items():
+            for measure in ("RR", "OR"):
+                for method in ("DL", "PM"):
+                    with self.subTest(case=label, measure=measure, method=method):
+                        cp = invoke_metafor(rows, measure, method, matched_cc05=True)
+                        self.assertEqual(cp.returncode, 0, cp.stderr)
+                        external = parse_metafor_result(cp.stdout)
+                        shipped = run_js(rows, measure, method)
+                        self.assertEqual(shipped["k_used"], len(rows))
+                        match_model(shipped, external)
+                        # Explicit opt-in is essential: the same non-interior
+                        # data must not pass the uncorrected oracle.
+                        raw = invoke_metafor(rows, measure, method)
+                        self.assertNotEqual(raw.returncode, 0)
+                        self.assertIn("interior-only", raw.stderr)
+
+    def test_matched_correction_fails_closed_for_dual_arm_exclusions(self):
+        for excluded in ((0, 100, 0, 100), (10, 10, 20, 20)):
+            rows = (excluded,) + CASESETS["near_homogeneous"]
+            for measure in ("RR", "OR"):
+                cp = invoke_metafor(rows, measure, "DL", matched_cc05=True)
+                self.assertNotEqual(cp.returncode, 0)
+                self.assertIn("CC05 refuses uninformative", cp.stderr)
+
+    def test_refuses_unrecognised_correction_modes(self):
+        # Never allow a typo to change the quantitative correction silently.
+        tab = "tE\ttN\tcE\tcN\n0\t100\t8\t100\n" + "".join(
+            "%d\t%d\t%d\t%d\n" % row for row in CASESETS["near_homogeneous"]
+        )
+        cp = subprocess.run(
+            ["Rscript", str(R_SCRIPT), "RR", "DL", "CC01"],
+            input=tab, cwd=ROOT, capture_output=True, text=True,
+            check=False, timeout=90,
+        )
+        self.assertNotEqual(cp.returncode, 0)
+        self.assertIn("usage:", cp.stderr)
 
     def test_refuses_unmatched_zero_cell_convention(self):
         rows = ((0, 100, 3, 100),) + CASESETS["heterogeneous"]
