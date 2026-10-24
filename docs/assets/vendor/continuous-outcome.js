@@ -68,6 +68,11 @@
       // A negative SE must not become a valid positive variance by squaring.
       return { yi: t.md, vi: t.se > 0 ? t.se * t.se : NaN };
     }
+    // Per-arm N is a count of measured participants; fractional or unsafe
+    // numeric counts must refuse, not enter inverse-variance weights.
+    if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)) {
+      return { yi: NaN, vi: NaN };
+    }
     // From means/SDs: variance = sd1²/n1 + sd2²/n2
     const yi = t.m1 - t.m2;
     const vi = t.sd1 * t.sd1 / t.n1 + t.sd2 * t.sd2 / t.n2;
@@ -78,6 +83,11 @@
     if (t.kind === 'smd_pre') {
       // Apply the same pre-extracted SE domain gate on the SMD scale.
       return { yi: t.smd, vi: t.se > 0 ? t.se * t.se : NaN };
+    }
+    // Per-arm N is a count of measured participants; fractional or unsafe
+    // numeric counts must refuse, not enter inverse-variance weights.
+    if (!Number.isSafeInteger(t.n1) || !Number.isSafeInteger(t.n2)) {
+      return { yi: NaN, vi: NaN };
     }
     // Pooled SD
     const dfp = t.n1 + t.n2 - 2;
