@@ -302,8 +302,12 @@
       const kind = badMd !== -1 ? 'MD' : 'SMD';
       const invalidTrial = badMd !== -1 ? mdTrials[badMd] : smdTrials[badSmd];
       const trialIndex = trials.indexOf(invalidTrial) + 1;
-      const summary = 'Pooling REFUSED: unrepresentable ' + kind
-        + ' effect or variance in continuous trial ' + trialIndex;
+      const sourceSdReview = invalidTrial.kind === 'full'
+        && (invalidTrial.sd1 <= 0 || invalidTrial.sd2 <= 0);
+      const summary = sourceSdReview
+        ? 'Pooling REFUSED: nonpositive reported SD needs source review in continuous trial ' + trialIndex
+        : 'Pooling REFUSED: unrepresentable ' + kind
+          + ' effect or variance in continuous trial ' + trialIndex;
       const panel = P.buildCollapsiblePanel({
         id: 'continuous-outcome-panel',
         badge: 'Continuous · REFUSED',
