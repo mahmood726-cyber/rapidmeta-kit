@@ -195,6 +195,9 @@
       seenNct.set(id, i + 1);
     }
 
+    // R stats::qnorm(0.975): full-precision two-sided 95% normal quantile.
+    // This is for study-level Wald intervals, NOT pooled t(k-1) HKSJ CIs.
+    const zStudy = 1.959963984540054;
     const yi = [], vi = [], names = [], origIdx = [];
     let unrepresentableTrial = -1;
     trials.forEach(function (t, idx) {
@@ -245,8 +248,8 @@
       out.perStudy.push({
         name: t.name || ('Study ' + (idx + 1)),
         eff: Math.exp(e.logEff),
-        ci_lo: Math.exp(e.logEff - 1.96 * Math.sqrt(e.varLog)),
-        ci_hi: Math.exp(e.logEff + 1.96 * Math.sqrt(e.varLog)),
+        ci_lo: Math.exp(e.logEff - zStudy * Math.sqrt(e.varLog)),
+        ci_hi: Math.exp(e.logEff + zStudy * Math.sqrt(e.varLog)),
         weight: null  // filled below
       });
     });
