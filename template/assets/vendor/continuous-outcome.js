@@ -241,6 +241,14 @@
       out.pi_low = yRE - t * seP;
       out.pi_high = yRE + t * seP;
     }
+    // Finite input variances alone are insufficient: inverse weights,
+    // the weighted mean, Q, or interval arithmetic can still overflow.
+    // Return no estimate rather than reporting NaN/Infinity as a pooled result.
+    const required = ['yi', 'se', 'ci_low', 'ci_high', 'tau2', 'Q', 'I2'];
+    if (k >= 3) required.push('pi_low', 'pi_high');
+    if (required.some(key => !Number.isFinite(out[key])) || out.se <= 0
+        || out.tau2 < 0 || out.ci_low > out.ci_high
+        || (k >= 3 && out.pi_low > out.pi_high)) return null;
     return out;
   }
 
@@ -381,6 +389,25 @@
     }
     const mdPool = poolRE(mdPoints);
     const smdPool = poolRE(smdPoints);
+
+    // A failed pool with >=2 supplied valid points is a numerical REFUSAL,
+    // not an absent continuous-outcome panel or an acceptable partial pool.
+    if ((mdPoints.length >= 2 && !mdPool) || (smdPoints.length >= 2 && !smdPool)) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'continuous-outcome-panel',
+        badge: 'Continuous · REFUSED',
+        summary: 'Pooling REFUSED: continuous pooled arithmetic is not finite or representable',
+        bodyHtml: '<div style="color:#fbbf24;font-size:11.5px;">'
+          + 'No continuous outcome pooled: finite study effects can still produce '
+          + 'nonfinite inverse weights, heterogeneity, or pooled confidence/prediction limits. '
+          + 'Review numerical scale and original data before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('continuous-outcome-panel');
+      if (existing) existing.replaceWith(panel);
+      else P.insertAfterRBadge(panel);
+      return true;
+    }
 
     if (!mdPool && !smdPool) return false;
 
