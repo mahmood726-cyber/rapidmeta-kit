@@ -1,4 +1,4 @@
-/* R metafor cross-validation badge for single-arm proportion reviews.
+/* Archived R result comparison badge for single-arm proportion reviews.
  *
  * Fetches outputs/r_validation/singlearm/<REVIEW>.json (written by
  * scripts/r_validate_singlearm.py running R 4.5.2 + metafor 4.8.0) and
@@ -35,12 +35,8 @@
         k: engine.lastFit.k,
       };
     }
-    // DOM fallback — parse "pooled: X.X% [Y.Y%, Z.Z%]"
-    const el = document.getElementById('single-arm-proportion-panel');
-    if (!el) return null;
-    const txt = el.innerText || '';
-    const m = txt.match(/Logit-RE\s*([0-9]+\.[0-9]+)%/);
-    if (m) return { prop: parseFloat(m[1])/100, method: 'logit-RE-DL', k: null };
+    // Formatted DOM percentages discard study-set and estimator provenance.
+    // Never infer an apparent numerical match from rounded screen text.
     return null;
   }
 
@@ -57,25 +53,25 @@
     const rI2 = lp.I2 || 0;
     const rTau2 = lp.tau2 || 0;
 
-    let verdict = '⚠ R-validated (engine pool not detected on page)';
+    // The shipped single-arm JS estimator is logit inverse-variance DL
+    // with normal/Wald limits; the archived R reference describes REML+HKSJ.
+    // A small point-estimate delta is NOT method-matched parity, even at k>=3.
+    let verdict = '⚠ Archived R summary only — JavaScript fit not detected; parity unverified';
     let cmpRow = '';
     if (engine && Number.isFinite(engine.prop) && Number.isFinite(rProp)) {
       const d = Math.abs(engine.prop - rProp);
-      // P0-4 + P1-13 fix: only award ✓ for tight match AND k ≥ 3 (HKSJ
-      // t_{k-1} at k=2 has multiplier 12.706 — trivially matches anything).
-      const baseline = (engine.prop + rProp) / 2;
-      const tight_abs = 0.01;                // 1pp absolute
-      const tight_rel = 0.20 * baseline;     // 20% relative
-      const tight_tol = Math.min(tight_abs, Math.max(0.005, tight_rel));
-      const k_ok = (r.k || 0) >= 3;
-      if (d < tight_tol && k_ok) {
-        verdict = '✓ R metafor cross-validated · Δ ' + (d * 100).toFixed(2) + 'pp · within tight tolerance';
-      } else if (d < tight_tol && !k_ok) {
-        verdict = '⚠ k=' + r.k + ' (HKSJ t_{k-1} CI uninformative — ✓ not awarded)';
-      } else if (d < 0.03) {
-        verdict = '⚠ R-engine method-spread Δ ' + (d * 100).toFixed(1) + 'pp · likely PFT-vs-logit or REML-vs-DL drift';
+      const delta = (d * 100).toFixed(2) + 'pp';
+      if (engine.method !== 'logit-RE-REML-HKSJ') {
+        verdict = '⚠ Method mismatch (JS ' + escapeHtml(engine.method || 'unknown') +
+                  ' vs archived R REML+HKSJ); Δ ' + delta + ' — NOT parity';
+      } else if (!Number.isSafeInteger(engine.k) || engine.k < 3 ||
+                 !Number.isSafeInteger(r.k) || r.k !== engine.k) {
+        verdict = '⚠ Study count not matched or too small; Δ ' + delta + ' — NOT parity';
       } else {
-        verdict = '⚠ R-engine diverges (Δ ' + (d * 100).toFixed(1) + 'pp)';
+        // Even concordant fit metadata and numerical values do not prove that
+        // a *version-pinned native R* process ran on the identical study set.
+        verdict = '⚠ Descriptive numerical agreement Δ ' + delta +
+                  '; independently executed, version-pinned R parity not established';
       }
       cmpRow =
         '<tr><td style="padding:3px 8px;color:#94a3b8;">Engine vs R logit pool</td>' +
@@ -108,7 +104,7 @@
       cmpRow +
       '</table>' +
       '<div style="margin-top:8px;font-size:10.5px;color:#94a3b8;line-height:1.5;">' +
-      'External cross-validation against R 4.5.2 + ' +
+      'Archived R summary, not verified JS/R oracle parity; version and method matching require independent replay. Reference: ' +
       '<a href="https://cran.r-project.org/package=metafor" target="_blank" rel="noopener noreferrer" style="color:#7dd3fc;text-decoration:none;">metafor</a> ' +
       '(measure="PLO" for logit; measure="PFT" for Freeman-Tukey double-arcsine), REML estimator with Hartung-Knapp-Sidik-Jonkman small-sample correction. ' +
       'Source: <code style="color:#94a3b8;word-break:break-all;">outputs/r_validation/singlearm/' + escapeHtml(r.review) + '.json</code>.' +
@@ -123,7 +119,7 @@
     const built = buildBadge(r, engine);
     const panel = P.buildCollapsiblePanel({
       id: PANEL_ID,
-      badge: 'R metafor (single-arm)',
+      badge: 'R comparison (single-arm)',
       summary: built.summary,
       bodyHtml: built.body,
       storageKey: STORAGE_KEY,
