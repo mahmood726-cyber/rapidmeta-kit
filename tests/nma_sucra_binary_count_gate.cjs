@@ -18,6 +18,10 @@ for (const copy of copies.slice(1)) {
 }
 const normal = { tE: 3, tN: 40, cE: 6, cN: 40 };
 const continuous = { allOutcomes: [{ type: "CONTINUOUS", md: -2, se: 0.6 }] };
+// The independent positive control must not reuse the exact same trial object.
+// Equal effects can occur in genuinely separate studies, so retain the same
+// MD/SE values while using different object identities.
+const independentContinuous = { allOutcomes: [{ type: "CONTINUOUS", md: -2, se: 0.6 }] };
 function exercise(code, a, b = normal, reverse = false) {
   const captured = [];
   const context = {
@@ -70,7 +74,7 @@ const positive = [
   ["valid integer strings", {tE: " 2 ", tN: "20", cE: "4", cN: "20"}, normal, "OR"],
   ["valid zero-cell correction", {tE: 0, tN: 20, cE: 4, cN: 20}, normal, "OR"],
   ["valid all-event correction", {tE: 20, tN: 20, cE: 4, cN: 20}, normal, "OR"],
-  ["genuinely continuous-only", continuous, continuous, "MD"],
+  ["genuinely continuous-only, independent studies", continuous, independentContinuous, "MD"],
 ];
 let executed = 0;
 for (const copy of copies) {
@@ -95,11 +99,18 @@ for (const copy of copies) {
     assert.doesNotMatch(panel.summary, /^Refused:/, ctx);
     executed++;
   }
+  // A reused study object is NOT an independent second trial, even when both
+  // rows are otherwise valid continuous effects; covariance is not modelled.
+  const duplicated = exercise(code, continuous, continuous);
+  assert.match(duplicated.summary, /^Refused: shared or duplicated trial evidence/, copy);
+  assert.match(duplicated.bodyHtml, /role="alert"/, copy);
+  assert.doesNotMatch(duplicated.bodyHtml, /Per-treatment ranking summaries:|Top-ranked:/, copy);
+  executed++;
   // A malformed row for the SECOND treatment must also refuse, not silently drop it.
   const second = exercise(code, normal, invalid[0][1]);
   assert.match(second.summary, /^Refused: invalid binary 2×2/, copy);
   assert.doesNotMatch(second.bodyHtml, /Per-treatment ranking summaries:/, copy);
   executed++;
 }
-assert.equal(executed, copies.length * (invalid.length * 2 + positive.length + 1));
+assert.equal(executed, copies.length * (invalid.length * 2 + positive.length + 2));
 console.log("PASS: " + executed + " source-executed SUCRA binary-count scenarios across 3 distributed copies; no R oracle claimed.");
