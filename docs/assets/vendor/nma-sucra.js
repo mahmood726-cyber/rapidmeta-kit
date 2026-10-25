@@ -97,24 +97,39 @@
     return null;
   }
 
-  // Pool log-effect via DerSimonian-Laird random effects
+  // Pool log-effect via DerSimonian-Laird random effects.
+  // Finite individual inverse-variance weights do not guarantee finite
+  // weighted sums, Q, sum(w^2), tau2 or pooled uncertainty. Refuse an
+  // unrepresentable pool instead of passing NaN/Infinity to rankings.
   function poolDLRE(points) {
-    if (!points || points.length === 0) return null;
+    if (!points || !points.length) return null;
+    if (points.some(p => !Number.isFinite(p.yi) || !Number.isFinite(p.vi) ||
+        p.vi <= 0 || !Number.isFinite(1 / p.vi))) return null;
     if (points.length === 1) {
-      return { mean: points[0].yi, se: Math.sqrt(points[0].vi), k: 1, tau2: 0 };
+      const se = Math.sqrt(points[0].vi);
+      return Number.isFinite(se) && se > 0 ?
+        { mean: points[0].yi, se, k: 1, tau2: 0 } : null;
     }
     let W = 0, WY = 0;
-    points.forEach(p => { const w = 1/p.vi; W += w; WY += w * p.yi; });
+    points.forEach(p => { const w = 1 / p.vi; W += w; WY += w * p.yi; });
+    if (!Number.isFinite(W) || W <= 0 || !Number.isFinite(WY)) return null;
     const yFE = WY / W;
+    if (!Number.isFinite(yFE)) return null;
     let Q = 0;
-    points.forEach(p => { const w = 1/p.vi; Q += w * Math.pow(p.yi - yFE, 2); });
+    points.forEach(p => { const w = 1 / p.vi; Q += w * Math.pow(p.yi - yFE, 2); });
     const df = points.length - 1;
-    const sumW2 = points.reduce((s, p) => s + Math.pow(1/p.vi, 2), 0);
+    const sumW2 = points.reduce((s, p) => s + Math.pow(1 / p.vi, 2), 0);
     const c = W - sumW2 / W;
+    if (!Number.isFinite(Q) || !Number.isFinite(sumW2) || sumW2 <= 0 ||
+        !Number.isFinite(c) || c <= 0) return null;
     const tau2 = Math.max(0, (Q - df) / c);
+    if (!Number.isFinite(tau2)) return null;
     let W2 = 0, WY2 = 0;
-    points.forEach(p => { const w = 1/(p.vi + tau2); W2 += w; WY2 += w * p.yi; });
-    return { mean: WY2 / W2, se: Math.sqrt(1/W2), k: points.length, tau2 };
+    points.forEach(p => { const w = 1 / (p.vi + tau2); W2 += w; WY2 += w * p.yi; });
+    if (!Number.isFinite(W2) || W2 <= 0 || !Number.isFinite(WY2)) return null;
+    const mean = WY2 / W2, se = Math.sqrt(1 / W2);
+    return Number.isFinite(mean) && Number.isFinite(se) && se > 0 ?
+      { mean, se, k: points.length, tau2 } : null;
   }
 
   // Box-Muller normal sample
@@ -258,6 +273,7 @@
     let ambiguousPublishedRatioRows = 0;
     let invalidContinuousRows = 0;
     let ambiguousContinuousRows = 0;
+    let unstablePools = 0;
     let scale = null;
     // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
     const effectTypes = new Set();
@@ -306,10 +322,29 @@
       });
       if (effectTypes.size > 1) return;  // no mixed-scale pooling, even transiently
       const pool = poolDLRE(points);
-      if (!pool || pool.k === 0) return;
+      if (!pool || pool.k === 0) {
+        if (points.length) unstablePools++;
+        return;
+      }
       tr.push({ name: T, mean: pool.mean, se: pool.se });
       scale = scale || pickedScale;
     });
+    if (unstablePools) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: non-finite inverse-variance pooling intermediates',
+        bodyHtml: '<div role="alert">Found ' + unstablePools +
+                  ' direct comparison pool(s) with unrepresentable weighted sums, ' +
+                  'heterogeneity calculations or pooled uncertainty. Individual finite ' +
+                  'study effects do not guarantee numerical stability of the pooled result. ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Review the effect units and source data before fitting a validated model.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     if (ambiguousContinuousRows) {
       const panel = P.buildCollapsiblePanel({
         id: 'nma-sucra-panel', badge: 'SUCRA',
