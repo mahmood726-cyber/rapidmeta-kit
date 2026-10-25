@@ -45,9 +45,12 @@ for (i in seq_len(nrow(d))) {
   emit(paste0("study_", i - 1L, "_yi"), e$yi[[i]])
   emit(paste0("study_", i - 1L, "_vi"), e$vi[[i]])
 }
+pred <- predict(fit, level = 95)
 emit("k", nrow(d))
 emit("mu", fit$b[1, 1])
 emit("tau2", fit$tau2)
 emit("se", fit$se[1])
 emit("ci_low", fit$ci.lb[1])
 emit("ci_high", fit$ci.ub[1])
+emit("pi_low", pred$pi.lb[1])
+emit("pi_high", pred$pi.ub[1])

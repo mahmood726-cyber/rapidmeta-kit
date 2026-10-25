@@ -232,9 +232,12 @@
       ci_high: yRE + t * seH,
       k, tau2, Q, df, I2,
     };
-    // Cochrane v6.5 prediction interval: t_{k-1} × √(τ² + SE_µ²); undefined for k<3.
+    // Floored-HKSJ prediction interval: t_{k-1} × √(τ² + SE_HKSJ²); withheld for k<3.
     if (k >= 3) {
-      const seP = Math.sqrt(tau2 + seMu * seMu);
+      // test="adhoc" prediction interval uses the HKSJ-floored pooled
+      // standard error, as does metafor::predict(). Using unadjusted seMu
+      // here made the PI narrower than its CI even when tau2 was zero.
+      const seP = Math.sqrt(tau2 + seH * seH);
       out.pi_low = yRE - t * seP;
       out.pi_high = yRE + t * seP;
     }
