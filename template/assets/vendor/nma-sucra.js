@@ -79,6 +79,9 @@
         return !(vi > 0 && Number.isFinite(vi) && Number.isFinite(1 / vi));
       });
       if (invalid) return { invalidContinuous: true };
+      // Multiple effect rows can represent different outcomes, scales or visits.
+      // Selecting the first without endpoint/time-point adjudication is unsafe.
+      if (continuous.length > 1) return { ambiguousContinuous: true };
       const cont = continuous[0];
       return { yi: cont.md, vi: cont.se * cont.se };
     }
@@ -254,6 +257,7 @@
     let invalidBinaryRows = 0;
     let ambiguousPublishedRatioRows = 0;
     let invalidContinuousRows = 0;
+    let ambiguousContinuousRows = 0;
     let scale = null;
     // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
     const effectTypes = new Set();
@@ -280,6 +284,10 @@
               return;
             }
             const cont = trialContinuous(t);
+            if (cont && cont.ambiguousContinuous) {
+              ambiguousContinuousRows++;
+              return;
+            }
             if (cont && cont.invalidContinuous) {
               invalidContinuousRows++;
               return;
@@ -302,6 +310,22 @@
       tr.push({ name: T, mean: pool.mean, se: pool.se });
       scale = scale || pickedScale;
     });
+    if (ambiguousContinuousRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: multiple continuous effect records without endpoint selection',
+        bodyHtml: '<div role="alert">Found ' + ambiguousContinuousRows +
+                  ' trial row(s) with more than one typed CONTINUOUS effect. ' +
+                  'Choosing the first outcome silently may change the endpoint, time point, ' +
+                  'units or estimand. No SUCRA, treatment hierarchy or pooled result was ' +
+                  'computed. Select and verify one source-grounded outcome and its MD/SE ' +
+                  'before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     if (invalidContinuousRows) {
       const panel = P.buildCollapsiblePanel({
         id: 'nma-sucra-panel', badge: 'SUCRA',
