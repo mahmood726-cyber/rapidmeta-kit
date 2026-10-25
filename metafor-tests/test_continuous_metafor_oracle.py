@@ -47,7 +47,7 @@ const source = fs.readFileSync(process.argv[1], 'utf8');
 const marker = '  global.ContinuousOutcome = { render };';
 if (source.split(marker).length !== 2) throw Error('missing or duplicated JS export marker');
 const instrumented = source.replace(marker,
-  '  global.__liveMetafor = { pickContinuousTrials, md, smdHedges, poolRE };\\n' + marker);
+  '  global.__liveMetafor = { pickContinuousTrials, md, smdHedges, poolRE };\n' + marker);
 const sandbox = {};
 vm.runInNewContext(instrumented, sandbox, { filename: process.argv[1] });
 const oracle = sandbox.__liveMetafor;
