@@ -139,6 +139,15 @@
   }
 
   function pickReference(cfg, treatments) {
+    // A protocol-selected comparator is the estimand's reference, not an
+    // optional preference to override with an earlier placebo/control label.
+    // Prefer an exact, case-insensitive match before legacy heuristic lookup.
+    if (cfg && cfg.protocol && typeof cfg.protocol.comp === 'string') {
+      const requested = cfg.protocol.comp.trim().toLowerCase();
+      const exact = requested && treatments.find(t =>
+        typeof t === 'string' && t.trim().toLowerCase() === requested);
+      if (exact) return exact;
+    }
     if (cfg && cfg.protocol && cfg.protocol.comp) {
       const t = treatments.find(t =>
         cfg.protocol.comp.toLowerCase().includes(t.toLowerCase()) ||
