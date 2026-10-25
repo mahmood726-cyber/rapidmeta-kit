@@ -213,6 +213,61 @@ class ContinuousMetaforOracle(unittest.TestCase):
         self.assertNotIn("pi_low", out)
         self.assertNotIn("pi_high", out)
 
+    def test_live_reml_fisher_information_is_unit_scale_equivariant(self):
+        """R 4.4.3 / metafor 4.8-0 independently checks both actual unit scales.
+
+        The old JavaScript trP2 < 1e-15 threshold returned the DL starting
+        variance (about 6.5253 in base units) instead of REML (about 10.13)
+        only at the large scale. These are synthetic numerical stress inputs,
+        never verified trial outcomes.
+        """
+        base_rows = tuple(
+            (delta, 0.0, math.sqrt(variance * 10), math.sqrt(variance * 10), 20, 20)
+            for delta, variance in ((0, 0.5), (2, 1), (4, 4), (9, 6))
+        )
+        scale = 10_000
+        scaled_rows = tuple(
+            tuple(value * scale if index < 4 else value
+                  for index, value in enumerate(row))
+            for row in base_rows
+        )
+        seen = {}
+        for label, rows in (("base", base_rows), ("rescaled", scaled_rows)):
+            with self.subTest(units=label):
+                cp = run_r(rows, "MD")
+                self.assertEqual(cp.returncode, 0, cp.stderr)
+                external = parse_r(cp.stdout, len(rows))
+                actual = run_js(rows, "MD")["pool"]
+                factor = 1 if label == "base" else scale
+                self.assertEqual(actual["k"], external["k"])
+                self.assertGreater(external["tau2"], 0)
+                self.assertTrue(
+                    math.isclose(actual["tau2"] / factor**2,
+                                 external["tau2"] / factor**2,
+                                 abs_tol=0.05, rel_tol=0),
+                    f"{label}: JS tau2={actual['tau2']}; "
+                    f"live R tau2={external['tau2']}",
+                )
+                for js_key, r_key in (
+                    ("yi", "mu"), ("ci_low", "ci_low"),
+                    ("ci_high", "ci_high"), ("pi_low", "pi_low"),
+                    ("pi_high", "pi_high"),
+                ):
+                    self.assertTrue(
+                        math.isclose(actual[js_key] / factor,
+                                     external[r_key] / factor,
+                                     rel_tol=0, abs_tol=0.08),
+                        f"{label}: {js_key}: JS={actual[js_key]}, "
+                        f"live R={external[r_key]}",
+                    )
+                seen[label] = (actual, external)
+        for source in (0, 1):
+            base, rescaled = seen["base"][source], seen["rescaled"][source]
+            self.assertAlmostEqual(
+                base["tau2"], rescaled["tau2"] / scale**2, delta=0.08,
+                msg="REML tau2 must be independent of measurement units",
+            )
+
     def test_invalid_raw_continuous_rows_fail_closed(self):
         good = DATASETS["near_homogeneous"]
         invalid_rows = {
