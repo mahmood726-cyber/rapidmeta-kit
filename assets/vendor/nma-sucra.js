@@ -70,16 +70,14 @@
     let cont = ao.find(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous')
                                  && typeof o.md === 'number' && typeof o.se === 'number' && o.se > 0);
     if (cont) return { yi: cont.md, vi: cont.se * cont.se };
-    cont = ao.find(o => o && o.type === 'PRIMARY'
-                          && CONT_LABEL_RE.test(String(o.shortLabel || o.title || ''))
-                          && typeof o.pubHR === 'number'
-                          && typeof o.pubHR_LCI === 'number'
-                          && typeof o.pubHR_UCI === 'number'
-                          && o.pubHR_UCI > o.pubHR_LCI);
-    if (cont) {
-      const md = cont.pubHR;
-      const se = (cont.pubHR_UCI - cont.pubHR_LCI) / 3.92;
-      if (se > 0 && isFinite(se)) return { yi: md, vi: se * se };
+    // A published hazard-ratio field is not an absolute mean difference.
+    // An outcome label cannot verify the effect estimand or units (Cochrane ch. 6).
+    // Only a source-verified, explicitly typed CONTINUOUS md/se may be pooled as MD.
+    if (ao.some(o => o && o.type === 'PRIMARY' &&
+        CONT_LABEL_RE.test(String(o.shortLabel || o.title || '')) &&
+        ['pubHR', 'pubHR_LCI', 'pubHR_UCI'].some(key =>
+          Object.prototype.hasOwnProperty.call(o, key)))) {
+      return { ambiguousPublishedRatio: true };
     }
     return null;
   }
@@ -242,6 +240,7 @@
     const others = treatments.filter(t => t !== reference);
     const tr = []; // [{ name, mean, se, scale }]
     let invalidBinaryRows = 0;
+    let ambiguousPublishedRatioRows = 0;
     let scale = null;
     // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
     const effectTypes = new Set();
@@ -268,6 +267,10 @@
               return;
             }
             const cont = trialContinuous(t);
+            if (cont && cont.ambiguousPublishedRatio) {
+              ambiguousPublishedRatioRows++;
+              return;
+            }
             if (cont) {
               effectTypes.add('MD');
               points.push({ yi: flip ? -cont.yi : cont.yi, vi: cont.vi });
@@ -282,6 +285,22 @@
       tr.push({ name: T, mean: pool.mean, se: pool.se });
       scale = scale || pickedScale;
     });
+    if (ambiguousPublishedRatioRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: published HR fields cannot be treated as mean differences',
+        bodyHtml: '<div role="alert">Found ' + ambiguousPublishedRatioRows +
+                  ' trial row(s) with a continuous-looking PRIMARY outcome using ' +
+                  'published hazard-ratio (pubHR) fields. A hazard ratio is not a mean difference; ' +
+                  'the effect estimand and units require primary-source verification. ' +
+                  'No SUCRA, hierarchy or pooled result was computed. Supply a source-verified ' +
+                  'CONTINUOUS mean difference and standard error to analyse this endpoint.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     if (invalidBinaryRows) {
       const panel = P.buildCollapsiblePanel({
         id: 'nma-sucra-panel', badge: 'SUCRA',
