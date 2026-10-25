@@ -147,6 +147,28 @@
     const treatments = cfg.treatments;
     const reference = pickReference(cfg, treatments);
 
+    // This panel fits independent direct-vs-reference pools, NOT a network
+    // model. A non-reference evidence edge would be silently omitted from
+    // the rankings below. Cochrane Handbook chapter 11 requires incorporating
+    // direct and indirect evidence when presenting network estimates.
+    const unmodelledEdges = (cfg.comparisons || []).filter(c =>
+      c && c.t1 !== reference && c.t2 !== reference &&
+      Array.isArray(c.trials) && c.trials.length > 0);
+    if (unmodelledEdges.length) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: network comparisons omitted by direct-only ranking',
+        bodyHtml: '<div role="alert">This exploratory ranking only uses direct comparisons with its chosen reference. ' +
+                  'The supplied network has ' + unmodelledEdges.length + ' non-reference comparison(s) with studies, ' +
+                  'which this panel cannot incorporate. No SUCRA, treatment hierarchy or pooled estimate was computed. ' +
+                  'Use a fitted network model including the eligible direct and indirect comparisons and uncertainty.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true; // a visible refusal, not a statistical result
+    }
+
     // For each treatment, pool effect vs reference (log-OR or MD).
     // If neither is computable, skip the treatment.
     const others = treatments.filter(t => t !== reference);
@@ -309,7 +331,7 @@
     html += '</tbody></table>';
 
     html += '<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.5;border-top:1px solid #1e293b;padding-top:8px;">'
-          + '<strong>Method:</strong> for each non-reference treatment, pool the trial-level log-OR (or MD) vs reference via DerSimonian-Laird random effects. '
+          + '<strong>Exploratory direct-only analysis (not a fitted NMA):</strong> for each non-reference treatment, pool the trial-level log-OR (or MD) vs reference via DerSimonian-Laird random effects. '
           + 'Then ' + N_MC.toLocaleString() + ' Monte Carlo draws — sample each treatment from N(μ̂, σ̂²), rank, average ⇒ mean rank. '
           + 'SUCRA = (J − mean rank) / (J − 1) × 100 (Salanti J Clin Epidemiol 2011). '
           + '<strong>Ranking precision (Wigle 2025):</strong> POTH (Precision Of Treatment Hierarchy) is computed from the Monte-Carlo rankogram and shown above. SUCRA alone is unreliable when ranks are uncertain; when POTH &lt; 0.5 the hierarchy is non-informative and this panel suppresses the "top-ranked" claim. '
