@@ -171,31 +171,52 @@
   // by construction (PM sets generalized Q = df), which would make HKSJ a no-op.
   function tau2REML(points) {
     const k = points.length, df = k - 1;
-    let W = 0, WY = 0, sW2 = 0;
-    points.forEach(p => { const w = 1 / p.vi; W += w; WY += w * p.yi; sW2 += w * w; });
-    const muFE = WY / W;
-    let Q = 0; points.forEach(p => { const w = 1 / p.vi; Q += w * (p.yi - muFE) * (p.yi - muFE); });
-    let tau2 = (Q > df) ? (Q - df) / (W - sW2 / W) : 0;   // DL start
+    // REML Fisher scoring depends on sums of squared/cubed inverse-variance
+    // weights. Forming w^2, w^3 or (sum w^2)^2 directly can overflow (or
+    // underflow) even when the REML update is perfectly representable.
+    // Use r_i = w_i / sum(w) to evaluate the algebraically identical score:
+    //   tr(P) / W = 1 - sum(r_i^2)
+    //   tr(P^2) / W^2 = sum(r_i^2) - 2*sum(r_i^3) + sum(r_i^2)^2.
+    // This is a numerical conditioning fix, not a change of tau2 estimator.
+    function moments(t2) {
+      const w = points.map(p => 1 / (p.vi + t2));
+      const W = w.reduce((a, b) => a + b, 0);
+      if (!(W > 0) || !Number.isFinite(W)
+          || w.some(x => !(x > 0) || !Number.isFinite(x))) return null;
+      const r = w.map(x => x / W);
+      const mu = r.reduce((a, ri, i) => a + ri * points[i].yi, 0);
+      const B = r.reduce((a, ri) => a + ri * ri, 0);
+      const C = r.reduce((a, ri) => a + ri * ri * ri, 0);
+      const Q = w.reduce((a, wi, i) =>
+        a + wi * (points[i].yi - mu) ** 2, 0);
+      // Divide the REML score by W before forming a Fisher update. This
+      // avoids both w_i^2 and the tr(P^2) ~ W^2 intermediate.
+      const scaledScore = r.reduce((a, ri, i) =>
+        a + ri * (w[i] * (points[i].yi - mu) ** 2), 0) - (1 - B);
+      const relativeInformation = B - 2 * C + B * B;
+      if (!Number.isFinite(Q) || !Number.isFinite(scaledScore)
+          || !(relativeInformation > 0) || !Number.isFinite(relativeInformation)) {
+        return null;
+      }
+      return { W, B, Q, scaledScore, relativeInformation };
+    }
+
+    const initial = moments(0);
+    if (!initial) return NaN;  // Unrepresentable inverse weights: refuse REML.
+    const dlDenom = initial.W * (1 - initial.B);
+    if (!(dlDenom > 0) || !Number.isFinite(dlDenom)) return NaN;
+    let tau2 = initial.Q > df ? (initial.Q - df) / dlDenom : 0;
+    if (!Number.isFinite(tau2)) return NaN;
     if (k < 2) return Math.max(0, tau2);
-    // REML convergence must use the outcome variance scale: an absolute
-    // tolerance can stop at the DL initial value when outcome units are tiny.
     const smallestVi = points.reduce((min, p) => Math.min(min, p.vi), Infinity);
     for (let it = 0; it < 100; it++) {
-      const w = points.map(p => 1 / (p.vi + tau2));
-      const sW = w.reduce((a, b) => a + b, 0);
-      const mu = w.reduce((a, wi, i) => a + wi * points[i].yi, 0) / sW;
-      const s2 = w.reduce((a, wi) => a + wi * wi, 0);
-      const s3 = w.reduce((a, wi) => a + wi * wi * wi, 0);
-      const trP = sW - s2 / sW;
-      const yP2y = w.reduce((a, wi, i) => a + wi * wi * Math.pow(points[i].yi - mu, 2), 0);
-      const trP2 = s2 - 2 * s3 / sW + s2 * s2 / (sW * sW);
-      // REML Fisher information has units of inverse variance squared.
-      // An absolute 1e-15 cutoff spuriously aborts fitting when exactly
-      // the same observations are expressed in larger measurement units.
-      // Continue for any finite, strictly positive information; refuse
-      // nonpositive or nonfinite information rather than updating from it.
-      if (!(trP2 > 0) || !Number.isFinite(trP2)) break;
-      const next = Math.max(0, tau2 + (yP2y - trP) / trP2);
+      const m = moments(tau2);
+      // A failed information evaluation is not convergence at the DL start.
+      if (!m) return NaN;
+      const delta = (m.scaledScore / m.relativeInformation) / m.W;
+      if (!Number.isFinite(delta)) return NaN;
+      const next = Math.max(0, tau2 + delta);
+      if (!Number.isFinite(next)) return NaN;
       if (Math.abs(next - tau2) <= 1e-10 * Math.max(next, tau2, smallestVi)) {
         tau2 = next;
         break;
@@ -204,7 +225,7 @@
     }
     return Math.max(0, tau2);
   }
-  const T_975 = { 1:12.706,2:4.303,3:3.182,4:2.776,5:2.571,6:2.447,7:2.365,8:2.306,
+    const T_975 = { 1:12.706,2:4.303,3:3.182,4:2.776,5:2.571,6:2.447,7:2.365,8:2.306,
     9:2.262,10:2.228,11:2.201,12:2.179,13:2.160,14:2.145,15:2.131,16:2.120,17:2.110,
     18:2.101,19:2.093,20:2.086,21:2.080,22:2.074,23:2.069,24:2.064,25:2.060,26:2.056,
     27:2.052,28:2.048,29:2.045,30:2.042 };
