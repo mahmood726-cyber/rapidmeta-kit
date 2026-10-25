@@ -283,6 +283,7 @@
     let invalidContinuousRows = 0;
     let ambiguousContinuousRows = 0;
     let unstablePools = 0;
+    let unresolvedTrialRefs = 0;
     let scale = null;
     // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
     const effectTypes = new Set();
@@ -292,8 +293,15 @@
       (cfg.comparisons || []).forEach(c => {
         if ((c.t1 === T && c.t2 === reference) || (c.t1 === reference && c.t2 === T)) {
           (c.trials || []).forEach(nctRef => {
-            const t = (typeof nctRef === 'string' && rd[nctRef]) ? rd[nctRef] : nctRef;
-            if (!t) return;
+            const t = typeof nctRef === 'string'
+              ? (Object.prototype.hasOwnProperty.call(rd, nctRef) ? rd[nctRef] : null)
+              : nctRef;
+            // Missing lookups or malformed references must not silently shrink
+            // the evidence set and change the resulting treatment rankings.
+            if (!t || typeof t !== 'object') {
+              unresolvedTrialRefs++;
+              return;
+            }
             const flip = (c.t1 === reference);
             // Try binary first, then continuous
             const counts = binaryCounts(t);
@@ -338,6 +346,21 @@
       tr.push({ name: T, mean: pool.mean, se: pool.se });
       scale = scale || pickedScale;
     });
+    if (unresolvedTrialRefs) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: unresolved trial references in direct comparisons',
+        bodyHtml: '<div role="alert">Found ' + unresolvedTrialRefs +
+                  ' unresolvable or invalid trial reference(s) in direct comparisons. ' +
+                  'Silently omitting studies would change the evidence set and treatment rankings. ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Verify each study reference and its source data before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     if (unstablePools) {
       const panel = P.buildCollapsiblePanel({
         id: 'nma-sucra-panel', badge: 'SUCRA',
