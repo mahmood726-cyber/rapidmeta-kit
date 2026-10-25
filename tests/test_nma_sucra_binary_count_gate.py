@@ -20,4 +20,4 @@ def test_sucra_binary_counts_are_fail_closed():
         f"Node source regression failed ({result.returncode})\n"
         f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
-    assert "90 source-executed SUCRA binary-count scenarios" in result.stdout
+    assert "93 source-executed SUCRA binary-count scenarios" in result.stdout

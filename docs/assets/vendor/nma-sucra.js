@@ -193,6 +193,50 @@
       return true; // a visible refusal, not a statistical result
     }
 
+    // A trial reused in multiple direct-reference contrasts can share a control
+    // arm. Drawing independent treatment effects then ignores the within-study
+    // covariance (Cochrane Handbook ch. 23, 23.3.4). Also reject a duplicate
+    // appearance within one comparison: that would double-count evidence.
+    // This is a conservative identity gate, NOT a fitted multi-arm NMA model.
+    const seenDirectEvidence = new Set();
+    let reusedDirectEvidence = 0;
+    (cfg.comparisons || []).forEach(c => {
+      if (!c || !Array.isArray(c.trials) ||
+          !((c.t1 === reference && c.t2 !== reference) ||
+            (c.t2 === reference && c.t1 !== reference))) return;
+      c.trials.forEach(ref => {
+        const identities = [];
+        if (typeof ref === 'string' && ref.trim()) {
+          identities.push('reference:' + ref.trim());
+        }
+        const trial = (typeof ref === 'string' && rd[ref]) ? rd[ref] : ref;
+        if (trial && typeof trial === 'object') {
+          identities.push(trial); // repeated object reference, without inventing a study ID
+          const id = [trial.studyId, trial.study_id, trial.nctId, trial.nct_id]
+            .find(v => typeof v === 'string' && v.trim());
+          if (id) identities.push('study:' + id.trim().toLowerCase());
+        }
+        if (identities.some(id => seenDirectEvidence.has(id))) reusedDirectEvidence++;
+        identities.forEach(id => seenDirectEvidence.add(id));
+      });
+    });
+    if (reusedDirectEvidence) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: shared or duplicated trial evidence without covariance modelling',
+        bodyHtml: '<div role="alert">Found ' + reusedDirectEvidence +
+                  ' repeated study reference(s) or study identifier(s) in direct comparisons. ' +
+                  'This exploratory panel assumes independent treatment effects; reused multi-arm ' +
+                  'participants or duplicated rows can invalidate treatment-ranking uncertainty. ' +
+                  'No SUCRA, treatment hierarchy or pooled estimate was computed. ' +
+                  'Verify study arms and analyse the joint evidence with the correct covariance.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+
     // For each treatment, pool effect vs reference (log-OR or MD).
     // If neither is computable, skip the treatment.
     const others = treatments.filter(t => t !== reference);
