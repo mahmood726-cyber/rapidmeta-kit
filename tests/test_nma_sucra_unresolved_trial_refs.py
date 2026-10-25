@@ -22,4 +22,4 @@ def test_sucra_unresolved_trial_references_refuse_silent_omission():
         f"Unresolved trial reference regression failed ({proc.returncode})\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     )
-    assert "60 source-executed unresolved-reference gate scenarios" in proc.stdout
+    assert "72 source-executed unresolved-reference gate scenarios" in proc.stdout
