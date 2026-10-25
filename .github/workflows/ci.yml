@@ -145,3 +145,5 @@ jobs:
           node --version
           Rscript --version
           python -m unittest discover -s metafor-tests -p 'test_metafor_oracle.py' -v
+      - name: Live external continuous MD/SMD oracle (raw arm data; no cached anchors)
+        run: python -m unittest discover -s metafor-tests -p 'test_continuous_metafor_oracle.py' -v
