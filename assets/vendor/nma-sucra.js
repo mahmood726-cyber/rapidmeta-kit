@@ -28,14 +28,38 @@
   function getCfg() { return global.NMA_CONFIG || null; }
 
   // ---- Effect extraction (binary OR, then continuous MD fallback) ----
-  function trialLogOR(t) {
-    let ai = +t.tE, ci = +t.cE, n1 = +t.tN, n2 = +t.cN;
-    if (!Number.isFinite(ai) || !Number.isFinite(ci) || !Number.isFinite(n1) || !Number.isFinite(n2) || n1 <= 0 || n2 <= 0) return null;
+  // The four cells describe participants, not rates: safe integers and 0 <= events <= N.
+  // Absent binary fields are allowed for genuine continuous data; malformed present
+  // fields must cause a visible refusal, never silently fall back to continuous.
+  const BINARY_FIELDS = ['tE', 'tN', 'cE', 'cN'];
+  function binaryCounts(t) {
+    if (!t || typeof t !== 'object' ||
+        !BINARY_FIELDS.some(key => Object.prototype.hasOwnProperty.call(t, key))) return null;
+    const counts = {};
+    for (const key of BINARY_FIELDS) {
+      const raw = t[key];
+      // Preserve canonical integer-string inputs, but never coerce null, blank,
+      // booleans, decimal fractions, or scientific notation to participant counts.
+      const value = typeof raw === 'number' ? raw :
+        (typeof raw === 'string' && /^\s*\d+\s*$/.test(raw) ? Number(raw) : NaN);
+      if (!Number.isSafeInteger(value)) return false;
+      counts[key] = value;
+    }
+    if (counts.tN <= 0 || counts.cN <= 0 ||
+        counts.tE < 0 || counts.cE < 0 ||
+        counts.tE > counts.tN || counts.cE > counts.cN) return false;
+    return counts;
+  }
+
+  function trialLogOR(counts) {
+    let ai = counts.tE, ci = counts.cE, n1 = counts.tN, n2 = counts.cN;
     if (ai === 0 || ci === 0 || ai === n1 || ci === n2) {
       ai += 0.5; ci += 0.5; n1 += 1; n2 += 1;
     }
     const a = ai, b = n1 - ai, c = ci, d = n2 - ci;
-    return { yi: Math.log((a*d)/(b*c)), vi: 1/a + 1/b + 1/c + 1/d };
+    const yi = Math.log((a*d)/(b*c));
+    const vi = 1/a + 1/b + 1/c + 1/d;
+    return Number.isFinite(yi) && Number.isFinite(vi) && vi > 0 ? { yi, vi } : null;
   }
 
   const CONT_LABEL_RE = /^(CDR_?SB|CDR-?SB|MMSE|ADAS|PPF[Ee]V1|FEV1|BCVA|KCCQ|SF36|EQ5D|EQ-?5D|ETDRS|HADS|PHQ|GAD|HRSD|MADRS|YBOCS|SLEDAI|UPDRS|MD|change|score)/i;
@@ -173,6 +197,7 @@
     // If neither is computable, skip the treatment.
     const others = treatments.filter(t => t !== reference);
     const tr = []; // [{ name, mean, se, scale }]
+    let invalidBinaryRows = 0;
     let scale = null;
     // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
     const effectTypes = new Set();
@@ -186,7 +211,12 @@
             if (!t) return;
             const flip = (c.t1 === reference);
             // Try binary first, then continuous
-            const lo = trialLogOR(t);
+            const counts = binaryCounts(t);
+            const lo = counts && counts !== false ? trialLogOR(counts) : null;
+            if (counts === false || (counts && !lo)) {
+              invalidBinaryRows += 1;
+              return; // no fallback to a continuous outcome for malformed 2x2 data
+            }
             if (lo) {
               effectTypes.add('OR');
               points.push({ yi: flip ? -lo.yi : lo.yi, vi: lo.vi });
@@ -208,6 +238,21 @@
       tr.push({ name: T, mean: pool.mean, se: pool.se });
       scale = scale || pickedScale;
     });
+    if (invalidBinaryRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: invalid binary 2×2 event or denominator counts',
+        bodyHtml: '<div role="alert">Found ' + invalidBinaryRows +
+                  ' malformed binary trial row(s): event counts must be integers between 0 and each arm total, ' +
+                  'and arm totals must be positive safe integers. No SUCRA, treatment hierarchy or pooled estimate ' +
+                  'was computed. Verify the primary study source; invalid 2×2 counts cannot be reinterpreted ' +
+                  'as continuous outcomes.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     if (effectTypes.size > 1) {
       // An explicit refusal panel is preferable to silently hiding the rank panel.
       const panel = P.buildCollapsiblePanel({
