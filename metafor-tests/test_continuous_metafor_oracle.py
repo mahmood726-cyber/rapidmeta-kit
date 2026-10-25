@@ -28,6 +28,14 @@ DATASETS = {
         (14.0, 12.05, 3.6, 3.7, 65, 63),
         (10.8, 8.8, 2.7, 2.5, 75, 72),
     ),
+    # Heteroscedastic boundary: qStar>1 with REML tau2=0. Under
+    # metafor(test="adhoc"), PI and HKSJ CI must coincide exactly.
+    "heteroscedastic_boundary": (
+        (11.53, 10.0, 7.6, 7.6, 100, 100),
+        (8.38, 10.0, 5.0, 5.0, 100, 100),
+        (8.61, 10.0, 2.67, 2.67, 100, 100),
+        (8.65, 10.0, 2.70, 2.70, 100, 100),
+    ),
     "heterogeneous": (
         (20.0, 16.0, 3.5, 4.1, 55, 56),
         (17.0, 16.1, 3.0, 3.5, 60, 59),
@@ -92,7 +100,7 @@ def run_r(rows, measure):
 
 def parse_r(output, n):
     result = {}
-    required = {"k", "mu", "tau2", "se", "ci_low", "ci_high"}
+    required = {"k", "mu", "tau2", "se", "ci_low", "ci_high", "pi_low", "pi_high"}
     for i in range(n):
         required.update((f"study_{i}_yi", f"study_{i}_vi"))
     for line in output.strip().splitlines():
@@ -162,6 +170,44 @@ class ContinuousMetaforOracle(unittest.TestCase):
                             f"{label} {measure} {js_key}: "
                             f"JS={pool[js_key]:.17g}; metafor={external[r_key]:.17g}",
                         )
+
+    def test_live_hksj_prediction_intervals_against_metafor(self):
+        # The R oracle calls metafor::predict(fit) at this exact version.
+        # This checks real production JS intervals, not cached R numbers.
+        for label, rows in DATASETS.items():
+            for measure in ("MD", "SMD"):
+                with self.subTest(data=label, measure=measure):
+                    cp = run_r(rows, measure)
+                    self.assertEqual(cp.returncode, 0, cp.stderr)
+                    external = parse_r(cp.stdout, len(rows))
+                    pool = run_js(rows, measure)["pool"]
+                    for js_key, r_key in (("pi_low", "pi_low"),
+                                          ("pi_high", "pi_high")):
+                        self.assertIn(js_key, pool)
+                        self.assertTrue(
+                            math.isclose(pool[js_key], external[r_key],
+                                         rel_tol=0, abs_tol=3e-3),
+                            f"{label} {measure} {js_key}: "
+                            f"JS={pool[js_key]:.17g}, R={external[r_key]:.17g}",
+                        )
+                    if label == "heteroscedastic_boundary" and measure == "MD":
+                        # Deliberately catches using classical seMu instead
+                        # of inflated HKSJ seH when REML is on its boundary.
+                        self.assertAlmostEqual(external["tau2"], 0, delta=1e-9)
+                        self.assertGreater(external["se"], 0.3)
+                        for lohi in ("low", "high"):
+                            self.assertAlmostEqual(
+                                external[f"pi_{lohi}"], external[f"ci_{lohi}"],
+                                delta=1e-9)
+                            self.assertAlmostEqual(
+                                pool[f"pi_{lohi}"], pool[f"ci_{lohi}"],
+                                delta=1e-10)
+
+    def test_prediction_interval_withheld_for_two_studies(self):
+        out = run_js(DATASETS["near_homogeneous"][:2], "MD")["pool"]
+        self.assertEqual(out["k"], 2)
+        self.assertNotIn("pi_low", out)
+        self.assertNotIn("pi_high", out)
 
     def test_invalid_raw_continuous_rows_fail_closed(self):
         good = DATASETS["near_homogeneous"]
