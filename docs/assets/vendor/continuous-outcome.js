@@ -30,8 +30,16 @@
       if (Array.isArray(allOutcomes)) {
         // Explicitly attempted extracted effects with incomplete uncertainty must
         // reach the whole-panel refusal gate, not silently shrink the pooled k.
-        const cont = allOutcomes.find(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous')
+        // Multiple candidate effects within one study may represent different
+        // outcome domains, follow-up times, or analysis populations. Never
+        // silently take the first one without a prespecified selection rule.
+        const extracted = allOutcomes.filter(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous')
                                            && (owns(o, 'md') || owns(o, 'se')));
+        if (extracted.length > 1) {
+          out.push({ name: t.name, kind: 'md_pre', md: NaN, se: NaN, ambiguousOutcomes: true });
+          return;
+        }
+        const cont = extracted[0];
         if (cont) {
           md = typeof cont.md === 'number' ? cont.md : NaN;
           se = typeof cont.se === 'number' ? cont.se : NaN;
@@ -343,7 +351,9 @@
       const sourceSdReview = invalidTrial.kind === 'full'
         && (invalidTrial.sd1 <= 0 || invalidTrial.sd2 <= 0);
       const sourceCountConflict = invalidTrial.kind === 'full' && invalidTrial.countConflict;
-      const summary = sourceCountConflict
+      const summary = invalidTrial.ambiguousOutcomes
+        ? 'Pooling REFUSED: multiple extracted continuous outcomes need prespecified selection in trial ' + trialIndex
+        : sourceCountConflict
         ? 'Pooling REFUSED: conflicting arm sample-size aliases in continuous trial ' + trialIndex
         : sourceSdReview
         ? 'Pooling REFUSED: nonpositive reported SD needs source review in continuous trial ' + trialIndex
@@ -355,8 +365,9 @@
         summary,
         bodyHtml: '<div style="color:#fbbf24;font-size:11.5px;">'
           + 'No continuous outcome pooled: trial ' + trialIndex
-          + ' has conflicting arm sample-size aliases, a nonpositive reported SD, or an invalid effect variance. '
-          + 'Review the original effect estimate, standard error, sample size and SD before synthesis.'
+          + (invalidTrial.ambiguousOutcomes
+            ? ' has multiple extracted continuous effects without a prespecified outcome/estimand selection. Review the original outcome definitions, time points and analysis populations before synthesis.'
+            : ' has conflicting arm sample-size aliases, a nonpositive reported SD, or an invalid effect variance. Review the original effect estimate, standard error, sample size and SD before synthesis.')
           + '</div>',
         storageKey: STORAGE_KEY,
       });
