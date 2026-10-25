@@ -67,13 +67,13 @@ for (const copy of copies) {
       const testName = copy + " " + effectType + " reverse=" + reverse;
       assert.match(panel.summary, new RegExp("^" + effectType + " scale"), testName);
       assert.match(panel.bodyHtml, /Per-treatment ranking summaries:/, testName);
-      const match = panel.bodyHtml.match(/\\(ref\\)<\\/td>\\s*<td[^>]*>([^<]+)<\\/td>/);
+      const match = panel.bodyHtml.match(/\(ref\)<\/td>\s*<td[^>]*>([^<]+)<\/td>/);
       assert.ok(match, "reference row missing: " + testName);
       assert.equal(match[1], effectType === "MD" ? "0.00" : "1.00", testName);
       if (effectType === "MD") {
-        assert.doesNotMatch(match[1], /^1\\.00$/, testName);
+        assert.doesNotMatch(match[1], /^1\.00$/, testName);
       } else {
-        assert.doesNotMatch(match[1], /^0\\.00$/, testName);
+        assert.doesNotMatch(match[1], /^0\.00$/, testName);
       }
       scenarios++;
     }
