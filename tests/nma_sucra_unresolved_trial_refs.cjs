@@ -59,6 +59,8 @@ const scenarios = [
   {name: "lookup resolves to primitive", extraA: ["primitive"], extraData: {primitive: 3}, refuse: true},
   {name: "inline null is invalid", extraB: [null], refuse: true},
   {name: "inline false is invalid", extraB: [false], refuse: true},
+  {name: "inherited __proto__ is not a study", extraA: ["__proto__"], refuse: true},
+  {name: "inherited toString is not a study", extraA: ["toString"], refuse: true},
   {name: "complete references preserve MD ranking", refuse: false},
   {name: "complete inline records preserve MD ranking", inline: true, refuse: false},
   {name: "valid binary zero events preserve OR ranking", binary: true, refuse: false},
@@ -82,5 +84,5 @@ for (let i = 0; i < sources.length; i++) {
     }
   }
 }
-assert.equal(passed, 60);
-console.log("PASS: 60 source-executed unresolved-reference gate scenarios (synthetic; no R parity).");
+assert.equal(passed, 72);
+console.log("PASS: 72 source-executed unresolved-reference gate scenarios (synthetic; no R parity).");
