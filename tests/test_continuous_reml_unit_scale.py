@@ -72,6 +72,34 @@ class ContinuousREMLScaleInvariance(unittest.TestCase):
                 self.assertAlmostEqual(base["Q"], rescaled["Q"], places=9)
                 self.assertAlmostEqual(base["I2"], rescaled["I2"], places=9)
 
+    def test_small_units_cannot_prematurely_accept_dl_as_reml(self):
+        """A fixed absolute tau2-step tolerance is not invariant to unit size.
+
+        Four SYNTHETIC MD effects retain their original estimand after changing
+        measurement units by 1e-3, 1e-6 or 1e-8. Before the correction, the
+        1e-6 case stopped at the DL starting estimate rather than REML.
+        """
+        for engine in ENGINES:
+            base = pool(engine, 1)
+            self.assertGreater(base["tau2"], 10.0)
+            for scale in (1e-3, 1e-6, 1e-8):
+                with self.subTest(engine=str(engine.relative_to(ROOT)),
+                                  units=scale):
+                    smaller = pool(engine, scale)
+                    self.assertEqual(smaller["k"], base["k"])
+                    self.assertTrue(math.isclose(
+                        smaller["tau2"] / scale**2, base["tau2"],
+                        rel_tol=0, abs_tol=1e-5,
+                    ), (engine, scale, base["tau2"], smaller["tau2"]))
+                    for field in ("yi", "se", "ci_low", "ci_high",
+                                  "pi_low", "pi_high"):
+                        self.assertTrue(math.isclose(
+                            smaller[field] / scale, base[field],
+                            rel_tol=0, abs_tol=1e-5,
+                        ), (engine, scale, field, base[field], smaller[field]))
+                    self.assertAlmostEqual(base["Q"], smaller["Q"], places=8)
+                    self.assertAlmostEqual(base["I2"], smaller["I2"], places=8)
+
     def test_engine_copies_remain_byte_identical(self):
         self.assertEqual(len({p.read_bytes() for p in ENGINES}), 1)
 
