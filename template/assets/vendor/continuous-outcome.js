@@ -177,6 +177,9 @@
     let Q = 0; points.forEach(p => { const w = 1 / p.vi; Q += w * (p.yi - muFE) * (p.yi - muFE); });
     let tau2 = (Q > df) ? (Q - df) / (W - sW2 / W) : 0;   // DL start
     if (k < 2) return Math.max(0, tau2);
+    // REML convergence must use the outcome variance scale: an absolute
+    // tolerance can stop at the DL initial value when outcome units are tiny.
+    const smallestVi = points.reduce((min, p) => Math.min(min, p.vi), Infinity);
     for (let it = 0; it < 100; it++) {
       const w = points.map(p => 1 / (p.vi + tau2));
       const sW = w.reduce((a, b) => a + b, 0);
@@ -193,7 +196,10 @@
       // nonpositive or nonfinite information rather than updating from it.
       if (!(trP2 > 0) || !Number.isFinite(trP2)) break;
       const next = Math.max(0, tau2 + (yP2y - trP) / trP2);
-      if (Math.abs(next - tau2) < 1e-10) { tau2 = next; break; }
+      if (Math.abs(next - tau2) <= 1e-10 * Math.max(next, tau2, smallestVi)) {
+        tau2 = next;
+        break;
+      }
       tau2 = next;
     }
     return Math.max(0, tau2);
