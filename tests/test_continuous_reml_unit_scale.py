@@ -27,7 +27,7 @@ const source = fs.readFileSync(process.argv[1], 'utf8');
 const marker = '  global.ContinuousOutcome = { render };';
 if (source.split(marker).length !== 2) throw Error('unexpected engine export marker');
 const instrumented = source.replace(
-  marker, '  global.__scaleAudit = { poolRE };\\n' + marker);
+  marker, '  global.__scaleAudit = { poolRE };\n' + marker);
 const sandbox = {};
 vm.runInNewContext(instrumented, sandbox, { filename: process.argv[1] });
 if (!sandbox.__scaleAudit) throw Error('production engine cannot be inspected');
@@ -47,7 +47,7 @@ def pool(engine, scale):
         cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
     )
     if cp.returncode:
-        raise AssertionError(cp.stderr + "\\n" + cp.stdout)
+        raise AssertionError(cp.stderr + "\n" + cp.stdout)
     return json.loads(cp.stdout)
 
 
