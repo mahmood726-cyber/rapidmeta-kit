@@ -186,7 +186,12 @@
       const trP = sW - s2 / sW;
       const yP2y = w.reduce((a, wi, i) => a + wi * wi * Math.pow(points[i].yi - mu, 2), 0);
       const trP2 = s2 - 2 * s3 / sW + s2 * s2 / (sW * sW);
-      if (trP2 < 1e-15) break;
+      // REML Fisher information has units of inverse variance squared.
+      // An absolute 1e-15 cutoff spuriously aborts fitting when exactly
+      // the same observations are expressed in larger measurement units.
+      // Continue for any finite, strictly positive information; refuse
+      // nonpositive or nonfinite information rather than updating from it.
+      if (!(trP2 > 0) || !Number.isFinite(trP2)) break;
       const next = Math.max(0, tau2 + (yP2y - trP) / trP2);
       if (Math.abs(next - tau2) < 1e-10) { tau2 = next; break; }
       tau2 = next;
