@@ -1,9 +1,8 @@
 /* Archived R result comparison badge for single-arm proportion reviews.
  *
- * Fetches outputs/r_validation/singlearm/<REVIEW>.json (written by
- * scripts/r_validate_singlearm.py running R 4.5.2 + metafor 4.8.0) and
- * compares the pooled proportion to whatever the in-page single-arm
- * panel computed.
+ * Reads an archived per-review R summary, where available. It must not
+ * infer native R execution, study-set identity or method-matched validation
+ * from a small numerical delta against the shipped DL/Wald JS estimator.
  *
  * Auto-bootstrap. Self-skips if the JSON file isn't present.
  */
@@ -108,7 +107,7 @@
       '<a href="https://cran.r-project.org/package=metafor" target="_blank" rel="noopener noreferrer" style="color:#7dd3fc;text-decoration:none;">metafor</a> ' +
       '(measure="PLO" for logit; measure="PFT" for Freeman-Tukey double-arcsine), REML estimator with Hartung-Knapp-Sidik-Jonkman small-sample correction. ' +
       'Source: <code style="color:#94a3b8;word-break:break-all;">outputs/r_validation/singlearm/' + escapeHtml(r.review) + '.json</code>.' +
-      '<div style="margin-top:4px;font-size:10px;color:#94a3b8;">PRISMA 2020 items 13d (synthesis methods) + 13e (heterogeneity) + 13f (sensitivity) supported.</div><div style="margin-top:6px;padding:4px 8px;background:#1e1f3a;border-left:2px solid #fbbf24;font-size:10px;color:#fbbf24;">⚠ Computational validation only — not a GRADE certainty rating. RoB-2, indirectness, imprecision, inconsistency, and publication bias require separate assessment.</div></div></div>';
+      '<div style="margin-top:4px;font-size:10px;color:#94a3b8;">PRISMA 2020 items 13d (synthesis methods) + 13e (heterogeneity) + 13f (sensitivity) supported.</div><div style="margin-top:6px;padding:4px 8px;background:#1e1f3a;border-left:2px solid #fbbf24;font-size:10px;color:#fbbf24;">⚠ No method-matched R parity or independent clinical validation is certified by this badge. RoB-2, indirectness, imprecision, inconsistency, and publication bias require separate assessment.</div></div></div>';
 
     return { summary, body };
   }
