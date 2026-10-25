@@ -67,9 +67,21 @@
   function trialContinuous(t) {
     const ao = t.allOutcomes;
     if (!Array.isArray(ao)) return null;
-    let cont = ao.find(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous')
-                                 && typeof o.md === 'number' && typeof o.se === 'number' && o.se > 0);
-    if (cont) return { yi: cont.md, vi: cont.se * cont.se };
+    const continuous = ao.filter(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous'));
+    if (continuous.length) {
+      // Generic inverse-variance synthesis requires a finite effect and
+      // a strictly positive finite variance with a representable weight.
+      // Refuse every malformed typed row, not merely the first usable row.
+      const invalid = continuous.some(o => {
+        if (typeof o.md !== 'number' || !Number.isFinite(o.md) ||
+            typeof o.se !== 'number' || !Number.isFinite(o.se) || o.se <= 0) return true;
+        const vi = o.se * o.se;
+        return !(vi > 0 && Number.isFinite(vi) && Number.isFinite(1 / vi));
+      });
+      if (invalid) return { invalidContinuous: true };
+      const cont = continuous[0];
+      return { yi: cont.md, vi: cont.se * cont.se };
+    }
     // A published hazard-ratio field is not an absolute mean difference.
     // An outcome label cannot verify the effect estimand or units (Cochrane ch. 6).
     // Only a source-verified, explicitly typed CONTINUOUS md/se may be pooled as MD.
@@ -241,6 +253,7 @@
     const tr = []; // [{ name, mean, se, scale }]
     let invalidBinaryRows = 0;
     let ambiguousPublishedRatioRows = 0;
+    let invalidContinuousRows = 0;
     let scale = null;
     // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
     const effectTypes = new Set();
@@ -267,6 +280,10 @@
               return;
             }
             const cont = trialContinuous(t);
+            if (cont && cont.invalidContinuous) {
+              invalidContinuousRows++;
+              return;
+            }
             if (cont && cont.ambiguousPublishedRatio) {
               ambiguousPublishedRatioRows++;
               return;
@@ -285,6 +302,22 @@
       tr.push({ name: T, mean: pool.mean, se: pool.se });
       scale = scale || pickedScale;
     });
+    if (invalidContinuousRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: invalid continuous MD or standard error',
+        bodyHtml: '<div role="alert">Found ' + invalidContinuousRows +
+                  ' malformed typed CONTINUOUS trial row(s). An inverse-variance ' +
+                  'meta-analysis requires a finite mean difference and a finite, positive ' +
+                  'standard error whose squared variance and reciprocal weight are ' +
+                  'representable. No SUCRA, treatment hierarchy or pooled result was ' +
+                  'computed. Verify the endpoint and primary-source values.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     if (ambiguousPublishedRatioRows) {
       const panel = P.buildCollapsiblePanel({
         id: 'nma-sucra-panel', badge: 'SUCRA',
