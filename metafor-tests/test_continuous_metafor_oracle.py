@@ -268,6 +268,48 @@ class ContinuousMetaforOracle(unittest.TestCase):
                 msg="REML tau2 must be independent of measurement units",
             )
 
+    def test_live_reml_small_unit_scale_against_pinned_base_r(self):
+        """Compare rescaled shipped JS against LIVE version-pinned R on base units.
+
+        This intentionally runs R only on well-conditioned base-unit raw-arm
+        data: metafor's own absolute numerical threshold can be scale-sensitive
+        with extremely small study variances. We compare the same statistical
+        estimand after changing JS measurement units, not independently fitted
+        R results at the tiny scale. Synthetic numerical examples only.
+        """
+        base_rows = tuple(
+            (delta, 0.0, math.sqrt(variance * 10),
+             math.sqrt(variance * 10), 20, 20)
+            for delta, variance in ((0, 0.5), (2, 1), (4, 4), (9, 6))
+        )
+        cp = run_r(base_rows, "MD")
+        self.assertEqual(cp.returncode, 0, cp.stderr)
+        external = parse_r(cp.stdout, len(base_rows))
+        self.assertGreater(external["tau2"], 0)
+
+        for scale in (1.0, 1e-3, 1e-6):
+            with self.subTest(units=scale):
+                rows = tuple(tuple(value * scale if i < 4 else value
+                                   for i, value in enumerate(row))
+                             for row in base_rows)
+                result = run_js(rows, "MD")
+                self.assertEqual(len(result["points"]), len(base_rows))
+                actual = result["pool"]
+                self.assertEqual(actual["k"], external["k"])
+                self.assertTrue(math.isclose(
+                    actual["tau2"] / scale**2, external["tau2"],
+                    rel_tol=0, abs_tol=0.05,
+                ), (scale, actual["tau2"], external["tau2"]))
+                for js_key, r_key in (
+                    ("yi", "mu"), ("ci_low", "ci_low"),
+                    ("ci_high", "ci_high"), ("pi_low", "pi_low"),
+                    ("pi_high", "pi_high"),
+                ):
+                    self.assertTrue(math.isclose(
+                        actual[js_key] / scale, external[r_key],
+                        rel_tol=0, abs_tol=0.08,
+                    ), (scale, js_key, actual[js_key], external[r_key]))
+
     def test_invalid_raw_continuous_rows_fail_closed(self):
         good = DATASETS["near_homogeneous"]
         invalid_rows = {
