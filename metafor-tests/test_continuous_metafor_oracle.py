@@ -28,7 +28,7 @@ DATASETS = {
         (14.0, 12.05, 3.6, 3.7, 65, 63),
         (10.8, 8.8, 2.7, 2.5, 75, 72),
     ),
-    # Heteroscedastic boundary: qStar>1 with REML tau2=0. Under
+    # Heteroscedastic boundary: qStar>1 with JS REML tau2=0 and R near 0. Under
     # metafor(test="adhoc"), PI and HKSJ CI must coincide exactly.
     "heteroscedastic_boundary": (
         (11.53, 10.0, 7.6, 7.6, 100, 100),
@@ -193,12 +193,16 @@ class ContinuousMetaforOracle(unittest.TestCase):
                     if label == "heteroscedastic_boundary" and measure == "MD":
                         # Deliberately catches using classical seMu instead
                         # of inflated HKSJ seH when REML is on its boundary.
-                        self.assertAlmostEqual(external["tau2"], 0, delta=1e-9)
+                        # R/metafor 4.8-0 optimises to a residual boundary
+                        # tau² of ~7e-7 on this stress case, not exact 0.
+                        # This is numerical convergence tolerance, not a
+                        # relaxation of the production JS equality invariant.
+                        self.assertLessEqual(abs(external["tau2"]), 1e-5)
                         self.assertGreater(external["se"], 0.3)
                         for lohi in ("low", "high"):
                             self.assertAlmostEqual(
                                 external[f"pi_{lohi}"], external[f"ci_{lohi}"],
-                                delta=1e-9)
+                                delta=1e-5)
                             self.assertAlmostEqual(
                                 pool[f"pi_{lohi}"], pool[f"ci_{lohi}"],
                                 delta=1e-10)
