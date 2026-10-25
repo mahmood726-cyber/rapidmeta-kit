@@ -209,7 +209,11 @@
     if (!Number.isFinite(tau2)) return NaN;
     if (k < 2) return Math.max(0, tau2);
     const smallestVi = points.reduce((min, p) => Math.min(min, p.vi), Infinity);
-    for (let it = 0; it < 100; it++) {
+    // A finite 100-step iterate is not necessarily a converged REML fit.
+    // Allow slow Fisher-scoring examples additional iterations; fail closed
+    // if the explicit stopping criterion still has not been satisfied.
+    let converged = false;
+    for (let it = 0; it < 200; it++) {
       const m = moments(tau2);
       // A failed information evaluation is not convergence at the DL start.
       if (!m) return NaN;
@@ -219,10 +223,12 @@
       if (!Number.isFinite(next)) return NaN;
       if (Math.abs(next - tau2) <= 1e-10 * Math.max(next, tau2, smallestVi)) {
         tau2 = next;
+        converged = true;
         break;
       }
       tau2 = next;
     }
+    if (!converged) return NaN; // poolRE withholds a nonconverged estimate.
     return Math.max(0, tau2);
   }
     const T_975 = { 1:12.706,2:4.303,3:3.182,4:2.776,5:2.571,6:2.447,7:2.365,8:2.306,
