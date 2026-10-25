@@ -16,6 +16,7 @@
 (function (global) {
   'use strict';
   const STORAGE_KEY = 'continuous-outcome-expanded';
+  const owns = (obj, key) => obj != null && Object.prototype.hasOwnProperty.call(obj, key);
 
   function pickContinuousTrials(rd) {
     if (!rd) return [];
@@ -27,12 +28,18 @@
       let md, se;
       const allOutcomes = t.allOutcomes || (t.data && t.data.allOutcomes);
       if (Array.isArray(allOutcomes)) {
+        // Explicitly attempted extracted effects with incomplete uncertainty must
+        // reach the whole-panel refusal gate, not silently shrink the pooled k.
         const cont = allOutcomes.find(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous')
-                                           && typeof o.md === 'number' && typeof o.se === 'number');
-        if (cont) { md = cont.md; se = cont.se; }
+                                           && (owns(o, 'md') || owns(o, 'se')));
+        if (cont) {
+          md = typeof cont.md === 'number' ? cont.md : NaN;
+          se = typeof cont.se === 'number' ? cont.se : NaN;
+        }
       }
-      if (md === undefined && t.data && typeof t.data.md === 'number' && typeof t.data.se === 'number') {
-        md = t.data.md; se = t.data.se;
+      if (md === undefined && t.data && (owns(t.data, 'md') || owns(t.data, 'se'))) {
+        md = typeof t.data.md === 'number' ? t.data.md : NaN;
+        se = typeof t.data.se === 'number' ? t.data.se : NaN;
       }
       // Retain an explicitly extracted numeric MD/SE even when its SE is invalid.
       // The render-time gate must REFUSE it, not silently omit the study.
@@ -41,8 +48,8 @@
         return;
       }
       // Variant 1: top-level md/md_se (rare; some custom builds)
-      const hasMD = (typeof t.md === 'number' && typeof t.md_se === 'number');
-      const hasSMD = (typeof t.smd === 'number' && typeof t.smd_se === 'number');
+      const hasMD = owns(t, 'md') || owns(t, 'md_se');
+      const hasSMD = owns(t, 'smd') || owns(t, 'smd_se');
       // Variant 2: mean1/mean2/sd1/sd2 + n1/n2 (computed from raw)
       // Missing/null/blank/non-numeric arm measurements are not zero.
       // Preserve numeric-string compatibility for imported tabular data.
@@ -70,9 +77,13 @@
       // Do not silently omit trials with zero/negative reported SDs.
       // Preserve the candidate so the common render gate refuses pooling.
       if (hasMD) {
-        out.push({ name: t.name, kind: 'md_pre', md: +t.md, se: +t.md_se });
+        out.push({ name: t.name, kind: 'md_pre',
+                   md: typeof t.md === 'number' ? t.md : NaN,
+                   se: typeof t.md_se === 'number' ? t.md_se : NaN });
       } else if (hasSMD) {
-        out.push({ name: t.name, kind: 'smd_pre', smd: +t.smd, se: +t.smd_se });
+        out.push({ name: t.name, kind: 'smd_pre',
+                   smd: typeof t.smd === 'number' ? t.smd : NaN,
+                   se: typeof t.smd_se === 'number' ? t.smd_se : NaN });
       } else if (hasFull || ['mean1', 'mean2', 'sd1', 'sd2']
                             .some(k => Object.prototype.hasOwnProperty.call(t, k))) {
         // Once a raw continuous effect is explicitly attempted, an absent
