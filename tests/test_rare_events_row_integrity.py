@@ -29,6 +29,7 @@ const bad = [
   ['missing field', {events_T:0, n_T:20, events_C:2}],
   ['negative event', {events_T:-1, n_T:20, events_C:2, n_C:20}],
   ['events exceed N', {events_T:21, n_T:20, events_C:2, n_C:20}],
+  ['control events exceed N', {events_T:0, n_T:20, events_C:21, n_C:20}],
   ['unsafe integer', {events_T:0, n_T:9007199254740992, events_C:2, n_C:20}],
   ['string count', {events_T:'0', n_T:20, events_C:2, n_C:20}],
   ['nonfinite count', {events_T:Infinity, n_T:20, events_C:2, n_C:20}],
