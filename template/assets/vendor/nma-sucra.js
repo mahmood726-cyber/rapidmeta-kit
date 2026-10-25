@@ -293,7 +293,9 @@
       (cfg.comparisons || []).forEach(c => {
         if ((c.t1 === T && c.t2 === reference) || (c.t1 === reference && c.t2 === T)) {
           (c.trials || []).forEach(nctRef => {
-            const t = typeof nctRef === 'string' ? rd[nctRef] : nctRef;
+            const t = typeof nctRef === 'string'
+              ? (Object.prototype.hasOwnProperty.call(rd, nctRef) ? rd[nctRef] : null)
+              : nctRef;
             // Missing lookups or malformed references must not silently shrink
             // the evidence set and change the resulting treatment rankings.
             if (!t || typeof t !== 'object') {
