@@ -44,7 +44,13 @@
       const hasMD = (typeof t.md === 'number' && typeof t.md_se === 'number');
       const hasSMD = (typeof t.smd === 'number' && typeof t.smd_se === 'number');
       // Variant 2: mean1/mean2/sd1/sd2 + n1/n2 (computed from raw)
-      const m1 = +t.mean1, m2 = +t.mean2, sd1 = +t.sd1, sd2 = +t.sd2;
+      // Missing/null/blank/non-numeric arm measurements are not zero.
+      // Preserve numeric-string compatibility for imported tabular data.
+      const measured = value => (typeof value === 'number'
+        || (typeof value === 'string' && value.trim() !== ''))
+        ? +value : NaN;
+      const m1 = measured(t.mean1), m2 = measured(t.mean2);
+      const sd1 = measured(t.sd1), sd2 = measured(t.sd2);
       // A present zero/blank count must not be replaced by a positive alias.
       // The prior truthy || fallback silently legitimised invalid group N.
       // Preserve supplied values for the existing MD/SMD refusal gate.
@@ -67,7 +73,11 @@
         out.push({ name: t.name, kind: 'md_pre', md: +t.md, se: +t.md_se });
       } else if (hasSMD) {
         out.push({ name: t.name, kind: 'smd_pre', smd: +t.smd, se: +t.smd_se });
-      } else if (hasFull) {
+      } else if (hasFull || ['mean1', 'mean2', 'sd1', 'sd2']
+                            .some(k => Object.prototype.hasOwnProperty.call(t, k))) {
+        // Once a raw continuous effect is explicitly attempted, an absent
+        // required mean/SD/N must reach the whole-panel refusal gate rather
+        // than silently reducing the apparent number of pooled studies.
         out.push({
           name: t.name, kind: 'full',
           m1, m2, sd1, sd2, n1, n2, countConflict,
