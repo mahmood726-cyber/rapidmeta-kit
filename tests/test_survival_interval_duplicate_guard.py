@@ -157,7 +157,7 @@ assert.equal(panel.IntervalHRPoolPanel.render(), true);
 assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /Repeated interval-HR records/);
 assert.match(captured.bodyHtml, /role="alert"/);
-assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\\/th>/);
+assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
 // The actual panel must expose invalid-input refusal, not a partial result.
 panel.PanelHelper.getRealData = () => ({
   a: baseline[0], b: baseline[1], c: baseline[2],
