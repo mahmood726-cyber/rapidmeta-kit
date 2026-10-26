@@ -320,6 +320,7 @@
     let ambiguousPublishedRatioRows = 0;
     let invalidContinuousRows = 0;
     let ambiguousContinuousRows = 0;
+    let ambiguousMixedEffectRows = 0;
     let unstablePools = 0;
     let unresolvedTrialRefs = 0;
     let missingDirectEffects = 0;
@@ -352,6 +353,16 @@
             if (counts && ((counts.tE === 0 && counts.cE === 0) ||
                 (counts.tE === counts.tN && counts.cE === counts.cN))) {
               uninformativeBinaryRows++;
+              return;
+            }
+            // A study with both 2x2 event counts and typed MD/SE supplies
+            // two incompatible candidate endpoints. Choosing the binary data
+            // solely because they appear first can substitute a different
+            // estimand for the protocol-selected outcome (Cochrane Ch 6).
+            // Refuse until an outcome-level extraction is source-verified.
+            if (counts && Array.isArray(t.allOutcomes) && t.allOutcomes.some(o =>
+                o && (o.type === 'CONTINUOUS' || o.type === 'continuous'))) {
+              ambiguousMixedEffectRows++;
               return;
             }
             const lo = counts && counts !== false ? trialLogOR(counts) : null;
@@ -407,6 +418,24 @@
                   'Silently omitting studies would change the evidence set and treatment rankings. ' +
                   'No SUCRA, treatment hierarchy or pooled result was computed. ' +
                   'Verify each study reference and its source data before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (ambiguousMixedEffectRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: mixed binary and continuous candidate outcomes in a trial',
+        bodyHtml: '<div role="alert">Found ' + ambiguousMixedEffectRows +
+                  ' trial row(s) containing both valid binary 2×2 counts and ' +
+                  'typed continuous mean-difference effects. Binary-first ' +
+                  'selection can silently replace the requested continuous ' +
+                  'endpoint with an unrelated event outcome (or vice versa). ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Select one prespecified endpoint and verify its data type, ' +
+                  'effect measure and study extraction against primary sources.</div>',
         storageKey: STORAGE_KEY,
       });
       const existing = document.getElementById('nma-sucra-panel');
