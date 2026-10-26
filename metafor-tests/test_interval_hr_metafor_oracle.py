@@ -247,6 +247,26 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         short_only = mixed[1:]
         compare(run_js(short_only), run_r(short_only))
 
+    def test_missing_source_time_boundaries_refused_by_js_and_r(self):
+        # The source time is missing, not observed at t=0; numeric coercion
+        # previously let JS pool a synthetic row as a month-zero HR.
+        # The independently executed native R source table must also refuse.
+        for label, start in (
+            ("blank", ""), ("spaces", "  "), ("null", None),
+            ("boolean", False), ("negative", -1),
+        ):
+            with self.subTest(case=label):
+                rows = (("A", start, 6, 0.75, 0.60, 0.92),) + NEAR[1:]
+                js = run_js(rows)
+                self.assertEqual(js.get("intervals"), [])
+                self.assertRegex(js.get("error", ""),
+                                 "Invalid interval-HR time boundaries")
+                native = r_process(rows)
+                self.assertNotEqual(
+                    native.returncode, 0,
+                    "Native R accepted a source row without a valid start time",
+                )
+
     def test_tampered_hr_must_fail_numerical_comparison(self):
         expected = run_r(NEAR)
         observed = run_js(NEAR)

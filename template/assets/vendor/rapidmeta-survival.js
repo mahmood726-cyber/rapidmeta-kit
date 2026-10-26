@@ -208,6 +208,13 @@
   // ---- public: per-window (interval) HR pool  [EXPERIMENTAL] ----------------
   // trials[i].intervals = [{ t0, t1, HR, HR_ci_lo, HR_ci_hi }, ...]
   // bp = sorted breakpoint array; pools each [t0,t1] window across trials.
+  // A missing/blank follow-up boundary is not a reported month-zero value.
+  // Preserve nonblank numeric-string compatibility with imported source data.
+  function validTimeBoundary(value) {
+    return (typeof value === 'number' && isFinite(value))
+      || (typeof value === 'string' && value.trim() !== '' && isFinite(Number(value)));
+  }
+
   function intervalHRPool(trials, bp) {
     if (!Array.isArray(bp) || bp.length < 2) return null;
     // A reported HR for [0,6] is not an HR for [0,3] or [3,6].
@@ -218,8 +225,10 @@
     for (var ti = 0; ti < (trials || []).length; ti++) {
       var records = trials[ti].intervals || [];
       for (var ri = 0; ri < records.length; ri++) {
-        var a = +records[ri].t0, b = +records[ri].t1;
-        if (!isFinite(a) || !isFinite(b) || !(b > a)) {
+        var rawStart = records[ri].t0, rawEnd = records[ri].t1;
+        var a = Number(rawStart), b = Number(rawEnd);
+        if (!validTimeBoundary(rawStart) || !validTimeBoundary(rawEnd)
+            || !(a >= 0) || !(b > a)) {
           return { intervals: [], error: 'Invalid interval-HR time boundaries for trial '
             + (ti + 1) + '; pooling refused' };
         }

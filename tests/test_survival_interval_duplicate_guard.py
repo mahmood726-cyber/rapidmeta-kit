@@ -162,6 +162,27 @@ const outOfScope = S.intervalHRPool([
 ], [0, 6]);
 assert.equal(outOfScope.error, undefined);
 assert.deepEqual(outOfScope.intervals.map(w => w.k), [1]);
+// A source time of null/blank must NOT be fabricated as month zero by
+// JavaScript Number(null)/Number('') coercion. No clinical data are involved.
+for (const [label, start] of [
+  ['blank', ''], ['whitespace', '   '], ['null', null],
+  ['boolean', false], ['negative', -1]
+]) {
+  const malformedTime = S.intervalHRPool([
+    {name:'A', intervals:[interval(start, 6, 0.75, 0.60, 0.92)]},
+    baseline[1], baseline[2]
+  ], [0, 6]);
+  assert.deepEqual(malformedTime.intervals, [], label);
+  assert.match(malformedTime.error, /Invalid interval-HR time boundaries/, label);
+}
+// Nonblank, nonnegative numeric source boundaries retain existing behaviour.
+const numericTextTime = S.intervalHRPool([
+  {name:'A', intervals:[interval('0', '6', 0.75, 0.60, 0.92)]},
+  baseline[1], baseline[2]
+], [0, 6]);
+assert.equal(numericTextTime.error, undefined);
+assert.equal(numericTextTime.intervals[0].k, 3);
+
 // Invalid source time bounds are not silently discarded either.
 const invalidWindow = S.intervalHRPool([
   mixedWindows[1], {name: 'Malformed', intervals: [
@@ -223,6 +244,18 @@ panel.PanelHelper.getRealData = () => ({
 assert.equal(panel.IntervalHRPoolPanel.render(), true);
 assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /Non-aligned interval-HR time window/);
+assert.match(captured.bodyHtml, /role="alert"/);
+assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+
+// Real panel must visibly refuse an empty follow-up start rather than
+// presenting it as a valid observed month-zero record.
+panel.PanelHelper.getRealData = () => ({
+  a: {name:'A', intervals:[interval('', 6, 0.75, 0.60, 0.92)]},
+  b: baseline[1], c: baseline[2]
+});
+assert.equal(panel.IntervalHRPoolPanel.render(), true);
+assert.match(captured.summary, /^Refused:/);
+assert.match(captured.bodyHtml, /Invalid interval-HR time boundaries/);
 assert.match(captured.bodyHtml, /role="alert"/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
 
