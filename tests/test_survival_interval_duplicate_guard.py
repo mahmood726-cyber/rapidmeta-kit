@@ -114,7 +114,7 @@ assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /Invalid interval-HR effect/);
 assert.match(captured.bodyHtml, /role="alert"/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
-console.log('PASS interval-HR duplicate/invalid refusals and disjoint-window control');
+console.log('PASS interval-HR duplicate refusal, invalid-input refusal and disjoint-window control');
 """
 
 
