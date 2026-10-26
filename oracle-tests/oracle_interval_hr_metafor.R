@@ -70,5 +70,12 @@ for (w in windows) {
   }
   if (any(!is.finite(values)))
     stop("nonfinite external interval-HR estimate", call. = FALSE)
+  # Exponentiation can underflow to zero while remaining finite. A zero
+  # HR/CI endpoint is not a representable positive ratio: fail closed.
+  if (any(values[c(4L, 5L, 6L)] <= 0) ||
+      values[5L] > values[4L] || values[4L] > values[6L] ||
+      values[7L] < 0)
+    stop("unrepresentable external interval-HR ratio or confidence limits",
+         call. = FALSE)
   cat(paste(sprintf("%.17g", values), collapse = "\t"), "\n", sep = "")
 }

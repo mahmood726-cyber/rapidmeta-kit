@@ -284,6 +284,24 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         self.assertNotEqual(native.returncode, 0,
                             "Native R returned a pooled nonrepresentable CI")
 
+    def test_single_study_underflow_refused_for_the_specific_reason(self):
+        # Deliberately synthetic, grossly asymmetric source CI. Input HR
+        # and bounds remain finite and positive, but the k=1 normal
+        # interval underflows to a zero lower ratio endpoint. Before this
+        # change, native R accepted 0 via is.finite(0); a mere nonzero exit
+        # status could also hide an unrelated R error.
+        rows = (("A", 0, 6, 1e-200, 1e-300, 1e300),)
+        js = run_js(rows)
+        self.assertEqual(js.get("intervals"), [])
+        self.assertRegex(js.get("error", ""),
+                         "Unrepresentable interval-HR pooled estimate")
+        native = r_process(rows)
+        self.assertNotEqual(native.returncode, 0, native.stdout)
+        self.assertIn(
+            "unrepresentable external interval-HR ratio or confidence limits",
+            native.stderr,
+        )
+
     def test_tampered_hr_must_fail_numerical_comparison(self):
         expected = run_r(NEAR)
         observed = run_js(NEAR)
