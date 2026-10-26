@@ -64,6 +64,25 @@ const scenarios = [
   ["continuous independent trials", [A(["a"]), B(["b"])],
     { a: { allOutcomes: [{ type: "CONTINUOUS", md: -2, se: 0.6 }] },
       b: { allOutcomes: [{ type: "CONTINUOUS", md: -3, se: 0.9 }] } }, false],
+
+  // The RapidMeta config's canonical trial identifier is "nct" (AGENTS.md).
+  // Distinct JS objects and data-map keys must not disguise one shared trial.
+  ["separately materialized objects with identical nct",
+    [A([{ ...a, nct: "NCT001" }]), B([{ ...b, nct: "NCT001" }])], {}, true],
+  ["nct case/whitespace variation across string keys and reversed contrast",
+    [A(["a"]), { t1: "C", t2: "B", trials: ["b"] }],
+    { a: { ...a, nct: " NCT002 " }, b: { ...b, nct: "nct002" } }, true],
+  ["repeated nct in independent objects within one comparison",
+    [A([{ ...a, nct: "NCT003" }, { ...b, nct: "nct003" }]),
+      B([{ ...b, nct: "NCT999" }])], {}, true],
+  ["earlier studyId alias must not mask matching NCT in another record",
+    [A([{ ...a, studyId: "study-alpha", nctId: "NCT004" }]),
+      B([{ ...b, nct: "NCT004" }])], {}, true],
+  ["independent records with distinct canonical NCT identifiers",
+    [A([{ ...a, nct: "NCT005" }]), B([{ ...b, nct: "NCT006" }])], {}, false],
+  ["independent records with distinct multiple ID aliases",
+    [A([{ ...a, studyId: "alpha", nct: "NCT007" }]),
+      B([{ ...b, studyId: "beta", nct: "NCT008" }])], {}, false],
 ];
 let passed = 0;
 contents.forEach((code, copy) => {
