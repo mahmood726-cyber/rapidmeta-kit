@@ -31,27 +31,48 @@
   'use strict';
   const STORAGE_KEY = 'prediction-pool-expanded';
 
+  // Do not coerce null, empty strings or booleans into a valid C-statistic/SE.
+  // A missing C may coexist with a valid AUC; try each reported alias in order.
+  function finiteField(value) {
+    if (value == null || value === '' || typeof value === 'boolean') return NaN;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function discrimination(row) {
+    for (const key of ['C', 'AUC', 'c_statistic']) {
+      const n = finiteField(row[key]);
+      if (n > 0 && n < 1) return n;
+    }
+    return NaN;
+  }
+
+  function discriminationSE(row) {
+    for (const key of ['C_se', 'AUC_se']) {
+      const n = finiteField(row[key]);
+      if (n > 0) return n;
+    }
+    return undefined;
+  }
+
   function pickPredictionCohorts(rd) {
     const out = [];
     if (!rd) return out;
     Object.values(rd).forEach(t => {
       if (!t) return;
       // Variant 1: top-level C / AUC
-      let C = +t.C;
-      if (!isFinite(C)) C = +t.AUC;
-      if (!isFinite(C)) C = +t.c_statistic;
-      if (!isFinite(C) || C <= 0 || C >= 1) {
+      const C = discrimination(t);
+      if (!Number.isFinite(C)) {
         // Variant 2: allOutcomes carries a prediction outcome
         const ao = t.allOutcomes || (t.data && t.data.allOutcomes);
         if (Array.isArray(ao)) {
           const pp = ao.find(o => o && (o.type === 'PREDICTION' || o.type === 'DISCRIMINATION')
-                                       && isFinite(+o.C || +o.AUC));
+                                       && Number.isFinite(discrimination(o)));
           if (pp) {
-            C = +pp.C; if (!isFinite(C)) C = +pp.AUC;
             const row = {
               studlab: t.name || pp.studlab || '?',
-              C: C,
-              C_se: isFinite(+pp.C_se) ? +pp.C_se : (isFinite(+pp.AUC_se) ? +pp.AUC_se : undefined),
+              C: discrimination(pp),
+              C_se: discriminationSE(pp),
               n_events: isFinite(+pp.n_events) ? +pp.n_events : undefined,
               n_nonevents: isFinite(+pp.n_nonevents) ? +pp.n_nonevents : undefined,
               n_total: isFinite(+pp.n_total) ? +pp.n_total : undefined,
@@ -75,7 +96,7 @@
       out.push({
         studlab: t.name || t.studlab || '?',
         C: C,
-        C_se: isFinite(+t.C_se) ? +t.C_se : (isFinite(+t.AUC_se) ? +t.AUC_se : undefined),
+        C_se: discriminationSE(t),
         n_events: isFinite(+t.n_events) ? +t.n_events : undefined,
         n_nonevents: isFinite(+t.n_nonevents) ? +t.n_nonevents : undefined,
         n_total: isFinite(+t.n_total) ? +t.n_total : undefined,
