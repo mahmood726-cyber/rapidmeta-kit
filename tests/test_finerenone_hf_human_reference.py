@@ -100,3 +100,27 @@ def test_scientific_independence_gates_not_misclassified_as_pass():
     for gate in ("prospective_exhaustive_search", "blinded_independent_duplicate_adjudication", "method_matched_version_pinned_R_oracle", "complete_end_to_end_meta_harness_replay"):
         assert g[gate] == "NOT_RUN"
     assert g["clinically_combinable_primary_endpoint"] == "BLOCKED"
+
+
+
+def test_private_workbook_bridge_is_counted_without_false_scientific_pass():
+    bridge = reference()["human_reference"]["private_workbook_crosswalk"]
+    assert bridge["checked_aggregate_cells"] == 30
+    assert bridge["workbook_sha256_confirmed"] is True
+    assert bridge["original_workbook_retained_privately"] is True
+    assert bridge["automated_ci_fixture_type"] == "SYNTHETIC_ONLY"
+    assert bridge["scientific_independence_status"] == "NOT_CERTIFIED"
+    assert bridge["workbook_has_tabs"] == 7
+    assert bridge["workbook_readme_lists_nonexistent_next_steps_tab"] is True
+
+
+def test_cv_death_confidence_interval_source_conflict_remains_unadjudicated():
+    differences = {entry["id"]: entry for entry in reference()["source_concordance_candidates"]}
+    assert set(differences) == {"FINHF-SRC-001", "FINHF-SRC-002", "FINHF-SRC-003"}
+    ci = differences["FINHF-SRC-001"]
+    assert ci["review_printed_effect"] == ci["primary_trial_effect"] == 0.93
+    assert ci["review_printed_ci"] == [.71, .94]
+    assert ci["primary_trial_ci"] == [.78, 1.11]
+    assert ci["review_printed_ci"][1] < 1 < ci["primary_trial_ci"][1]
+    assert all(d["status"].startswith("CANDIDATE_") and d["human_adjudication"] == "NOT_RUN" for d in differences.values())
+    assert all(d["editor_notification"] == "NOT_SENT" for d in differences.values())
