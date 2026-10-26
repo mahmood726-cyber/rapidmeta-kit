@@ -139,20 +139,19 @@
   }
 
   function pickReference(cfg, treatments) {
-    // A protocol-selected comparator is the estimand's reference, not an
-    // optional preference to override with an earlier placebo/control label.
-    // Prefer an exact, case-insensitive match before legacy heuristic lookup.
-    if (cfg && cfg.protocol && typeof cfg.protocol.comp === 'string') {
-      const requested = cfg.protocol.comp.trim().toLowerCase();
-      const exact = requested && treatments.find(t =>
-        typeof t === 'string' && t.trim().toLowerCase() === requested);
-      if (exact) return exact;
-    }
-    if (cfg && cfg.protocol && cfg.protocol.comp) {
-      const t = treatments.find(t =>
-        cfg.protocol.comp.toLowerCase().includes(t.toLowerCase()) ||
-        t.toLowerCase().includes('placebo') || t.toLowerCase().includes('control'));
-      if (t) return t;
+    // A populated protocol comparator fixes the requested reference.
+    // Never silently substitute a heuristically selected placebo/control
+    // when the protocol reference is unmatched or ambiguous.
+    // An absent or empty comparator keeps legacy exploratory default selection.
+    if (cfg && cfg.protocol && Object.prototype.hasOwnProperty.call(cfg.protocol, 'comp')) {
+      const raw = cfg.protocol.comp;
+      if (raw !== '' && raw !== null && raw !== undefined) {
+        if (typeof raw !== 'string' || !raw.trim()) return null;
+        const requested = raw.trim().toLowerCase();
+        const matches = treatments.filter(t =>
+          typeof t === 'string' && t.trim().toLowerCase() === requested);
+        return matches.length === 1 ? matches[0] : null;
+      }
     }
     const placebo = treatments.find(t => t.toLowerCase().includes('placebo'));
     if (placebo) return placebo;
@@ -207,6 +206,20 @@
 
     const treatments = cfg.treatments;
     const reference = pickReference(cfg, treatments);
+    if (reference === null) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: protocol comparator does not uniquely match a treatment',
+        bodyHtml: '<div role="alert">The protocol specifies a comparator that cannot be matched uniquely ' +
+                  'to the available treatment names. Guessing a placebo/control reference would ' +
+                  'change the specified comparison. No SUCRA, treatment hierarchy or pooled result ' +
+                  'was computed. Verify the protocol comparator and treatment labels before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
 
     // This panel fits independent direct-vs-reference pools, NOT a network
     // model. A non-reference evidence edge would be silently omitted from
