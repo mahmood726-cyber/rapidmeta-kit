@@ -292,6 +292,7 @@
     const others = treatments.filter(t => t !== reference);
     const tr = []; // [{ name, mean, se, scale }]
     let invalidBinaryRows = 0;
+    let uninformativeBinaryRows = 0;
     let ambiguousPublishedRatioRows = 0;
     let invalidContinuousRows = 0;
     let ambiguousContinuousRows = 0;
@@ -319,6 +320,16 @@
             const flip = (c.t1 === reference);
             // Try binary first, then continuous
             const counts = binaryCounts(t);
+            // Cochrane Handbook Ch 10 §10.4.4.2 / Ch 6 §6.4.1: when
+            // BOTH arms have zero events (or all participants have events),
+            // the relative OR has no identifiable direction. Adding 0.5 to
+            // unequal arm sizes creates a spurious directional contrast.
+            // Fail closed instead of silently dropping or correcting it.
+            if (counts && ((counts.tE === 0 && counts.cE === 0) ||
+                (counts.tE === counts.tN && counts.cE === counts.cN))) {
+              uninformativeBinaryRows++;
+              return;
+            }
             const lo = counts && counts !== false ? trialLogOR(counts) : null;
             if (counts === false || (counts && !lo)) {
               invalidBinaryRows += 1;
@@ -451,6 +462,24 @@
                   'and arm totals must be positive safe integers. No SUCRA, treatment hierarchy or pooled estimate ' +
                   'was computed. Verify the primary study source; invalid 2×2 counts cannot be reinterpreted ' +
                   'as continuous outcomes.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (uninformativeBinaryRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: double-zero or double-all-event studies lack relative OR information',
+        bodyHtml: '<div role="alert">Found ' + uninformativeBinaryRows +
+                  ' direct comparison row(s) with no events in either arm or events in all ' +
+                  'participants in both arms. Such studies cannot determine the direction ' +
+                  'or magnitude of a relative odds ratio. A 0.5 continuity correction can ' +
+                  'create an artificial effect, especially with unequal arm sizes. ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Verify source counts and document a prespecified rare-event handling ' +
+                  'strategy before a method-appropriate synthesis.</div>',
         storageKey: STORAGE_KEY,
       });
       const existing = document.getElementById('nma-sucra-panel');
