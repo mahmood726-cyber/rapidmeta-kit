@@ -267,6 +267,23 @@ class IntervalHRMetaforOracle(unittest.TestCase):
                     "Native R accepted a source row without a valid start time",
                 )
 
+    def test_unrepresentable_pooled_hr_interval_refused_in_js_and_r(self):
+        # Finite source rows can yield nonrepresentable exp(CI). Before
+        # the correction, shipped JS returned a zero lower bound and
+        # Infinity upper bound (JSON null). This negative test is a
+        # refusal gate, NOT a positive numerical parity comparison.
+        rows = (
+            ("A", 0, 6, 1e308, 1e307, 1.79e308),
+            ("B", 0, 6, 0.8, 0.6, 1.0),
+        )
+        js = run_js(rows)
+        self.assertEqual(js.get("intervals"), [])
+        self.assertRegex(js.get("error", ""),
+                         "Unrepresentable interval-HR pooled estimate")
+        native = r_process(rows)
+        self.assertNotEqual(native.returncode, 0,
+                            "Native R returned a pooled nonrepresentable CI")
+
     def test_tampered_hr_must_fail_numerical_comparison(self):
         expected = run_r(NEAR)
         observed = run_js(NEAR)

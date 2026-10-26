@@ -114,6 +114,17 @@ const refusedLate = S.intervalHRPool(laterRepeatedIdentity, [0, 6, 12]);
 assert.deepEqual(refusedLate.intervals, []);
 assert.match(refusedLate.error, /Repeated interval-HR records for trial 7/);
 
+// Extremely separated but finite source HRs can produce an overflowed upper
+// and an underflowed zero lower CI. Previously the engine returned a
+// superficially valid k=2 pool; JSON turned its Infinity into null.
+const unrepresentable = [
+  {name: 'Extreme', intervals: [interval(0, 6, 1e308, 1e307, 1.79e308)]},
+  {name: 'Reference', intervals: [interval(0, 6, 0.8, 0.6, 1.0)]}
+];
+const refusedRange = S.intervalHRPool(unrepresentable, [0, 6]);
+assert.deepEqual(refusedRange.intervals, []);
+assert.match(refusedRange.error, /Unrepresentable interval-HR pooled estimate or confidence limits/);
+
 // A study CAN contribute to separate, non-overlapping analysis windows.
 const distinct = baseline.map(t => ({...t,
   intervals: [...t.intervals, interval(6, 12, 0.9, 0.68, 1.20)]}));
@@ -257,6 +268,15 @@ assert.equal(panel.IntervalHRPoolPanel.render(), true);
 assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /Invalid interval-HR time boundaries/);
 assert.match(captured.bodyHtml, /role="alert"/);
+assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+
+// The panel must expose an explicit refusal instead of a zero/Infinity CI.
+panel.PanelHelper.getRealData = () => ({
+  a: unrepresentable[0], b: unrepresentable[1]
+});
+assert.equal(panel.IntervalHRPoolPanel.render(), true);
+assert.match(captured.summary, /^Refused:/);
+assert.match(captured.bodyHtml, /Unrepresentable interval-HR pooled estimate/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
 
 // Method/interpretation correctness: the engine actually uses REML+HKSJ

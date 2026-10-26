@@ -306,9 +306,22 @@
       if (pts.length === 0) continue;
       var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));
       if (!p) continue;
+      // A computed log-scale fit is not a representable hazard ratio if
+      // exponentiation overflows or underflows a confidence limit.
+      // Reject rather than render zero, Infinity or JSON-null as a valid CI.
+      var pooledHR = Math.exp(p.mu);
+      var pooledLo = Math.exp(p.ci_lo);
+      var pooledHi = Math.exp(p.ci_hi);
+      if (!isFinite(pooledHR) || !isFinite(pooledLo) || !isFinite(pooledHi)
+          || !(pooledLo > 0) || !(pooledLo <= pooledHR)
+          || !(pooledHR <= pooledHi) || !isFinite(p.tau2)
+          || !(p.tau2 >= 0) || !isFinite(p.I2)) {
+        return { intervals: [], error: 'Unrepresentable interval-HR pooled estimate or confidence limits'
+          + ' for ' + t0 + '–' + t1 + ' mo; pooling refused' };
+      }
       windows.push({
         label: t0 + '–' + t1 + ' mo', t0: t0, t1: t1, k: p.k,
-        HR: Math.exp(p.mu), HR_ci_lo: Math.exp(p.ci_lo), HR_ci_hi: Math.exp(p.ci_hi),
+        HR: pooledHR, HR_ci_lo: pooledLo, HR_ci_hi: pooledHi,
         tau2: p.tau2, I2: p.I2
       });
     }
