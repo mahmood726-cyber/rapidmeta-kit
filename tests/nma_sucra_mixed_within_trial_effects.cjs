@@ -85,7 +85,10 @@ for (const [i, source] of sources.entries()) {
       assert.ok(panel.summary.startsWith(starts[fixture.want]), label + ": " + panel.summary);
       if (["mixed", "invalid", "zero"].includes(fixture.want)) {
         assert.match(panel.bodyHtml, /role="alert"/, label);
-        assert.match(panel.bodyHtml, /No SUCRA, treatment hierarchy or pooled result was computed/, label);
+        const requiredRefusal = fixture.want === "invalid"
+          ? /No SUCRA, treatment hierarchy or pooled estimate was computed/
+          : /No SUCRA, treatment hierarchy or pooled result was computed/;
+        assert.match(panel.bodyHtml, requiredRefusal, label);
         assert.doesNotMatch(panel.bodyHtml, /Per-treatment ranking summaries:|Top-ranked:/, label);
       } else {
         assert.match(panel.bodyHtml, /Per-treatment ranking summaries:/, label);
