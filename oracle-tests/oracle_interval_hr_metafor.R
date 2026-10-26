@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 # Genuine external, explicitly method-matched R oracle for synthetic interval HR.
-# Uses metafor 4.8-0 (REML + test="adhoc" floor) under R 4.4.3.
+# k=1: normal single-study interval, no meta-analysis; k>=2:
+# metafor 4.8-0 (REML + test="adhoc" floor) under R 4.4.3.
 # NOT a published-study validation, NMA, original-data audit or survival IPD fit.
 options(warn = 2)
 if (as.character(getRversion()) != "4.4.3" ||
@@ -14,7 +15,7 @@ if (length(commandArgs(trailingOnly = TRUE)) != 0L)
 d <- read.table(file("stdin"), header = TRUE, sep = "\t", quote = "",
                 check.names = FALSE, stringsAsFactors = FALSE)
 required <- c("trial", "t0", "t1", "HR", "lo", "hi")
-if (!identical(names(d), required) || nrow(d) < 3L ||
+if (!identical(names(d), required) || nrow(d) < 1L ||
     anyNA(d) || any(!nzchar(d$trial)) ||
     !all(vapply(d[-1L], is.numeric, logical(1L))) ||
     any(!is.finite(as.matrix(d[-1L]))) ||
@@ -32,19 +33,30 @@ windows <- unique(key)
 cat("t0\tt1\tk\tHR\tci_lo\tci_hi\ttau2\n")
 for (w in windows) {
   sub <- d[key == w, , drop = FALSE]
-  if (nrow(sub) < 3L)
-    stop("requires at least three independent studies per window", call. = FALSE)
+  if (nrow(sub) < 1L)
+    stop("empty source window", call. = FALSE)
   yi <- log(sub$HR)
   # Exactly the shipped JS logHRfromCI convention for a two-sided 95% CI.
   se <- (log(sub$hi) - log(sub$lo)) / (2 * 1.959963984540054)
   vi <- se^2
   if (any(!is.finite(yi) | !is.finite(vi) | vi <= 0))
     stop("invalid log-HR or within-study variance", call. = FALSE)
-  fit <- metafor::rma.uni(yi = yi, vi = vi, method = "REML",
-                          test = "adhoc", level = 95,
-                          control = list(tol = 1e-12, maxiter = 500))
-  values <- c(sub$t0[1], sub$t1[1], nrow(sub), exp(as.numeric(fit$beta)),
-              exp(fit$ci.lb), exp(fit$ci.ub), fit$tau2)
+  if (nrow(sub) == 1L) {
+    # Independent base-R normal interval. Deliberately does not invoke
+    # metafor::rma.uni at k=1 or pretend that heterogeneity was estimated.
+    z <- stats::qnorm(0.975)
+    values <- c(sub$t0[1], sub$t1[1], 1L, exp(yi[1]),
+                exp(yi[1] - z * sqrt(vi[1])),
+                exp(yi[1] + z * sqrt(vi[1])), 0)
+  } else {
+    # k=2 is a genuine two-study REML + floored HKSJ/t(1) comparison;
+    # it must not be silently treated as single-study normal inference.
+    fit <- metafor::rma.uni(yi = yi, vi = vi, method = "REML",
+                            test = "adhoc", level = 95,
+                            control = list(tol = 1e-12, maxiter = 500))
+    values <- c(sub$t0[1], sub$t1[1], nrow(sub), exp(as.numeric(fit$beta)),
+                exp(fit$ci.lb), exp(fit$ci.ub), fit$tau2)
+  }
   if (any(!is.finite(values)))
     stop("nonfinite external interval-HR estimate", call. = FALSE)
   cat(paste(sprintf("%.17g", values), collapse = "\t"), "\n", sep = "")
