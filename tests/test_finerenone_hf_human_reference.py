@@ -124,3 +124,26 @@ def test_cv_death_confidence_interval_source_conflict_remains_unadjudicated():
     assert ci["review_printed_ci"][1] < 1 < ci["primary_trial_ci"][1]
     assert all(d["status"].startswith("CANDIDATE_") and d["human_adjudication"] == "NOT_RUN" for d in differences.values())
     assert all(d["editor_notification"] == "NOT_SENT" for d in differences.values())
+
+
+
+def test_cv_death_forest_and_primary_ci_weights_diverge_but_result_remains_uncertain():
+    evidence = reference()["cv_death_interval_sensitivity"]
+    paper = evidence["forest_based_approx"]
+    primary = evidence["source_primary_trial_approx"]
+    printed_replay = module._inverse_variance(paper["effects"])
+    primary_replay = module._inverse_variance(primary["effects"])
+    assert printed_replay["tau_squared_DL_from_rounded_CI"] == 0
+    assert primary_replay["tau_squared_DL_from_rounded_CI"] == 0
+    assert printed_replay["estimate"] == pytest.approx(paper["pooled_hr_approx"], abs=1e-10)
+    assert primary_replay["estimate"] == pytest.approx(primary["pooled_hr_approx"], abs=1e-10)
+    assert printed_replay["ci_lower"] == pytest.approx(paper["pooled_ci_95_approx"][0], abs=1e-10)
+    assert printed_replay["ci_upper"] == pytest.approx(paper["pooled_ci_95_approx"][1], abs=1e-10)
+    assert primary_replay["ci_lower"] == pytest.approx(primary["pooled_ci_95_approx"][0], abs=1e-10)
+    assert primary_replay["ci_upper"] == pytest.approx(primary["pooled_ci_95_approx"][1], abs=1e-10)
+    assert printed_replay["ci_upper"] > 1
+    assert primary_replay["ci_upper"] > 1
+    assert paper["finearts_weight_approx_pct"] > primary["finearts_weight_approx_pct"] + 10
+    assert evidence["independent_adjudication"] == "NOT_RUN"
+    assert evidence["version_pinned_external_oracle"] == "NOT_RUN"
+    assert evidence["editor_correction"] == "NOT_SUBMITTED"
