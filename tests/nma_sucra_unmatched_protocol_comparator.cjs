@@ -65,7 +65,14 @@ for (let i = 0; i < sources.length; i++) {
       const panel = exercise(sources[i], c, reversed);
       const label = paths[i] + ": " + c.name + ": reversed=" + reversed;
       if (c.refuse) {
-        assert.match(panel.summary, /^Refused: protocol comparator does not uniquely match a treatment/, label);
+        // The treatment-identity guard now runs before reference selection.
+        // Keep both exact refusal contracts: all other malformed/unmatched
+        // protocol comparators must still trigger the comparator-specific gate.
+        if (c.name === "duplicate normalized labels") {
+          assert.equal(panel.summary, "Refused: invalid or duplicate treatment labels", label);
+        } else {
+          assert.match(panel.summary, /^Refused: protocol comparator does not uniquely match a treatment/, label);
+        }
         assert.match(panel.bodyHtml, /role="alert"/, label);
         assert.match(panel.bodyHtml, /No SUCRA, treatment hierarchy or pooled result was computed/, label);
         assert.doesNotMatch(panel.bodyHtml, /Per-treatment ranking summaries:|Top-ranked:/, label);
