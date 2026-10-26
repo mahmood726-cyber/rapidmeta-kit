@@ -86,3 +86,17 @@ These findings are *not* part of the already tested 3-trial forest-plot numerica
 | Clinical admissibility of mixed trial effects | 0 endorsements | BLOCKED | Different endpoints, effect measures, populations |
 
 Source/provenance scope is deliberately narrow. Public aggregate figures are cited to their original sources, and the unpublished contributor's workbook is not shared without explicit permission.
+
+
+### Verified PDF forest-plot cross-check: cardiovascular mortality uncertainty
+
+Direct visual inspection of the [published Figure 2](https://link.springer.com/content/pdf/10.1007/s10557-024-07666-x.pdf#page=9) confirmed a *third* confidence interval for the same FINEARTS-HF cardiovascular-death HR: the forest plot prints **0.93 (0.81–1.07)**, with **SE(log HR)=0.0710** and **53.2% inverse-variance weight**. Table 3 on the same page prints **0.93 (0.71–0.94)**, whereas the [original FINEARTS report](https://pubmed.ncbi.nlm.nih.gov/39225278/) prints **0.93 (0.78–1.11)**. These are three different intervals.
+
+A sensitivity calculation using the same two DKD CV-death trial estimates from Figure 2, changing *only* the FINEARTS CV-death interval, gives:
+
+| Scenario | FINEARTS log-HR SE (rounded-input) | FINEARTS weight | Approximate pooled HR (95% CI) |
+| --- | ---: | ---: | --- |
+| **Using printed forest-plot interval** 0.81–1.07 | 0.07102 | 53.23% | 0.908 (0.820–1.005) |
+| **Using original trial interval** 0.78–1.11 | 0.09001 | 41.47% | 0.902 (0.805–1.011) |
+
+Both scenarios have DerSimonian–Laird tau-squared equal to zero when reconstructed from rounded intervals; both overall confidence intervals include 1 (non-significant). The 11.8-percentage-point difference in FINEARTS weight is not a proven reanalysis of the authors' original RevMan project, and the precise source of their uncertainty input is **not established**. Nonetheless, this is a concrete and testable source-to-forest mismatch, not merely a narrative wording issue. Please request independent adjudication and source-located method/CI verification before any correction correspondence. The separate machine-readable sensitivity and corresponding regression test live in reference.json and tests/test_finerenone_hf_human_reference.py.
