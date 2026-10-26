@@ -222,6 +222,31 @@ class IntervalHRMetaforOracle(unittest.TestCase):
                 self.assertNotEqual(external.returncode, 0)
                 self.assertIn("invalid or incomplete", external.stderr)
 
+    def test_mixed_window_union_must_refuse_in_js_and_native_r(self):
+        # A complete [0,6] summary HR cannot be inferred for [0,3] or [3,6].
+        # Previous R oracle would pool shorter windows (k=2 each) and the
+        # browser would refuse: a missing native-R refusal parity gate.
+        mixed = (
+            ("A", 0, 6, 1.90, 1.50, 2.50),
+            ("B", 0, 3, 0.80, 0.60, 1.05),
+            ("B", 3, 6, 0.90, 0.68, 1.20),
+            ("C", 0, 3, 0.78, 0.59, 1.04),
+            ("C", 3, 6, 0.88, 0.66, 1.17),
+        )
+        for split in (False, True):
+            with self.subTest(separately_materialized=split):
+                observed = run_js(mixed, separate_objects=split)
+                self.assertEqual(observed.get("intervals"), [])
+                self.assertRegex(observed.get("error", ""),
+                                 "Non-aligned interval-HR time window")
+        external = r_process(mixed)
+        self.assertNotEqual(external.returncode, 0)
+        self.assertIn("non-aligned interval-HR source windows", external.stderr)
+        # Positive: corresponding non-overlapping periods genuinely produce
+        # matching k=2 estimates without silently dropping a study.
+        short_only = mixed[1:]
+        compare(run_js(short_only), run_r(short_only))
+
     def test_tampered_hr_must_fail_numerical_comparison(self):
         expected = run_r(NEAR)
         observed = run_js(NEAR)
