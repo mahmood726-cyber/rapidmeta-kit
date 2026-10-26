@@ -534,7 +534,11 @@
     const rankogram = tr.map((x, i) => ({
       treatment: x.name, rankProbs: rankCounts[i].map(c => c / N_MC) }));
     const pothRes = (global.POTH && global.POTH.compute) ? global.POTH.compute(rankogram) : null;
-    const pothOK = pothRes && typeof pothRes.poth === 'number' && pothRes.poth >= 0.5;
+    // POTH is bounded by [0, 1]; an absent/invalid precision statistic
+    // cannot justify naming a treatment winner (Wigle et al., 2025).
+    const pothValid = pothRes && typeof pothRes.poth === 'number' &&
+      Number.isFinite(pothRes.poth) && pothRes.poth >= 0 && pothRes.poth <= 1;
+    const pothOK = pothValid && pothRes.poth >= 0.5;
 
     const rows = tr.map((x, i) => {
       const meanRank = rankSums[i] / N_MC;
@@ -547,25 +551,33 @@
     // Top-ranked = highest SUCRA
     const sorted = rows.slice().sort((a, b) => b.sucra - a.sucra);
     const top = sorted[0];
-    const pothStr = pothRes && typeof pothRes.poth === 'number' ? ' · POTH=' + P.fmt(pothRes.poth, 2) : '';
+    const pothStr = pothValid ? ' · POTH=' + P.fmt(pothRes.poth, 2) : '';
     const summary = pothOK
       ? scale + ' scale · ' + J + ' treatments · top: ' + top.treatment + ' (SUCRA ' + P.fmt(top.sucra, 1) + '%, MR=' + P.fmt(top.meanRank, 2) + ')' + pothStr
-      : scale + ' scale · ' + J + ' treatments · hierarchy non-informative' + pothStr + ' — no top treatment claimed';
+      : pothValid
+        ? scale + ' scale · ' + J + ' treatments · hierarchy non-informative' + pothStr + ' — no top treatment claimed'
+        : scale + ' scale · ' + J + ' treatments · ranking precision unavailable — no top treatment claimed';
 
     // Build body. GATE the "Top-ranked" claim on POTH: only assert a winner when
     // POTH ≥ 0.5; otherwise the ranks are statistically indistinguishable.
     let html = '';
     const dirText = betterDirection === 'higher' ? 'larger value = better (response/remission outcome detected)' : 'smaller value = better (harm/mortality outcome assumed)';
-    if (pothOK || !pothRes) {
+    if (pothOK) {
       html += '<div style="background:#0e2540;border:1px solid #312e81;color:#c4b5fd;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
             + '<strong>Top-ranked:</strong> ' + top.treatment + ' — SUCRA ' + P.fmt(top.sucra, 1) + '% (mean rank ' + P.fmt(top.meanRank, 2) + ' of ' + J + ')'
             + (pothRes ? ' · <strong>POTH ' + P.fmt(pothRes.poth, 2) + '</strong> (' + pothRes.verdict + ')' : '') + '. '
             + 'Reference: <code>' + reference + '</code>. Scale: <code>' + scale + '</code>. <em>Direction:</em> ' + dirText + '.'
             + '</div>';
-    } else {
+    } else if (pothValid) {
       html += '<div style="background:#3f1d1d;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
             + '<strong>Hierarchy non-informative (POTH = ' + P.fmt(pothRes.poth, 2) + ').</strong> '
             + pothRes.verdict + ' — the rankings are too uncertain to name a best treatment (highest SUCRA is ' + top.treatment + ' at ' + P.fmt(top.sucra, 1) + '%, but do not report it as "ranked best"). '
+            + 'Reference: <code>' + reference + '</code>. Scale: <code>' + scale + '</code>. <em>Direction:</em> ' + dirText + '.'
+            + '</div>';
+    } else {
+      html += '<div role="alert" style="background:#3f1d1d;border:1px solid #7f1d1d;color:#fca5a5;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
+            + '<strong>Ranking precision unavailable.</strong> The POTH helper is missing or returned a value outside its defined [0, 1] range. '
+            + 'No top treatment is claimed; numerical SUCRA summaries below are exploratory and do not establish a reliable hierarchy. '
             + 'Reference: <code>' + reference + '</code>. Scale: <code>' + scale + '</code>. <em>Direction:</em> ' + dirText + '.'
             + '</div>';
     }
