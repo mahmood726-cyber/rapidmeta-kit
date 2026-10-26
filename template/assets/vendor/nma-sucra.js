@@ -205,6 +205,30 @@
     if (!rd) return false;
 
     const treatments = cfg.treatments;
+    // A ranking assigns one position per distinct clinical intervention.
+    // Duplicate/blank/malformed labels duplicate rank positions or distort J,
+    // even if each trial's numerical effect is otherwise valid (Cochrane Ch 11).
+    // Do not silently rename or deduplicate protocol treatments.
+    const uniqueLabels = treatments.map(t =>
+      typeof t === 'string' ? t.trim().toLowerCase() : '');
+    if (uniqueLabels.some(t => !t) ||
+        new Set(uniqueLabels).size !== treatments.length) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: invalid or duplicate treatment labels',
+        bodyHtml: '<div role="alert">Every configured intervention must have one ' +
+                  'non-empty, uniquely identified treatment label. Duplicate ' +
+                  'names (including case or surrounding-space variants) would ' +
+                  'count the same intervention more than once and change the ' +
+                  'number of ranking positions and SUCRA denominator. No SUCRA, ' +
+                  'treatment hierarchy or pooled result was computed. Resolve ' +
+                  'identifiers against the protocol before analysis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     const reference = pickReference(cfg, treatments);
     if (reference === null) {
       const panel = P.buildCollapsiblePanel({
