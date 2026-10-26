@@ -27,6 +27,17 @@ if (!identical(names(d), required) || nrow(d) < 1L ||
 id <- paste(d$trial, d$t0, d$t1, sep = "\t")
 if (anyDuplicated(id) > 0L)
   stop("duplicate trial/time-window evidence: refusing pool", call. = FALSE)
+# Treat the union of all reported source boundaries as the candidate
+# analysis partition, as the shipped browser panel does.  A trial's [0,6]
+# summary HR cannot be redistributed across [0,3] and [3,6] merely because
+# other trials report those shorter periods. Reject incompatible windows
+# BEFORE printing any apparently valid pooled results.
+boundaries <- sort(unique(c(d$t0, d$t1)))
+start_index <- match(d$t0, boundaries)
+end_index <- match(d$t1, boundaries)
+if (any(end_index != start_index + 1L))
+  stop("non-aligned interval-HR source windows: refusing partial pooled evidence",
+       call. = FALSE)
 d <- d[order(d$t0, d$t1, d$trial), , drop = FALSE]
 key <- paste(d$t0, d$t1, sep = "-")
 windows <- unique(key)
