@@ -41,6 +41,10 @@
     var fmt = P.fmt;
     var html = '';
 
+    if (pool && pool.error) {
+      return '<div role="alert" style="color:#fbbf24;font-size:11.5px;">'
+          + 'Interval-HR pooling refused: ' + pool.error + '</div>';
+    }
     if (!pool || !pool.intervals || pool.intervals.length === 0) {
       return '<div style="color:#fbbf24;font-size:11.5px;">No matching intervals across trials.</div>';
     }
@@ -113,10 +117,12 @@
     if (!pool) return false;
 
     var fmt = P.fmt;
-    var summary = 'Interval HRs across ' + pool.intervals.length + ' windows · '
-                + pool.intervals.map(function (iv) {
-                    return iv.label + '=' + fmt(iv.HR, 2);
-                  }).join(' · ');
+    var summary = pool.error
+      ? 'Refused: repeated interval-HR records within one study/time window'
+      : 'Interval HRs across ' + pool.intervals.length + ' windows · '
+        + pool.intervals.map(function (iv) {
+            return iv.label + '=' + fmt(iv.HR, 2);
+          }).join(' · ');
 
     var panel = P.buildCollapsiblePanel({
       id: 'interval-hr-pool-panel',

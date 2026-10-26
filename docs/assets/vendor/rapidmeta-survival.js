@@ -212,17 +212,29 @@
     var windows = [];
     for (var i = 0; i + 1 < bp.length; i++) {
       var t0 = bp[i], t1 = bp[i + 1];
-      var pts = [];
-      (trials || []).forEach(function (t) {
+      var pts = [], repeatedTrial = null;
+      (trials || []).forEach(function (t, trialIndex) {
+        var matchingIntervals = 0;
         (t.intervals || []).forEach(function (iv) {
           if (+iv.t0 === t0 && +iv.t1 === t1) {
+            matchingIntervals++;
             var HR = +iv.HR, lo = +iv.HR_ci_lo, hi = +iv.HR_ci_hi;
             if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
               pts.push(logHRfromCI(HR, lo, hi));
             }
           }
         });
+        // A single trial cannot contribute two independent inverse-variance
+        // observations to the same follow-up window. Count even malformed
+        // duplicates: ignoring one would silently change the evidence set.
+        if (matchingIntervals > 1) repeatedTrial = trialIndex + 1;
       });
+      if (repeatedTrial !== null) {
+        // Do not expose earlier pooled windows from this call as a partial
+        // successful analysis when one window has duplicate study evidence.
+        return { intervals: [], error: 'Repeated interval-HR records for trial '
+          + repeatedTrial + ' within one time window; pooling refused to avoid double-counting study evidence' };
+      }
       if (pts.length === 0) continue;
       var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));
       if (!p) continue;
