@@ -131,16 +131,32 @@
    *   { theta, se_theta, tau2, OR, OR_lo, OR_hi, k, n_zero_cell_studies,
    *     warnings: [] }
    */
+  // A binomial GLMM requires exact participant/event counts. Never drop an
+  // attempted study or treat fractional counts as a valid 2x2 table: that
+  // silently changes the estimand and, for CM.EL, its discrete support.
+  function invalidBinomialRows(rows, model) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return { ok: false, model: model, error: 'GLMM REFUSED: expected a nonempty array of 2x2 study rows' };
+    }
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (!r || typeof r !== 'object' || Array.isArray(r)
+          || !Number.isSafeInteger(r.events_T) || !Number.isSafeInteger(r.n_T)
+          || !Number.isSafeInteger(r.events_C) || !Number.isSafeInteger(r.n_C)
+          || r.n_T <= 0 || r.n_C <= 0
+          || r.events_T < 0 || r.events_C < 0
+          || r.events_T > r.n_T || r.events_C > r.n_C) {
+        return { ok: false, model: model, error: 'GLMM REFUSED: invalid or missing integer 2x2 counts in study ' + (i + 1) };
+      }
+    }
+    return null;
+  }
+
   function fit(rowsIn, opts) {
     opts = opts || {};
-    var rows = rowsIn.filter(function (r) {
-      return Number.isFinite(r.events_T) && Number.isFinite(r.events_C)
-          && Number.isFinite(r.n_T) && Number.isFinite(r.n_C)
-          && r.n_T > 0 && r.n_C > 0
-          && r.events_T >= 0 && r.events_C >= 0
-          && r.events_T <= r.n_T && r.events_C <= r.n_C;
-    });
-    if (!rows.length) return { ok: false, error: "no valid rows" };
+    var refused = invalidBinomialRows(rowsIn, 'CM.AL');
+    if (refused) return refused;
+    var rows = rowsIn;
 
     // Initial guess: per-study MH-style logOR (with +0.5 only on zeros),
     // then take the mean as θ_0.
@@ -279,14 +295,9 @@
 
   function fitUnconditional(rowsIn, opts) {
     opts = opts || {};
-    var rows = rowsIn.filter(function (r) {
-      return Number.isFinite(r.events_T) && Number.isFinite(r.events_C)
-          && Number.isFinite(r.n_T) && Number.isFinite(r.n_C)
-          && r.n_T > 0 && r.n_C > 0
-          && r.events_T >= 0 && r.events_C >= 0
-          && r.events_T <= r.n_T && r.events_C <= r.n_C;
-    });
-    if (!rows.length) return { ok: false, error: "no valid rows" };
+    var refused = invalidBinomialRows(rowsIn, 'UM.FS');
+    if (refused) return refused;
+    var rows = rowsIn;
 
     // Seed from the conditional fit so we start near the optimum.
     var seed = fit(rowsIn, opts);
@@ -425,12 +436,9 @@
   }
 
   function fitConditionalExact(rowsIn) {
-    var rows = (rowsIn || []).filter(function (r) {
-      return Number.isFinite(r.events_T) && Number.isFinite(r.events_C)
-          && Number.isFinite(r.n_T) && Number.isFinite(r.n_C)
-          && r.n_T > 0 && r.n_C > 0 && r.events_T >= 0 && r.events_C >= 0
-          && r.events_T <= r.n_T && r.events_C <= r.n_C;
-    });
+    var refused = invalidBinomialRows(rowsIn, 'CM.EL');
+    if (refused) return refused;
+    var rows = rowsIn;
     if (rows.length < 2) return { ok: false, error: "need ≥ 2 valid studies", model: "CM.EL" };
     var sts = rows.map(_cmelPrep);
     // Studies whose margin allows no variation (m1=0, or support size 1) carry no
