@@ -286,9 +286,16 @@
         const trial = (typeof ref === 'string' && rd[ref]) ? rd[ref] : ref;
         if (trial && typeof trial === 'object') {
           identities.push(trial); // repeated object reference, without inventing a study ID
-          const id = [trial.studyId, trial.study_id, trial.nctId, trial.nct_id]
-            .find(v => typeof v === 'string' && v.trim());
-          if (id) identities.push('study:' + id.trim().toLowerCase());
+          // The published config uses `nct`; other extraction routes carry
+          // studyId/nctId aliases. A single study can expose more than one ID,
+          // so index *all* available identifiers, not just the first alias.
+          // Shared IDs in separately materialized records still imply possible
+          // duplicated participants / correlated multi-arm contrasts.
+          [trial.studyId, trial.study_id, trial.nctId, trial.nct_id, trial.nct].forEach(id => {
+            if (typeof id === 'string' && id.trim()) {
+              identities.push('study:' + id.trim().toLowerCase());
+            }
+          });
         }
         if (identities.some(id => seenDirectEvidence.has(id))) reusedDirectEvidence++;
         identities.forEach(id => seenDirectEvidence.add(id));
