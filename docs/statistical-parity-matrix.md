@@ -26,7 +26,7 @@
 
 ## Latest PR #62 candidate: representable pooled-HR limits (26 October 2026)
 
-**Version-pinned review entry; not a general parity declaration.** This bounded change rejects pooled interval-HR results when converting a computed log-HR confidence interval to a ratio would yield zero, Infinity or JSON null. No source HR, study identity, statistical estimator or Meta-Harness contract was changed.
+**Statistical code commit:** `74de2dfd40f780e17642c732b5208040bd44590b` (all required exact-head CI must be rerun after any additional commit). **Version-pinned review entry; not a general parity declaration.** This bounded change rejects pooled interval-HR results when converting a computed log-HR confidence interval to a ratio would yield zero, Infinity or JSON null. No source HR, study identity, statistical estimator or Meta-Harness contract was changed.
 
 | Method / estimand | Input class, identities and JS version | External comparator and tolerance | Status, accepted differences and limitations |
 | --- | --- | --- | --- |
