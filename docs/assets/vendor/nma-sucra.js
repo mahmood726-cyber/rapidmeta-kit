@@ -538,6 +538,28 @@
     ).toLowerCase();
     const harmKW = /(death|mortali|adverse|harm|failure|recurren|progress|hospitali|relapse|toxic|safety)/;
     const benefitKW = /(respon|remission|achiev|success|recover|attain|complete|sustained|improvement|cure)/;
+    // A survival endpoint may encode survival events or failure/death events.
+    // Mixed harm/benefit language likewise cannot determine polarity from a title.
+    // In particular, "progression-free survival" matches the harm regex above.
+    // Cochrane Handbook Ch 6, MECIR C61: verify and document effect direction.
+    const directionAmbiguous = /\bsurvival\b/.test(outText) ||
+      (harmKW.test(outText) && benefitKW.test(outText));
+    if (directionAmbiguous) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: ambiguous outcome direction for treatment ranking',
+        bodyHtml: '<div role="alert">Survival outcomes and labels mixing benefit and harm ' +
+                  'do not establish whether a higher or lower numerical effect means benefit. ' +
+                  'Automatically guessing direction can invert a treatment hierarchy. ' +
+                  'No SUCRA or treatment hierarchy was computed, and no pooled result ' +
+                  'was displayed. Verify event coding, endpoint polarity and estimand ' +
+                  'against the protocol and primary study sources before ranking.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
     let betterDirection = 'lower';  // default: harm (OR<1 = better)
     if (benefitKW.test(outText) && !harmKW.test(outText)) betterDirection = 'higher';
     const J = tr.length;
