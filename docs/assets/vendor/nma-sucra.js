@@ -297,6 +297,7 @@
     let ambiguousContinuousRows = 0;
     let unstablePools = 0;
     let unresolvedTrialRefs = 0;
+    let missingDirectEffects = 0;
     let scale = null;
     // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
     const effectTypes = new Set();
@@ -351,6 +352,9 @@
         }
       });
       if (effectTypes.size > 1) return;  // no mixed-scale pooling, even transiently
+      // A configured treatment cannot disappear merely because its direct
+      // evidence is absent or lacks an effect for this outcome.
+      if (!points.length) missingDirectEffects++;
       const pool = poolDLRE(points);
       if (!pool || pool.k === 0) {
         if (points.length) unstablePools++;
@@ -466,6 +470,23 @@
       const existing = document.getElementById('nma-sucra-panel');
       if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
       return true; // panel rendered; does NOT mean statistical success
+    }
+    if (missingDirectEffects) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: configured treatments lack usable direct effects',
+        bodyHtml: '<div role="alert">Found ' + missingDirectEffects +
+                  ' configured non-reference treatment(s) with no usable direct ' +
+                  'effect for the selected outcome. Silently dropping these ' +
+                  'treatments changes the ranking population and its denominator. ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Verify the evidence and outcome or fit an appropriate network ' +
+                  'model; do not interpret a reduced treatment set as the protocol network.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
     }
     if (tr.length < 2) return false;
     if (!scale) scale = 'OR';
