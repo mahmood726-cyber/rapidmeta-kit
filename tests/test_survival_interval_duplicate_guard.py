@@ -58,6 +58,9 @@ const invalidRows = [
   {label: 'negative HR', iv: interval(0, 6, -1, 0.5, 1.2)},
   {label: 'missing upper CI', iv: {t0: 0, t1: 6, HR: 0.8, HR_ci_lo: 0.6}},
   {label: 'reversed CI bounds', iv: interval(0, 6, 0.8, 1.2, 0.6)},
+  // A reported HR outside its own 95% CI is an internally inconsistent input.
+  {label: 'point HR above CI', iv: interval(0, 6, 2.0, 0.7, 1.2)},
+  {label: 'point HR below CI', iv: interval(0, 6, 0.4, 0.6, 1.2)},
   {label: 'nonfinite limit', iv: interval(0, 6, 0.8, 0.6, Infinity)}
 ];
 for (const {label, iv} of invalidRows) {
@@ -167,6 +170,15 @@ assert.equal(panel.IntervalHRPoolPanel.render(), true);
 assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /Invalid interval-HR effect/);
 assert.match(captured.bodyHtml, /role="alert"/);
+assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+// The panel must also fail closed on an inconsistent HR/CI, not show a pool.
+panel.PanelHelper.getRealData = () => ({
+  a: baseline[0], b: baseline[1], c: baseline[2],
+  d: {name: 'D', intervals: [interval(0, 6, 2.0, 0.7, 1.2)]}
+});
+assert.equal(panel.IntervalHRPoolPanel.render(), true);
+assert.match(captured.summary, /^Refused:/);
+assert.match(captured.bodyHtml, /Invalid interval-HR effect/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
 // Method/interpretation correctness: the engine actually uses REML+HKSJ
 // for k=2, rather than the panel's former false "fixed-effect if k<5" claim.

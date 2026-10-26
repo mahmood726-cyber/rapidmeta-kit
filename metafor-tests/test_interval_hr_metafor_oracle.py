@@ -168,6 +168,8 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         cases = (
             ("negative_hr", NEAR + (("D", 0, 6, -1, 0.50, 1.20),)),
             ("inverted_ci", NEAR + (("D", 0, 6, 0.80, 1.20, 0.50),)),
+            ("hr_above_ci", NEAR + (("D", 0, 6, 2.0, 0.70, 1.20),)),
+            ("hr_below_ci", NEAR + (("D", 0, 6, 0.40, 0.60, 1.20),)),
             ("later_window", TWO_WINDOWS + (("D", 6, 12, -1, 0.50, 1.20),)),
         )
         for label, rows in cases:

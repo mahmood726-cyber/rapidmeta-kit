@@ -223,7 +223,10 @@
           if (+iv.t0 === t0 && +iv.t1 === t1) {
             matchingIntervals++;
             var HR = +iv.HR, lo = +iv.HR_ci_lo, hi = +iv.HR_ci_hi;
-            if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
+            // The point estimate and its 95% CI must represent one coherent effect.
+            // A point HR outside those bounds cannot be inverse-variance pooled.
+            if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo
+                && HR >= lo && HR <= hi) {
               pts.push(logHRfromCI(HR, lo, hi));
             } else {
               invalidTrial = trialIndex + 1;

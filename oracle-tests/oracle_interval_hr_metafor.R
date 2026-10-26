@@ -19,7 +19,7 @@ if (!identical(names(d), required) || nrow(d) < 3L ||
     !all(vapply(d[-1L], is.numeric, logical(1L))) ||
     any(!is.finite(as.matrix(d[-1L]))) ||
     any(d$t0 < 0 | d$t1 <= d$t0 | d$HR <= 0 | d$lo <= 0 |
-        d$hi <= d$lo)) {
+        d$hi <= d$lo | d$HR < d$lo | d$HR > d$hi)) {
   stop("invalid or incomplete interval-HR source table", call. = FALSE)
 }
 # Preserve distinct follow-up windows; never count one study twice per window.
