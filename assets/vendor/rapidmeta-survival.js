@@ -210,6 +210,33 @@
   // bp = sorted breakpoint array; pools each [t0,t1] window across trials.
   function intervalHRPool(trials, bp) {
     if (!Array.isArray(bp) || bp.length < 2) return null;
+    // A reported HR for [0,6] is not an HR for [0,3] or [3,6].
+    // Unioning trial breakpoints can otherwise silently omit spanning effects
+    // and publish a subset of the requested evidence without disclosure.
+    // Only source effects overlapping the requested analysis range are relevant.
+    var requestedStart = +bp[0], requestedEnd = +bp[bp.length - 1];
+    for (var ti = 0; ti < (trials || []).length; ti++) {
+      var records = trials[ti].intervals || [];
+      for (var ri = 0; ri < records.length; ri++) {
+        var a = +records[ri].t0, b = +records[ri].t1;
+        if (!isFinite(a) || !isFinite(b) || !(b > a)) {
+          return { intervals: [], error: 'Invalid interval-HR time boundaries for trial '
+            + (ti + 1) + '; pooling refused' };
+        }
+        if (b <= requestedStart || a >= requestedEnd) continue;
+        var aligned = false;
+        for (var wi = 0; wi + 1 < bp.length; wi++) {
+          if (a === +bp[wi] && b === +bp[wi + 1]) {
+            aligned = true;
+            break;
+          }
+        }
+        if (!aligned) {
+          return { intervals: [], error: 'Non-aligned interval-HR time window for trial '
+            + (ti + 1) + '; pooling refused rather than silently omitting a study effect' };
+        }
+      }
+    }
     var windows = [];
     for (var i = 0; i + 1 < bp.length; i++) {
       var t0 = bp[i], t1 = bp[i + 1];

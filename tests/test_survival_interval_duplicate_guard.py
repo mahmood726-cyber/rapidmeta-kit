@@ -135,6 +135,41 @@ const lateResult = S.intervalHRPool(late, [0, 6, 12]);
 assert.deepEqual(lateResult.intervals, []);
 assert.match(lateResult.error, /Repeated interval-HR records for trial 2/);
 
+// Union-of-breakpoints regression: [0,6] is NOT interchangeable with
+// shorter [0,3] and [3,6] study estimates. The previous engine silently
+// discarded the spanning study and showed k=2 pools for the other studies.
+const mixedWindows = [
+  {name: 'Long study', nct: 'NCTA',
+    intervals: [interval(0, 6, 1.90, 1.50, 2.50)]},
+  {name: 'Short study B', nct: 'NCTB',
+    intervals: [interval(0, 3, 0.80, 0.60, 1.05),
+                interval(3, 6, 0.90, 0.68, 1.20)]},
+  {name: 'Short study C', nct: 'NCTC',
+    intervals: [interval(0, 3, 0.78, 0.59, 1.04),
+                interval(3, 6, 0.88, 0.66, 1.17)]}
+];
+const nonAligned = S.intervalHRPool(mixedWindows, [0, 3, 6]);
+assert.deepEqual(nonAligned.intervals, []);
+assert.match(nonAligned.error, /Non-aligned interval-HR time window for trial 1/);
+// Positive control: studies with exactly corresponding intervals still pool.
+const alignedOnly = S.intervalHRPool(mixedWindows.slice(1), [0, 3, 6]);
+assert.equal(alignedOnly.error, undefined);
+assert.deepEqual(alignedOnly.intervals.map(w => w.k), [2, 2]);
+// Explicitly requested follow-up range can exclude unrelated later records.
+const outOfScope = S.intervalHRPool([
+  mixedWindows[0], {name: 'Later follow-up',
+    intervals: [interval(6, 12, 0.82, 0.65, 1.03)]}
+], [0, 6]);
+assert.equal(outOfScope.error, undefined);
+assert.deepEqual(outOfScope.intervals.map(w => w.k), [1]);
+// Invalid source time bounds are not silently discarded either.
+const invalidWindow = S.intervalHRPool([
+  mixedWindows[1], {name: 'Malformed', intervals: [
+    interval('unknown', 3, 0.82, 0.65, 1.03)]}
+], [0, 3, 6]);
+assert.deepEqual(invalidWindow.intervals, []);
+assert.match(invalidWindow.error, /Invalid interval-HR time boundaries/);
+
 // Exercise the actual shipped panel, not only the engine's return value.
 // Require before constructing document so its auto-bootstrap remains inactive.
 const panel = require('./' + copy + '/vendor/interval-hr-pool.js');
@@ -180,6 +215,17 @@ assert.equal(panel.IntervalHRPoolPanel.render(), true);
 assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /Invalid interval-HR effect/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+// Exercise defaultBreakpoints -> engine -> visible refusal for non-aligned
+// original source windows; the panel must not show a partial subset as pooled.
+panel.PanelHelper.getRealData = () => ({
+  a: mixedWindows[0], b: mixedWindows[1], c: mixedWindows[2]
+});
+assert.equal(panel.IntervalHRPoolPanel.render(), true);
+assert.match(captured.summary, /^Refused:/);
+assert.match(captured.bodyHtml, /Non-aligned interval-HR time window/);
+assert.match(captured.bodyHtml, /role="alert"/);
+assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+
 // Method/interpretation correctness: the engine actually uses REML+HKSJ
 // for k=2, rather than the panel's former false "fixed-effect if k<5" claim.
 const single = S.fit([{HR: a.HR, HR_ci_lo: a.HR_ci_lo, HR_ci_hi: a.HR_ci_hi}]);
