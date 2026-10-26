@@ -9,7 +9,23 @@
     "workbook_filename": "Finerenone_HF_Extraction_Record-3.xlsx",
     "workbook_sha256": "5cbc23255023bf293b0b9e5a604b026f7fa19464a4a2595e555d89ffb4538fc7",
     "workbook_distribution": "NOT_PUBLISHED; author permission for redistribution has not been established",
-    "verification_scope": "Published aggregate figures independently spot-checked; exact protocol appendices, whole-search completeness and fully blinded duplicate adjudication not independently established"
+    "verification_scope": "Published aggregate figures independently spot-checked; exact protocol appendices, whole-search completeness and fully blinded duplicate adjudication not independently established",
+    "private_workbook_crosswalk": {
+      "observation_date": "2026-10-26",
+      "workbook_sha256_confirmed": true,
+      "original_workbook_retained_privately": true,
+      "workbook_has_tabs": 7,
+      "workbook_readme_lists_nonexistent_next_steps_tab": true,
+      "checked_aggregate_cells": 30,
+      "checked_locations": [
+        "Analysis_Dataset!A5:L5",
+        "Analysis_Dataset!A6:L6",
+        "Analysis_Dataset!A7:L7"
+      ],
+      "locally_observed_status": "PASS_PRIVATE_SOURCE_BRIDGE_ONLY",
+      "automated_ci_fixture_type": "SYNTHETIC_ONLY",
+      "scientific_independence_status": "NOT_CERTIFIED"
+    }
   },
   "target_review": {
     "citation": "Rivera-Martinez et al., Effect of Finerenone in Cardiovascular and Renal Outcomes: A Systematic Review and Meta-analysis, Cardiovascular Drugs and Therapy (online 2025, vol 40:167–179)",
@@ -21,8 +37,11 @@
     "reported_analysis_method": "random-effects generic inverse variance of log effect estimates and derived standard errors",
     "reported_tau_squared": 0,
     "reported_i_squared_percent": 0,
-    "reported_pooled_effect": 0.80,
-    "reported_ci_95": [0.72, 0.90],
+    "reported_pooled_effect": 0.8,
+    "reported_ci_95": [
+      0.72,
+      0.9
+    ],
     "reconstruction_limit": "Rounded 95% confidence intervals, no pinned RevMan or R rerun; the original random-effects model has tau-squared reported as zero, so inverse-variance arithmetic agrees numerically with common-effect pooling"
   },
   "trials": [
@@ -61,7 +80,7 @@
       "effect_type": "HAZARD_RATIO",
       "effect": 0.71,
       "ci_lower": 0.56,
-      "ci_upper": 0.90,
+      "ci_upper": 0.9,
       "primary_source": "https://doi.org/10.1056/NEJMoa2110956",
       "primary_location": "Results; Figure 2 HF hospitalisation component",
       "secondary_check": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8812430/"
@@ -103,6 +122,58 @@
     "Confirm whether the review's FINEARTS input was intended as recurrent-event rate ratio or a first-event hazard ratio; the primary FINEARTS 0.82 estimate is a recurrent-event rate ratio",
     "Prespecify and separately analyse harmonised first-hospitalisation-only effects if available, with populations and estimands assessed before any pooling",
     "Do not import 842 or 1024 total events as numbers of participants with events or call the pooled mixture an HR",
-    "Do not report the unpublished human workbook publicly until contributor permission, attribution and reuse rights are settled"
+    "Do not report the unpublished human workbook publicly until contributor permission, attribution and reuse rights are settled",
+    "Independently adjudicate separately logged review Table 3 cardiovascular-death interval 0.93 (0.71–0.94) versus primary FINEARTS-HF 0.93 (0.78–1.11); assess both version-of-record presentation and any correction history before correspondence"
+  ],
+  "source_concordance_candidates": [
+    {
+      "id": "FINHF-SRC-001",
+      "status": "CANDIDATE_DISCREPANCY_SECOND_SOURCE_REVIEW_REQUIRED",
+      "outcome": "FINEARTS-HF cardiovascular death",
+      "source_review": "https://d-nb.info/1360377204/34",
+      "source_review_locator": "Published Rivera-Martinez PDF, Table 3, PDF page 9 (zero-index 8); point and CI printed under cardiovascular death",
+      "review_printed_effect_type": "HAZARD_RATIO",
+      "review_printed_effect": 0.93,
+      "review_printed_ci": [
+        0.71,
+        0.94
+      ],
+      "primary_trial_source": "https://pubmed.ncbi.nlm.nih.gov/39225278/",
+      "primary_trial_effect_type": "HAZARD_RATIO",
+      "primary_trial_effect": 0.93,
+      "primary_trial_ci": [
+        0.78,
+        1.11
+      ],
+      "issue": "Published-review table interval differs from trial's CV-death interval; the latter crosses the null",
+      "scope": "Separate source-table discrepancy; not the heart-failure numerical pooling result",
+      "editor_notification": "NOT_SENT",
+      "human_adjudication": "NOT_RUN"
+    },
+    {
+      "id": "FINHF-SRC-002",
+      "status": "CANDIDATE_CLASSIFICATION_DISCREPANCY_SECOND_REVIEW_REQUIRED",
+      "outcome": "FINEARTS-HF total worsening heart failure events",
+      "source_review": "https://d-nb.info/1360377204/34",
+      "source_review_locator": "Methods PDF page 3 (zero-index 2), Statistical Analysis; Table 3 PDF page 9 (zero-index 8)",
+      "primary_trial_source": "https://pubmed.ncbi.nlm.nih.gov/39225278/",
+      "issue": "Review describes primary-effects as three HRs and labels FINEARTS rows 'Hazard Ratio'; its 0.82 value is a recurrent-event rate ratio, not a first-event HR",
+      "editor_notification": "NOT_SENT",
+      "human_adjudication": "NOT_RUN"
+    },
+    {
+      "id": "FINHF-SRC-003",
+      "status": "CANDIDATE_COUNT_UNIT_MISLABEL_SECOND_REVIEW_REQUIRED",
+      "outcome": "FINEARTS-HF worsening HF events",
+      "source_review": "https://d-nb.info/1360377204/34",
+      "source_review_locator": "Table 3 PDF page 9 (zero-index 8) under generic 'No. of patients with event (%)' heading",
+      "primary_trial_source": "https://pubmed.ncbi.nlm.nih.gov/39225278/",
+      "source_reported_total_events_finerenone": 842,
+      "source_reported_total_events_placebo": 1024,
+      "unit": "TOTAL_RECURRENCE_EVENTS_NOT_UNIQUE_PATIENTS",
+      "issue": "The generic Table 3 patient-count heading may be misleading for FINEARTS starred recurrent-event totals",
+      "human_adjudication": "NOT_RUN",
+      "editor_notification": "NOT_SENT"
+    }
   ]
 }
