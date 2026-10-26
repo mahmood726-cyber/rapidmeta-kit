@@ -17,6 +17,14 @@
       if (Array.isArray(t.intervals) && t.intervals.length > 0) {
         out.push({
           studlab: String(t.name || t.studlab || '?'),
+          // Preserve source study identities for the interval-HR unit-of-analysis
+          // check. Stripping them here bypasses cross-object duplicate refusal.
+          // Do not invent an identifier when the source record lacks one.
+          nct: t.nct,
+          nctId: t.nctId,
+          nct_id: t.nct_id,
+          studyId: t.studyId,
+          study_id: t.study_id,
           HR: +t.HR,
           HR_ci_lo: +t.HR_ci_lo,
           HR_ci_hi: +t.HR_ci_hi,
