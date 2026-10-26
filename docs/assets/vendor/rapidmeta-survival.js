@@ -212,7 +212,7 @@
     var windows = [];
     for (var i = 0; i + 1 < bp.length; i++) {
       var t0 = bp[i], t1 = bp[i + 1];
-      var pts = [], repeatedTrial = null;
+      var pts = [], repeatedTrial = null, invalidTrial = null;
       (trials || []).forEach(function (t, trialIndex) {
         var matchingIntervals = 0;
         (t.intervals || []).forEach(function (iv) {
@@ -221,6 +221,8 @@
             var HR = +iv.HR, lo = +iv.HR_ci_lo, hi = +iv.HR_ci_hi;
             if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
               pts.push(logHRfromCI(HR, lo, hi));
+            } else {
+              invalidTrial = trialIndex + 1;
             }
           }
         });
@@ -234,6 +236,12 @@
         // successful analysis when one window has duplicate study evidence.
         return { intervals: [], error: 'Repeated interval-HR records for trial '
           + repeatedTrial + ' within one time window; pooling refused to avoid double-counting study evidence' };
+      }
+      // An explicit record for a requested window must not disappear
+      // merely because its HR/CI is unusable; refuse the whole analysis.
+      if (invalidTrial !== null) {
+        return { intervals: [], error: 'Invalid interval-HR effect or confidence limits for trial '
+          + invalidTrial + ' within one time window; pooling refused to avoid silently omitting study evidence' };
       }
       if (pts.length === 0) continue;
       var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));

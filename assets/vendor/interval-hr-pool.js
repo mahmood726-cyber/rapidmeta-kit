@@ -118,7 +118,7 @@
 
     var fmt = P.fmt;
     var summary = pool.error
-      ? 'Refused: repeated interval-HR records within one study/time window'
+      ? 'Refused: invalid or repeated interval-HR evidence in a time window'
       : 'Interval HRs across ' + pool.intervals.length + ' windows · '
         + pool.intervals.map(function (iv) {
             return iv.label + '=' + fmt(iv.HR, 2);

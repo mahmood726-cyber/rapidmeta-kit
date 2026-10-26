@@ -52,12 +52,33 @@ const malformed = [{...baseline[0],
 assert.match(S.intervalHRPool(malformed, [0, 6]).error,
   /Repeated interval-HR records for trial 1/);
 
+// A malformed record from a fourth independent study must not silently
+// vanish while three valid studies are pooled as if all data were usable.
+const invalidRows = [
+  {label: 'negative HR', iv: interval(0, 6, -1, 0.5, 1.2)},
+  {label: 'missing upper CI', iv: {t0: 0, t1: 6, HR: 0.8, HR_ci_lo: 0.6}},
+  {label: 'reversed CI bounds', iv: interval(0, 6, 0.8, 1.2, 0.6)},
+  {label: 'nonfinite limit', iv: interval(0, 6, 0.8, 0.6, Infinity)}
+];
+for (const {label, iv} of invalidRows) {
+  const bad = S.intervalHRPool([...baseline, {name: 'D', intervals: [iv]}], [0, 6]);
+  assert.deepEqual(bad.intervals, [], label);
+  assert.match(bad.error, /Invalid interval-HR effect/, label);
+}
+
 // A study CAN contribute to separate, non-overlapping analysis windows.
 const distinct = baseline.map(t => ({...t,
   intervals: [...t.intervals, interval(6, 12, 0.9, 0.68, 1.20)]}));
 const eligible = S.intervalHRPool(distinct, [0, 6, 12]);
 assert.equal(eligible.error, undefined);
 assert.deepEqual(eligible.intervals.map(x => x.k), [3, 3]);
+
+// Invalid evidence in a later window must also suppress earlier pooled windows.
+const laterInvalid = [...distinct, {name: 'D',
+  intervals: [interval(6, 12, -1, 0.5, 1.2)]}];
+const laterInvalidResult = S.intervalHRPool(laterInvalid, [0, 6, 12]);
+assert.deepEqual(laterInvalidResult.intervals, []);
+assert.match(laterInvalidResult.error, /Invalid interval-HR effect/);
 
 // A late duplicate must refuse the WHOLE request, not publish a partial pool.
 const late = distinct.map((t, i) => ({...t,
@@ -83,7 +104,17 @@ assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /role="alert"/);
 assert.match(captured.bodyHtml, /Interval-HR pooling refused/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
-console.log('PASS interval-HR duplicate refusal and disjoint-window control');
+// The actual panel must expose invalid-input refusal, not a partial result.
+panel.PanelHelper.getRealData = () => ({
+  a: baseline[0], b: baseline[1], c: baseline[2],
+  d: {name: 'D', intervals: [interval(0, 6, -1, 0.5, 1.2)]}
+});
+assert.equal(panel.IntervalHRPoolPanel.render(), true);
+assert.match(captured.summary, /^Refused:/);
+assert.match(captured.bodyHtml, /Invalid interval-HR effect/);
+assert.match(captured.bodyHtml, /role="alert"/);
+assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+console.log('PASS interval-HR duplicate/invalid refusals and disjoint-window control');
 """
 
 

@@ -140,6 +140,23 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("invalid or incomplete", p.stderr)
 
+    def test_single_malformed_study_is_not_silently_omitted(self):
+        # Previously JS reported k=3 from four records while R refused
+        # the same input, violating both the evidence set and oracle contract.
+        cases = (
+            ("negative_hr", NEAR + (("D", 0, 6, -1, 0.50, 1.20),)),
+            ("inverted_ci", NEAR + (("D", 0, 6, 0.80, 1.20, 0.50),)),
+            ("later_window", TWO_WINDOWS + (("D", 6, 12, -1, 0.50, 1.20),)),
+        )
+        for label, rows in cases:
+            with self.subTest(case=label):
+                result = run_js(rows)
+                self.assertEqual(result.get("intervals"), [])
+                self.assertRegex(result.get("error", ""), "Invalid interval-HR")
+                external = r_process(rows)
+                self.assertNotEqual(external.returncode, 0)
+                self.assertIn("invalid or incomplete", external.stderr)
+
     def test_tampered_hr_must_fail_numerical_comparison(self):
         expected = run_r(NEAR)
         observed = run_js(NEAR)
