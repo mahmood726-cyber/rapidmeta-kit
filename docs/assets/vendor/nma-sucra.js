@@ -322,7 +322,7 @@
       const isRef = r.treatment === reference;
       html += '<tr style="border-bottom:1px solid #0b1220;">'
             + '<td style="padding:3px 6px;color:#e2e8f0;' + (isRef ? 'font-style:italic;' : '') + '">' + r.treatment + (isRef ? ' (ref)' : '') + '</td>'
-            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + (isRef ? '1.00' : P.fmt(eff, 2)) + '</td>'
+            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + P.fmt(eff, 2) + '</td>'
             + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#cbd5e1;">' + (isRef ? '—' : P.fmt(lo, 2) + '–' + P.fmt(hi, 2)) + '</td>'
             + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#cbd5e1;">' + P.fmt(r.meanRank, 2) + '</td>'
             + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#a78bfa;font-weight:600;">' + P.fmt(r.sucra, 1) + '%</td>'
