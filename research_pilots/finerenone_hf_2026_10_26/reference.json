@@ -145,10 +145,18 @@
         0.78,
         1.11
       ],
-      "issue": "Published-review table interval differs from trial's CV-death interval; the latter crosses the null",
+      "issue": "Published-review table interval differs from trial's CV-death interval; the latter crosses the null; the separate Fig. 2 forest plot also uses 0.93 (0.81–1.07), inconsistent with both Table 3 and the primary trial",
       "scope": "Separate source-table discrepancy; not the heart-failure numerical pooling result",
       "editor_notification": "NOT_SENT",
-      "human_adjudication": "NOT_RUN"
+      "human_adjudication": "NOT_RUN",
+      "review_forest_printed_effect": 0.93,
+      "review_forest_printed_ci": [
+        0.81,
+        1.07
+      ],
+      "review_forest_printed_se_log_hr": 0.071,
+      "review_forest_printed_weight_pct": 53.2,
+      "review_forest_locator": "Figure 2, published PDF page 9 (zero-index 8), 'Death from any CV cause'"
     },
     {
       "id": "FINHF-SRC-002",
@@ -175,5 +183,80 @@
       "human_adjudication": "NOT_RUN",
       "editor_notification": "NOT_SENT"
     }
-  ]
+  ],
+  "cv_death_interval_sensitivity": {
+    "status": "INDEPENDENT_ROUNDED_INPUT_NUMERICAL_RECONSTRUCTION_NOT_METHOD_PINNED",
+    "source_paper_pdf": "https://link.springer.com/content/pdf/10.1007/s10557-024-07666-x.pdf",
+    "source_paper_table_location": "PDF p. 9, Table 3",
+    "source_paper_forest_location": "PDF p. 9, Figure 2, death from any CV cause",
+    "source_trial_publication": "https://doi.org/10.1056/NEJMoa2407107",
+    "method": "generic inverse variance of published rounded log(HR) with symmetric log SE from reported CI, DerSimonian-Laird tau² estimate (zero for both scenarios)",
+    "reported_forest_contribution_pct_finearts": 53.2,
+    "forest_based_approx": {
+      "effects": [
+        {
+          "trial_id": "FIDELIO-DKD",
+          "effect_type": "HAZARD_RATIO",
+          "effect": 0.86,
+          "ci_lower": 0.68,
+          "ci_upper": 1.08
+        },
+        {
+          "trial_id": "FIGARO-DKD",
+          "effect_type": "HAZARD_RATIO",
+          "effect": 0.9,
+          "ci_lower": 0.74,
+          "ci_upper": 1.09
+        },
+        {
+          "trial_id": "FINEARTS-HF",
+          "effect_type": "HAZARD_RATIO",
+          "effect": 0.93,
+          "ci_lower": 0.81,
+          "ci_upper": 1.07
+        }
+      ],
+      "pooled_hr_approx": 0.90785591731,
+      "pooled_ci_95_approx": [
+        0.82019146768,
+        1.00489019829
+      ],
+      "finearts_weight_approx_pct": 53.22634
+    },
+    "source_primary_trial_approx": {
+      "effects": [
+        {
+          "trial_id": "FIDELIO-DKD",
+          "effect_type": "HAZARD_RATIO",
+          "effect": 0.86,
+          "ci_lower": 0.68,
+          "ci_upper": 1.08
+        },
+        {
+          "trial_id": "FIGARO-DKD",
+          "effect_type": "HAZARD_RATIO",
+          "effect": 0.9,
+          "ci_lower": 0.74,
+          "ci_upper": 1.09
+        },
+        {
+          "trial_id": "FINEARTS-HF",
+          "effect_type": "HAZARD_RATIO",
+          "effect": 0.93,
+          "ci_lower": 0.78,
+          "ci_upper": 1.11
+        }
+      ],
+      "pooled_hr_approx": 0.902371833898,
+      "pooled_ci_95_approx": [
+        0.805471717271,
+        1.010929259406
+      ],
+      "finearts_weight_approx_pct": 41.46637
+    },
+    "interpretation": "One likely wrong uncertainty input materially increases FINEARTS inverse-variance weight in reported forest, without reversing nonsignificance of the approximate pooled CV death result; a hypothesis requiring independent adjudication and exact method-matched RevMan replication",
+    "editor_correction": "NOT_SUBMITTED",
+    "independent_adjudication": "NOT_RUN",
+    "version_pinned_external_oracle": "NOT_RUN"
+  }
 }
