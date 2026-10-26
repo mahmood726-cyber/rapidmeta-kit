@@ -37,6 +37,15 @@ TWO_WINDOWS = NEAR + (
     ("B", 6, 12, 1.05, 0.82, 1.33),
     ("C", 6, 12, 0.93, 0.72, 1.20),
 )
+# One-study inference is a normal CI, not a fitted meta-analysis; k=2 uses
+# REML+floored HKSJ/t(1) and is not covered by a k>=3-only oracle.
+SINGLE = NEAR[:1]
+PAIR_NEAR = NEAR[:2]
+PAIR_HETERO = HETERO[:2]
+SMALL_MIXED_WINDOWS = SINGLE + (
+    ("I", 6, 12, 0.86, 0.63, 1.16),
+    ("J", 6, 12, 1.05, 0.82, 1.33),
+)
 JS = r"""
 const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
 const rows = JSON.parse(process.argv[1]);
@@ -133,6 +142,38 @@ class IntervalHRMetaforOracle(unittest.TestCase):
                             ("disjoint_windows", TWO_WINDOWS)):
             with self.subTest(data=label):
                 compare(run_js(rows), run_r(rows))
+
+    def test_small_k_normal_and_reml_hksj_are_externally_compared(self):
+        # Must execute live R 4.4.3: k=1 normal 95% CI, k=2 actual
+        # metafor 4.8-0 REML + floored HKSJ/t(1). No frozen R values.
+        cases = (
+            ("single_study_normal", SINGLE, (1,)),
+            ("two_study_near_homogeneous", PAIR_NEAR, (2,)),
+            ("two_study_heterogeneous", PAIR_HETERO, (2,)),
+            ("mixed_small_k_windows", SMALL_MIXED_WINDOWS, (1, 2)),
+        )
+        for label, rows, expected_k in cases:
+            with self.subTest(case=label):
+                external = run_r(rows)
+                self.assertEqual(tuple(int(r["k"]) for r in external), expected_k)
+                compare(run_js(rows), external)
+
+    def test_small_k_invalid_and_duplicate_evidence_fail_closed(self):
+        # Negative controls prove the expanded k>=1 R oracle still refuses
+        # a contradictory HR/CI and a duplicated one-study window.
+        invalid = (("A", 0, 6, 2.0, 0.70, 1.20),)
+        duplicate = SINGLE + SINGLE
+        for label, rows, js_pattern, r_pattern in (
+            ("single_invalid", invalid, "Invalid interval-HR", "invalid or incomplete"),
+            ("single_duplicate", duplicate, "Repeated interval-HR", "duplicate trial/time-window"),
+        ):
+            with self.subTest(case=label):
+                observed = run_js(rows)
+                self.assertEqual(observed.get("intervals"), [])
+                self.assertRegex(observed.get("error", ""), js_pattern)
+                external = r_process(rows)
+                self.assertNotEqual(external.returncode, 0)
+                self.assertIn(r_pattern, external.stderr)
 
     def test_same_trial_window_duplicate_refused_by_both(self):
         dup = (NEAR[0], NEAR[0]) + NEAR[1:]
