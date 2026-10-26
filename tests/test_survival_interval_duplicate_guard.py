@@ -114,6 +114,38 @@ assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /Invalid interval-HR effect/);
 assert.match(captured.bodyHtml, /role="alert"/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+// Method/interpretation correctness: the engine actually uses REML+HKSJ
+// for k=2, rather than the panel's former false "fixed-effect if k<5" claim.
+const single = S.fit([{HR: a.HR, HR_ci_lo: a.HR_ci_lo, HR_ci_hi: a.HR_ci_hi}]);
+assert.equal(single.method, 'FE');
+const two = S.fit([
+  {HR: a.HR, HR_ci_lo: a.HR_ci_lo, HR_ci_hi: a.HR_ci_hi},
+  {HR: b.HR, HR_ci_lo: b.HR_ci_lo, HR_ci_hi: b.HR_ci_hi}
+]);
+assert.equal(two.k, 2);
+assert.equal(two.method, 'REML+HKSJ');
+// Force visibly different early/late point estimates. The panel may describe
+// the spread but cannot infer non-PH or claim that an overall HR was pooled.
+const contrasting = baseline.map((t, i) => ({...t,
+  intervals: [t.intervals[0], interval(6, 12, 1.40 - i * 0.05,
+    1.02 - i * 0.05, 1.78 - i * 0.05)]}));
+panel.PanelHelper.getRealData = () => ({
+  a: contrasting[0], b: contrasting[1], c: contrasting[2]
+});
+assert.equal(panel.IntervalHRPoolPanel.render(), true);
+assert.match(captured.bodyHtml, /Descriptive interval-HR spread/);
+assert.match(captured.bodyHtml, /not a proportional-hazards test/);
+assert.match(captured.bodyHtml, /REML random-effects/);
+assert.match(captured.bodyHtml, /floored HKSJ/);
+assert.match(captured.bodyHtml, /k≥2/);
+assert.match(captured.bodyHtml, /k=1/);
+assert.match(captured.bodyHtml, /descriptive only/);
+assert.doesNotMatch(captured.bodyHtml, /fixed-effect if k&lt;5/);
+assert.doesNotMatch(captured.bodyHtml, /direct evidence of non-PH/);
+assert.doesNotMatch(captured.bodyHtml, /favours treatment/);
+assert.doesNotMatch(captured.bodyHtml, /overall HR averages/);
+console.log('PASS interval-HR method-label accuracy and non-PH claim negatives');
+
 console.log('PASS interval-HR duplicate refusal, invalid-input refusal and disjoint-window control');
 """
 

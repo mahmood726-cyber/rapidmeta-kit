@@ -8,11 +8,12 @@
  * EXPERIMENTAL — RMST-difference pooling (poolRMSTDiff) and the interval-HR
  * pool (intervalHRPool) operate on inputs (reconstructed KM curves / per-window
  * HRs) that are NOT carried by the default rapidmeta data model and have NO
- * external R oracle bit-check on disk. They self-skip silently unless a topic
- * pack supplies km_curve / intervals. The summary-HR pool (fit) and NNT
+ * original-study validation. A pinned R 4.4.3 / metafor 4.8-0 oracle checks
+ * synthetic interval-HR REML/HKSJ cases only (no clinical or RMST oracle).
+ * Panels self-skip unless a topic pack supplies km_curve / intervals. The summary-HR pool (fit) and NNT
  * conversion (nntForHR) ARE R-checkable: fit() reproduces the in-page
  * REML + HKSJ-floor + t_{k-1} pooler (Cochrane v6.5 / metafor rma(method="REML",
- * test="knha")) on the log-HR scale; nntForHR is the closed-form Altman-Andersen
+ * test="adhoc")) on the log-HR scale; nntForHR is the closed-form Altman-Andersen
  * (2002) survival NNT. Panels that surface RMST / interval-HR results MUST badge
  * them "Experimental" at the point of display.
  *
@@ -111,7 +112,7 @@
   // ---- core IV random-effects pool on a generic log-effect scale ------------
   // REML τ² (Viechtbauer 2005 Fisher scoring, matches in-page engine), then
   // RE weights; CI by HKSJ with the Cochrane v6.5 floor max(1, q*) and t_{k-1}.
-  // For k < 5 falls back to a fixed-effect pool (REML τ² unstable at tiny k).
+  // Only k=1 uses a fixed-effect normal CI; k>=2 uses REML + floored HKSJ.
   function poolLogRE(yi, vi) {
     var k = yi.length;
     if (k < 1) return null;
