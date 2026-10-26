@@ -66,6 +66,51 @@ for (const {label, iv} of invalidRows) {
   assert.match(bad.error, /Invalid interval-HR effect/, label);
 }
 
+// Multiple objects with the same canonical NCT are still ONE study; the
+// pre-fix engine falsely reported k=4 with a 95% CI excluding the null.
+const labelled = baseline.map((t, i) => ({...t,
+  nct: ['NCT00000001', 'NCT00000002', 'NCT00000003'][i]}));
+assert.equal(S.intervalHRPool(labelled, [0, 6]).intervals[0].k, 3);
+const separated = [...labelled, {
+  name: 'Different display name / same trial', nct: '  nct00000001 ',
+  intervals: [a]
+}];
+const repeatedIdentity = S.intervalHRPool(separated, [0, 6]);
+assert.deepEqual(repeatedIdentity.intervals, []);
+assert.match(repeatedIdentity.error, /Repeated interval-HR records for trial 4/);
+// A first, unrelated alias must not hide a shared canonical NCT.
+const maskedAlias = [...labelled, {
+  name: 'Repeat via another alias', studyId: 'distinct-local-code',
+  nct_id: ' nct00000002 ', intervals: [b]
+}];
+assert.match(S.intervalHRPool(maskedAlias, [0, 6]).error,
+  /Repeated interval-HR records for trial 4/);
+// All recognized study-id aliases, not only NCT, must be considered.
+const studyAlias = [...baseline.map((t, i) => ({...t,
+  studyId: 'site-study-' + i})), {
+    name: 'B duplicate', study_id: 'SITE-STUDY-1', intervals: [b]
+  }];
+assert.match(S.intervalHRPool(studyAlias, [0, 6]).error,
+  /Repeated interval-HR records for trial 4/);
+// Separate, disjoint follow-up analyses may contain the same NCT as long as
+// no study contributes twice to any individual pooled window.
+const separatedWindows = [
+  ...labelled,
+  ...labelled.map(t => ({...t, intervals: [interval(6, 12, 0.90, 0.68, 1.20)]}))
+];
+const acceptedWindows = S.intervalHRPool(separatedWindows, [0, 6, 12]);
+assert.equal(acceptedWindows.error, undefined);
+assert.deepEqual(acceptedWindows.intervals.map(w => w.k), [3, 3]);
+// A duplicate ID that appears only in the second window must invalidate the
+// WHOLE requested synthesis; never publish the first-window analysis alone.
+const laterRepeatedIdentity = [...separatedWindows, {
+  nct: 'nct00000001', name: 'Duplicated later study report',
+  intervals: [interval(6, 12, 1.10, 0.85, 1.42)]
+}];
+const refusedLate = S.intervalHRPool(laterRepeatedIdentity, [0, 6, 12]);
+assert.deepEqual(refusedLate.intervals, []);
+assert.match(refusedLate.error, /Repeated interval-HR records for trial 7/);
+
 // A study CAN contribute to separate, non-overlapping analysis windows.
 const distinct = baseline.map(t => ({...t,
   intervals: [...t.intervals, interval(6, 12, 0.9, 0.68, 1.20)]}));
@@ -104,6 +149,15 @@ assert.match(captured.summary, /^Refused:/);
 assert.match(captured.bodyHtml, /role="alert"/);
 assert.match(captured.bodyHtml, /Interval-HR pooling refused/);
 assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\/th>/);
+// Actual panel must also reject separately materialized duplicate study IDs.
+panel.PanelHelper.getRealData = () => ({
+  a: labelled[0], b: labelled[1], c: labelled[2], d: separated[3]
+});
+assert.equal(panel.IntervalHRPoolPanel.render(), true);
+assert.match(captured.summary, /^Refused:/);
+assert.match(captured.bodyHtml, /Repeated interval-HR records/);
+assert.match(captured.bodyHtml, /role="alert"/);
+assert.doesNotMatch(captured.bodyHtml, /<th[^>]*>Pooled HR<\\/th>/);
 // The actual panel must expose invalid-input refusal, not a partial result.
 panel.PanelHelper.getRealData = () => ({
   a: baseline[0], b: baseline[1], c: baseline[2],

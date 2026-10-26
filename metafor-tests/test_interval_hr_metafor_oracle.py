@@ -41,18 +41,26 @@ JS = r"""
 const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
 const rows = JSON.parse(process.argv[1]);
 const byTrial = new Map();
+const separatedTrials = [];
+const splitObjects = process.argv[2] === 'separate';
 for (const [trial,t0,t1,HR,lo,hi] of rows) {
-  if (!byTrial.has(trial)) byTrial.set(trial, {name:trial,intervals:[]});
-  byTrial.get(trial).intervals.push({t0,t1,HR,HR_ci_lo:lo,HR_ci_hi:hi});
+  const iv = {t0,t1,HR,HR_ci_lo:lo,HR_ci_hi:hi};
+  if (splitObjects) {
+    separatedTrials.push({nct:trial,name:trial,intervals:[iv]});
+    continue;
+  }
+  if (!byTrial.has(trial)) byTrial.set(trial, {nct:trial,name:trial,intervals:[]});
+  byTrial.get(trial).intervals.push(iv);
 }
 const bp = [...new Set(rows.flatMap(x=>[x[1],x[2]]))].sort((a,b)=>a-b);
-const result = S.intervalHRPool([...byTrial.values()], bp);
+const result = S.intervalHRPool(splitObjects ? separatedTrials : [...byTrial.values()], bp);
 console.log(JSON.stringify(result));
 """
 
-def run_js(rows):
+def run_js(rows, separate_objects=False):
     p = subprocess.run(
-        ["node", "-e", JS, json.dumps(rows)],
+        ["node", "-e", JS, json.dumps(rows),
+         "separate" if separate_objects else "grouped"],
         cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
     )
     if p.returncode:
@@ -132,6 +140,20 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         p = r_process(dup)
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("duplicate trial/time-window", p.stderr)
+
+    def test_separately_materialized_same_trial_refused_and_disjoint_allowed(self):
+        # Against pre-fix JS: the same NCT in separate objects was counted as
+        # a fourth independent study, while native R refused the input.
+        duplicated = (NEAR[0], NEAR[0]) + NEAR[1:]
+        observed = run_js(duplicated, separate_objects=True)
+        self.assertEqual(observed.get("intervals"), [])
+        self.assertRegex(observed.get("error", ""), "Repeated interval-HR")
+        external = r_process(duplicated)
+        self.assertNotEqual(external.returncode, 0)
+        self.assertIn("duplicate trial/time-window", external.stderr)
+        # The same NCT legitimately contributes to SEPARATE window analyses.
+        compare(run_js(TWO_WINDOWS, separate_objects=True),
+                run_r(TWO_WINDOWS))
 
     def test_malformed_hr_fails_closed_in_r_and_duplicate_js(self):
         bad = (NEAR[0], ("A", 0, 6, -1, 0, 2)) + NEAR[1:]

@@ -214,6 +214,9 @@
     for (var i = 0; i + 1 < bp.length; i++) {
       var t0 = bp[i], t1 = bp[i + 1];
       var pts = [], repeatedTrial = null, invalidTrial = null;
+      // Multiple input objects can represent the SAME randomized study.
+      // Track every supplied stable study identifier per analysis window.
+      var seenTrialIds = Object.create(null);
       (trials || []).forEach(function (t, trialIndex) {
         var matchingIntervals = 0;
         (t.intervals || []).forEach(function (iv) {
@@ -231,10 +234,27 @@
         // observations to the same follow-up window. Count even malformed
         // duplicates: ignoring one would silently change the evidence set.
         if (matchingIntervals > 1) repeatedTrial = trialIndex + 1;
+        if (matchingIntervals > 0) {
+          // nct is the canonical config identifier (AGENTS.md).  Inspect ALL
+          // supplied aliases: an unrelated first alias must not hide an NCT
+          // shared by separately materialized records of one study.
+          ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'].forEach(function (field) {
+            var raw = t[field];
+            if (typeof raw !== 'string') return;
+            var id = raw.trim().toLowerCase();
+            if (!id) return;
+            if (Object.prototype.hasOwnProperty.call(seenTrialIds, id)
+                && seenTrialIds[id] !== trialIndex) {
+              repeatedTrial = trialIndex + 1;
+            } else {
+              seenTrialIds[id] = trialIndex;
+            }
+          });
+        }
       });
       if (repeatedTrial !== null) {
-        // Do not expose earlier pooled windows from this call as a partial
-        // successful analysis when one window has duplicate study evidence.
+        // Refuse both within-object duplicates and matching stable study IDs
+        // across distinct input objects. Never expose partial pooled windows.
         return { intervals: [], error: 'Repeated interval-HR records for trial '
           + repeatedTrial + ' within one time window; pooling refused to avoid double-counting study evidence' };
       }
