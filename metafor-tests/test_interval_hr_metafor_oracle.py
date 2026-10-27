@@ -61,7 +61,10 @@ for (const [trial,t0,t1,HR,lo,hi] of rows) {
   if (!byTrial.has(trial)) byTrial.set(trial, {nct:trial,name:trial,intervals:[]});
   byTrial.get(trial).intervals.push(iv);
 }
-const bp = [...new Set(rows.flatMap(x=>[x[1],x[2]]))].sort((a,b)=>a-b);
+// The shipped panel uses Object.keys(seen).map(Number) for numeric windows.
+// Only normalise the BREAKPOINTS: source iv.t0/t1 must stay raw so invalid
+// lexemes still fail the strict source-typing check.
+const bp = [...new Set(rows.flatMap(x=>[x[1],x[2]]).map(Number))].sort((a,b)=>a-b);
 const result = S.intervalHRPool(splitObjects ? separatedTrials : [...byTrial.values()], bp);
 console.log(JSON.stringify(result));
 """
