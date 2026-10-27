@@ -200,6 +200,9 @@
     for (var i = 0; i < trials.length; i++) {
       var t = trials[i];
       if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
+      // A directly invoked fit must also reject RR/OR records, not relabel them HR.
+      if (t.estimandType != null &&
+          String(t.estimandType).trim().toUpperCase() !== 'HR') return null;
       var HR = finiteDecimal(t.HR);
       var lo = finiteDecimal(t.HR_ci_lo);
       var hi = finiteDecimal(t.HR_ci_hi);
@@ -234,7 +237,7 @@
     return result;
   }
 
-    // ---- public: per-window (interval) HR pool  [EXPERIMENTAL] ----------------
+  // ---- public: per-window (interval) HR pool  [EXPERIMENTAL] ----------------
   // trials[i].intervals = [{ t0, t1, HR, HR_ci_lo, HR_ci_hi }, ...]
   // bp = sorted breakpoint array; pools each [t0,t1] window across trials.
   // A missing/blank follow-up boundary is not a reported month-zero value.

@@ -60,7 +60,7 @@
     return { trials: out, error: error };
   }
 
-    function inferBaselineRisk(trials) {
+  function inferBaselineRisk(trials) {
     // If multiple trials carry events_ctl + n_ctl, take the median crude rate.
     var rates = [];
     trials.forEach(function (t) {

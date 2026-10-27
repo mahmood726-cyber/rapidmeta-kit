@@ -22,6 +22,10 @@ const good = S.fit([goodA,goodB]);
 assert.ok(good && good.k===2 && good.pooled_HR>0 && good.pooled_HR<1);
 assert.equal(good.method,'REML+HKSJ');
 assert.equal(S.fit([goodA]).method,'FE');
+assert.equal(S.fit([{...goodA,estimandType:'RR'},goodB]),null,
+             'a direct fit must reject an explicit RR record');
+assert.equal(S.fit([goodA,{...goodB,estimandType:'OR'}]),null,
+             'a late OR record must not be counted as an HR');
 
 const invalid = [
   ['boolean HR', {...goodA,HR:true}],
