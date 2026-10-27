@@ -35,8 +35,14 @@
     Object.values(rd).forEach(function (t, i) {
       if (!t || typeof t !== 'object' || Array.isArray(t)) return;
       // RR, OR and other estimands are not HR and must never enter HR/NNT.
-      if (t.estimandType != null &&
-          String(t.estimandType).trim().toUpperCase() !== 'HR') return;
+      // Do not turn a present malformed type into an untyped HR.
+      if (hasOwn(t, 'estimandType')) {
+        if (typeof t.estimandType !== 'string' || !t.estimandType.trim()) {
+          if (error === null) error = 'Malformed explicit estimand type in source row ' + (i + 1);
+          return;
+        }
+        if (t.estimandType.trim().toUpperCase() !== 'HR') return;
+      }
       var hasEffect = ['HR', 'HR_ci_lo', 'HR_ci_hi',
                        'publishedHR', 'hrLCI', 'hrUCI'].some(function (key) {
         return hasOwn(t, key);

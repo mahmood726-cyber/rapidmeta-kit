@@ -201,8 +201,10 @@
       var t = trials[i];
       if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
       // A directly invoked fit must also reject RR/OR records, not relabel them HR.
-      if (t.estimandType != null &&
-          String(t.estimandType).trim().toUpperCase() !== 'HR') return null;
+      // Presence matters: explicit null/false/[] is malformed, not an absent type.
+      if (Object.prototype.hasOwnProperty.call(t, 'estimandType') &&
+          (typeof t.estimandType !== 'string' ||
+           t.estimandType.trim().toUpperCase() !== 'HR')) return null;
       var HR = finiteDecimal(t.HR);
       var lo = finiteDecimal(t.HR_ci_lo);
       var hi = finiteDecimal(t.HR_ci_hi);

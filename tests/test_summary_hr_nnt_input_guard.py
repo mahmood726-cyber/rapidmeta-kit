@@ -27,6 +27,17 @@ assert.equal(S.fit([{...goodA,estimandType:'RR'},goodB]),null,
 assert.equal(S.fit([goodA,{...goodB,estimandType:'OR'}]),null,
              'a late OR record must not be counted as an HR');
 
+ // Explicitly malformed effect-type labels must not be treated as absent.
+const malformedTypes = [null, false, 0, [], {}, '', ' '];
+for (const [index, badType] of malformedTypes.entries()) {
+  const bad = {...goodA,estimandType:badType};
+  assert.equal(S.fit([bad,goodB]),null,'invalid explicit type '+index);
+  assert.equal(S.fit([goodB,bad]),null,'late invalid explicit type '+index);
+}
+assert.equal(S.fit([{...goodA,estimandType:' hR '},goodB]).k,2,
+             'valid padded HR type positive control');
+
+
 const invalid = [
   ['boolean HR', {...goodA,HR:true}],
   ['array HR', {...goodA,HR:[0.75]}],
@@ -93,6 +104,23 @@ assert.equal(panel.HRNNTPanel.render(),true);
 assert.match(cfg.summary,/^Refused:/,'missing explicit primary must not use fallback');
 P.getRealData=()=>({a:{...goodA,estimandType:'RR'},b:{...goodB,estimandType:'OR'}});
 assert.equal(panel.HRNNTPanel.render(),false,'RR/OR-only pack cannot produce an HR NNT');
+
+for (const [index, badType] of malformedTypes.entries()) {
+  for (const data of [
+    {a:{...goodA,estimandType:badType},b:goodB},
+    {a:goodA,b:{...goodB,estimandType:badType}}
+  ]) {
+    P.getRealData=()=>data;
+    assert.equal(panel.HRNNTPanel.render(),true,'malformed typed panel '+index);
+    assert.match(cfg.summary,/^Refused:/,'malformed typed panel '+index);
+    assert.match(cfg.bodyHtml,/role="alert"/,'visible type refusal '+index);
+    assert.doesNotMatch(cfg.summary,/NNTB|NNTH|k=/,'no NNT on bad type '+index);
+  }
+}
+P.getRealData=()=>({a:{...goodA,estimandType:' hR '},b:goodB});
+assert.equal(panel.HRNNTPanel.render(),true,'valid typed panel positive control');
+assert.match(cfg.summary,/Exploratory NNTB.*k=2/);
+
 P.getRealData=()=>({a:{...goodA,HR:'7.5e-1',HR_ci_lo:'6e-1',HR_ci_hi:'9.2e-1'},
                     b:{...goodB,HR:'0.80',HR_ci_lo:'0.65',HR_ci_hi:'0.99'}});
 assert.equal(panel.HRNNTPanel.render(),true);
