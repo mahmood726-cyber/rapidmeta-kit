@@ -300,6 +300,15 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         native = r_process(rows)
         self.assertNotEqual(native.returncode, 0,
                             "Native R returned a pooled nonrepresentable CI")
+        # A generic R runtime/optimizer failure must not masquerade as
+        # validated refusal of an unrepresentable ratio/CI. Both the early
+        # nonfinite guard and the later positive-ratio guard are legitimate
+        # boundary refusals; an unrelated error is NOT an oracle PASS.
+        self.assertRegex(
+            native.stderr,
+            r"(?:nonfinite external interval-HR estimate|"
+            r"unrepresentable external interval-HR ratio or confidence limits)",
+        )
 
     def test_single_study_underflow_refused_for_the_specific_reason(self):
         # Deliberately synthetic, grossly asymmetric source CI. Input HR
