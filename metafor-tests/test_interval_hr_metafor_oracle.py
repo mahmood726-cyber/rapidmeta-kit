@@ -196,6 +196,23 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         compare(run_js(TWO_WINDOWS, separate_objects=True),
                 run_r(TWO_WINDOWS))
 
+    def test_case_and_whitespace_alias_trial_ids_refused_by_js_and_r(self):
+        # Source-backed R-oracle discrepancy: R previously keyed raw trial
+        # labels while shipped JS normalises all stable IDs with trim/lower.
+        # These are one synthetic study, not independent k=4 evidence.
+        for alias in ("a", " A ", " a "):
+            with self.subTest(alias=repr(alias)):
+                rows = (NEAR[0], (alias,) + NEAR[0][1:]) + NEAR[1:]
+                for separately in (False, True):
+                    js = run_js(rows, separate_objects=separately)
+                    self.assertEqual(js.get("intervals"), [])
+                    self.assertRegex(js.get("error", ""), "Repeated interval-HR")
+                native = r_process(rows)
+                self.assertNotEqual(native.returncode, 0, native.stdout)
+                self.assertIn("duplicate trial/time-window", native.stderr)
+        # Genuine distinct trial IDs must remain eligible for pooling.
+        compare(run_js(NEAR, separate_objects=True), run_r(NEAR))
+
     def test_malformed_hr_fails_closed_in_r_and_duplicate_js(self):
         bad = (NEAR[0], ("A", 0, 6, -1, 0, 2)) + NEAR[1:]
         self.assertRegex(run_js(bad).get("error", ""), "Repeated interval-HR")

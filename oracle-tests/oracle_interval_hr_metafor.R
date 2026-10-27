@@ -16,7 +16,7 @@ d <- read.table(file("stdin"), header = TRUE, sep = "\t", quote = "",
                 check.names = FALSE, stringsAsFactors = FALSE)
 required <- c("trial", "t0", "t1", "HR", "lo", "hi")
 if (!identical(names(d), required) || nrow(d) < 1L ||
-    anyNA(d) || any(!nzchar(d$trial)) ||
+    anyNA(d) || any(!nzchar(trimws(d$trial))) ||
     !all(vapply(d[-1L], is.numeric, logical(1L))) ||
     any(!is.finite(as.matrix(d[-1L]))) ||
     any(d$t0 < 0 | d$t1 <= d$t0 | d$HR <= 0 | d$lo <= 0 |
@@ -24,7 +24,9 @@ if (!identical(names(d), required) || nrow(d) < 1L ||
   stop("invalid or incomplete interval-HR source table", call. = FALSE)
 }
 # Preserve distinct follow-up windows; never count one study twice per window.
-id <- paste(d$trial, d$t0, d$t1, sep = "\t")
+# Match the shipped JS stable-ID gate: outer whitespace and letter case
+# cannot turn one canonical study into multiple independent observations.
+id <- paste(tolower(trimws(d$trial)), d$t0, d$t1, sep = "\t")
 if (anyDuplicated(id) > 0L)
   stop("duplicate trial/time-window evidence: refusing pool", call. = FALSE)
 # Treat the union of all reported source boundaries as the candidate
