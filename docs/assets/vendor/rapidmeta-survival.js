@@ -200,7 +200,9 @@
     for (var i = 0; i < trials.length; i++) {
       var t = trials[i];
       if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
-      if (t.estimandType != null && String(t.estimandType).trim().toUpperCase() !== 'HR') return null;
+      if (Object.prototype.hasOwnProperty.call(t, 'estimandType') &&
+          (typeof t.estimandType !== 'string' ||
+           t.estimandType.trim().toUpperCase() !== 'HR')) return null;
       var HR = strictSummaryNumber(t.HR);
       var lo = strictSummaryNumber(t.HR_ci_lo);
       var hi = strictSummaryNumber(t.HR_ci_hi);
