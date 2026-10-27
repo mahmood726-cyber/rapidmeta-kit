@@ -215,6 +215,13 @@
       || (typeof value === 'string' && value.trim() !== '' && isFinite(Number(value)));
   }
 
+  // Reported effect measures may be finite numbers or nonblank numeric text.
+  // Coercing booleans/arrays with unary + fabricates a valid-looking HR or CI.
+  function validEffectValue(value) {
+    return (typeof value === 'number' && isFinite(value))
+      || (typeof value === 'string' && value.trim() !== '' && isFinite(Number(value)));
+  }
+
   function intervalHRPool(trials, bp) {
     if (!Array.isArray(bp) || bp.length < 2) return null;
     // A reported HR for [0,6] is not an HR for [0,3] or [3,6].
@@ -258,7 +265,11 @@
         (t.intervals || []).forEach(function (iv) {
           if (+iv.t0 === t0 && +iv.t1 === t1) {
             matchingIntervals++;
-            var HR = +iv.HR, lo = +iv.HR_ci_lo, hi = +iv.HR_ci_hi;
+            var typedEffect = validEffectValue(iv.HR)
+              && validEffectValue(iv.HR_ci_lo) && validEffectValue(iv.HR_ci_hi);
+            var HR = typedEffect ? Number(iv.HR) : NaN;
+            var lo = typedEffect ? Number(iv.HR_ci_lo) : NaN;
+            var hi = typedEffect ? Number(iv.HR_ci_hi) : NaN;
             // The point estimate and its 95% CI must represent one coherent effect.
             // A point HR outside those bounds cannot be inverse-variance pooled.
             if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo

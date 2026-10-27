@@ -69,6 +69,26 @@ for (const {label, iv} of invalidRows) {
   assert.match(bad.error, /Invalid interval-HR effect/, label);
 }
 
+// Non-numeric JSON effect values must not be silently coerced to ratios.
+// Before the fix, true -> HR 1, [0.8] -> HR 0.8, and true -> CI bound 1.
+const wrongTypeRows = [
+  {label: 'boolean HR', iv: interval(0, 6, true, 0.8, 1.2)},
+  {label: 'array HR', iv: interval(0, 6, [0.8], 0.6, 1.2)},
+  {label: 'boolean lower CI', iv: interval(0, 6, 1.2, true, 1.5)},
+  {label: 'array upper CI', iv: interval(0, 6, 0.8, 0.6, [1.2])}
+];
+for (const {label, iv} of wrongTypeRows) {
+  const bad = S.intervalHRPool([...baseline, {nct: 'D', intervals: [iv]}], [0, 6]);
+  assert.deepEqual(bad.intervals, [], label);
+  assert.match(bad.error, /Invalid interval-HR effect/, label);
+}
+// Imported numbers expressed as nonblank decimal strings remain eligible.
+const numericTextEffect = S.intervalHRPool([
+  ...baseline, {nct: 'D', intervals: [interval(0, 6, '0.75', '0.60', '0.92')]}
+], [0, 6]);
+assert.equal(numericTextEffect.error, undefined);
+assert.equal(numericTextEffect.intervals[0].k, 4);
+
 // Multiple objects with the same canonical NCT are still ONE study; the
 // pre-fix engine falsely reported k=4 with a 95% CI excluding the null.
 const labelled = baseline.map((t, i) => ({...t,

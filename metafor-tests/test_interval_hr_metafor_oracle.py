@@ -284,6 +284,29 @@ class IntervalHRMetaforOracle(unittest.TestCase):
                     "Native R accepted a source row without a valid start time",
                 )
 
+    def test_non_numeric_effect_values_refused_by_js_and_native_r(self):
+        # Distinct from time-boundary typing: the shipped JS previously
+        # coerced bools/arrays to plausible HR/CI values and pooled them.
+        # R's source table is deliberately strict about numeric column types.
+        cases = (
+            ("boolean_HR", True, 0.8, 1.2),
+            ("array_HR", [0.8], 0.6, 1.2),
+            ("boolean_lower_CI", 1.2, True, 1.5),
+            ("array_upper_CI", 0.8, 0.6, [1.2]),
+        )
+        for label, hr, lo, hi in cases:
+            with self.subTest(case=label):
+                rows = (("A", 0, 6, hr, lo, hi),) + NEAR[1:]
+                js = run_js(rows)
+                self.assertEqual(js.get("intervals"), [])
+                self.assertRegex(js.get("error", ""), "Invalid interval-HR effect")
+                native = r_process(rows)
+                self.assertNotEqual(native.returncode, 0, native.stdout)
+                self.assertIn("invalid or incomplete interval-HR source table", native.stderr)
+        # Source imports legitimately represent real numbers as decimal text.
+        decimal_text = (("A", 0, 6, "0.75", "0.60", "0.92"),) + NEAR[1:]
+        compare(run_js(decimal_text), run_r(decimal_text))
+
     def test_unrepresentable_pooled_hr_interval_refused_in_js_and_r(self):
         # Finite source rows can yield nonrepresentable exp(CI). Before
         # the correction, shipped JS returned a zero lower bound and
