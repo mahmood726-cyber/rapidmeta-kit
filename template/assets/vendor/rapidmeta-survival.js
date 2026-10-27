@@ -183,18 +183,36 @@
   }
 
   // ---- public: summary log-HR pool -----------------------------------------
+  // Accept ordinary decimal/scientific-number source tokens only. In particular,
+  // Number(true), Number([0.8]), Number("0x1") and Number("") are not HR evidence.
+  function finiteDecimal(value) {
+    if (typeof value === 'number') return isFinite(value) ? value : null;
+    if (typeof value !== 'string') return null;
+    var raw = value.trim();
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)) return null;
+    var numeric = Number(raw);
+    return isFinite(numeric) ? numeric : null;
+  }
+
   function fit(trials) {
+    if (!Array.isArray(trials) || trials.length < 1) return null;
     var pts = [];
-    (trials || []).forEach(function (t) {
-      var HR = +t.HR, lo = +t.HR_ci_lo, hi = +t.HR_ci_hi;
-      if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
-        pts.push(logHRfromCI(HR, lo, hi));
-      }
-    });
-    if (pts.length < 1) return null;
+    for (var i = 0; i < trials.length; i++) {
+      var t = trials[i];
+      if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
+      var HR = finiteDecimal(t.HR);
+      var lo = finiteDecimal(t.HR_ci_lo);
+      var hi = finiteDecimal(t.HR_ci_hi);
+      // Never silently remove a declared study from a pooled effect.
+      if (HR === null || lo === null || hi === null ||
+          !(0 < lo && lo <= HR && HR <= hi && lo < hi)) return null;
+      var point = logHRfromCI(HR, lo, hi);
+      if (!isFinite(point.yi) || !isFinite(point.vi) || !(point.vi > 0)) return null;
+      pts.push(point);
+    }
     var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));
     if (!p) return null;
-    return {
+    var result = {
       pooled_HR: Math.exp(p.mu),
       pooled_HR_ci_lo: Math.exp(p.ci_lo),
       pooled_HR_ci_hi: Math.exp(p.ci_hi),
@@ -203,9 +221,20 @@
       logHR: p.mu, se: p.se, k: p.k, tau2: p.tau2, I2: p.I2,
       Q: p.Q, df: p.df, method: p.method, fallback: p.fallback
     };
+    if (![result.pooled_HR, result.pooled_HR_ci_lo, result.pooled_HR_ci_hi,
+          result.logHR, result.se, result.tau2, result.Q, result.I2].every(isFinite) ||
+        !(0 < result.pooled_HR_ci_lo &&
+          result.pooled_HR_ci_lo <= result.pooled_HR &&
+          result.pooled_HR <= result.pooled_HR_ci_hi &&
+          isFinite(result.k) && result.k === trials.length)) return null;
+    if (p.k >= 3 && !(isFinite(result.pooled_HR_pi_lo) &&
+                      isFinite(result.pooled_HR_pi_hi) &&
+                      result.pooled_HR_pi_lo > 0 &&
+                      result.pooled_HR_pi_hi > 0)) return null;
+    return result;
   }
 
-  // ---- public: per-window (interval) HR pool  [EXPERIMENTAL] ----------------
+    // ---- public: per-window (interval) HR pool  [EXPERIMENTAL] ----------------
   // trials[i].intervals = [{ t0, t1, HR, HR_ci_lo, HR_ci_hi }, ...]
   // bp = sorted breakpoint array; pools each [t0,t1] window across trials.
   // A missing/blank follow-up boundary is not a reported month-zero value.

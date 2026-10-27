@@ -11,32 +11,56 @@
 
   var STORAGE_KEY = 'hr-nnt-panel-expanded';
 
-  function extractSurvivalTrials(rd) {
-    if (!rd) return [];
-    var out = [];
-    Object.values(rd).forEach(function (t) {
-      // Only pool genuine hazard-ratio trials — RR/OR packs (finerenone is
-      // estimandType:'RR') must NOT be surfaced as HRs (category error).
-      if (String(t.estimandType || 'HR').toUpperCase() !== 'HR') return;
-      // Accept either the survival-panel field names (HR/HR_ci_lo/HR_ci_hi) or
-      // the rapidmeta realData names (publishedHR/hrLCI/hrUCI).
-      var HR = isFinite(+t.HR) ? +t.HR : +t.publishedHR;
-      var lo = isFinite(+t.HR_ci_lo) ? +t.HR_ci_lo : +t.hrLCI;
-      var hi = isFinite(+t.HR_ci_hi) ? +t.HR_ci_hi : +t.hrUCI;
-      if (isFinite(HR) && isFinite(lo) && isFinite(hi)) {
-        out.push({
-          studlab: String(t.name || t.studlab || '?'),
-          HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
-          // baseline-risk for NNT: fall back to comparator-arm 2x2 (cE/cN).
-          events_ctl: isFinite(+t.events_ctl) ? +t.events_ctl : +t.cE,
-          n_ctl: isFinite(+t.n_ctl) ? +t.n_ctl : +t.cN
-        });
-      }
-    });
-    return out;
+  function hasOwn(row, key) {
+    return Object.prototype.hasOwnProperty.call(row, key);
   }
 
-  function inferBaselineRisk(trials) {
+  function finiteDecimal(value) {
+    if (typeof value === 'number') return isFinite(value) ? value : null;
+    if (typeof value !== 'string') return null;
+    var raw = value.trim();
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)) return null;
+    var numeric = Number(raw);
+    return isFinite(numeric) ? numeric : null;
+  }
+
+  function sourceValue(row, primary, alias) {
+    // Explicitly invalid/missing primary data must not silently fall back.
+    return hasOwn(row, primary) ? row[primary] : row[alias];
+  }
+
+  function extractSurvivalTrials(rd) {
+    if (!rd || typeof rd !== 'object') return { trials: [] };
+    var out = [], error = null;
+    Object.values(rd).forEach(function (t, i) {
+      if (!t || typeof t !== 'object' || Array.isArray(t)) return;
+      // RR, OR and other estimands are not HR and must never enter HR/NNT.
+      if (t.estimandType != null &&
+          String(t.estimandType).trim().toUpperCase() !== 'HR') return;
+      var hasEffect = ['HR', 'HR_ci_lo', 'HR_ci_hi',
+                       'publishedHR', 'hrLCI', 'hrUCI'].some(function (key) {
+        return hasOwn(t, key);
+      });
+      if (!hasEffect && String(t.estimandType || '').trim().toUpperCase() !== 'HR') return;
+      var HR = finiteDecimal(sourceValue(t, 'HR', 'publishedHR'));
+      var lo = finiteDecimal(sourceValue(t, 'HR_ci_lo', 'hrLCI'));
+      var hi = finiteDecimal(sourceValue(t, 'HR_ci_hi', 'hrUCI'));
+      if (HR === null || lo === null || hi === null ||
+          !(0 < lo && lo <= HR && HR <= hi && lo < hi)) {
+        if (error === null) error = 'Invalid summary-HR effect or 95% CI in source row ' + (i + 1);
+        return;
+      }
+      out.push({
+        studlab: String(t.name || t.studlab || '?'),
+        HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
+        events_ctl: finiteDecimal(sourceValue(t, 'events_ctl', 'cE')),
+        n_ctl: finiteDecimal(sourceValue(t, 'n_ctl', 'cN'))
+      });
+    });
+    return { trials: out, error: error };
+  }
+
+    function inferBaselineRisk(trials) {
     // If multiple trials carry events_ctl + n_ctl, take the median crude rate.
     var rates = [];
     trials.forEach(function (t) {
@@ -94,20 +118,39 @@
     return html;
   }
 
+  function showRefusal(P, reason) {
+    var panel = P.buildCollapsiblePanel({
+      id: 'hr-nnt-panel',
+      badge: 'NNT (HR)',
+      summary: 'Refused: summary-HR/NNT evidence invalid',
+      bodyHtml: '<div role="alert">Summary-HR/NNT pooling refused: ' +
+                reason + '. No pooled HR or NNT has been calculated.</div>',
+      storageKey: STORAGE_KEY
+    });
+    var existing = document.getElementById('hr-nnt-panel');
+    if (existing) existing.replaceWith(panel);
+    else P.insertAfterRBadge(panel);
+    return true;
+  }
+
   function render() {
     var P = global.PanelHelper;
     var SURV = global.RapidMetaSurvival;
     if (!P || !SURV) return false;
     var rd = P.getRealData();
     if (!rd) return false;
-    var trials = extractSurvivalTrials(rd);
+    var extracted = extractSurvivalTrials(rd);
+    if (extracted.error) return showRefusal(P, extracted.error);
+    var trials = extracted.trials;
     if (trials.length < 2) return false;
 
     var fit;
     try { fit = SURV.fit(trials); }
     catch (e) {
-      console.warn('[hr-nnt-panel] fit failed:', e);
-      return false;
+      return showRefusal(P, 'The summary-HR estimator rejected these records');
+    }
+    if (!fit || fit.error) {
+      return showRefusal(P, 'Invalid or numerically unrepresentable summary-HR evidence');
     }
 
     var baseline = inferBaselineRisk(trials);
