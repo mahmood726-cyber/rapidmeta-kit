@@ -75,7 +75,10 @@ const wrongTypeRows = [
   {label: 'boolean HR', iv: interval(0, 6, true, 0.8, 1.2)},
   {label: 'array HR', iv: interval(0, 6, [0.8], 0.6, 1.2)},
   {label: 'boolean lower CI', iv: interval(0, 6, 1.2, true, 1.5)},
-  {label: 'array upper CI', iv: interval(0, 6, 0.8, 0.6, [1.2])}
+  {label: 'array upper CI', iv: interval(0, 6, 0.8, 0.6, [1.2])},
+  {label: 'hexadecimal HR', iv: interval(0, 6, '0x1', 0.8, 1.2)},
+  {label: 'binary HR', iv: interval(0, 6, '0b1', 0.8, 1.2)},
+  {label: 'octal CI', iv: interval(0, 6, 1.5, 1.0, '0o2')}
 ];
 for (const {label, iv} of wrongTypeRows) {
   const bad = S.intervalHRPool([...baseline, {nct: 'D', intervals: [iv]}], [0, 6]);
@@ -88,6 +91,12 @@ const numericTextEffect = S.intervalHRPool([
 ], [0, 6]);
 assert.equal(numericTextEffect.error, undefined);
 assert.equal(numericTextEffect.intervals[0].k, 4);
+// Valid scientific-notation decimals must not be rejected by the new guard.
+const scientificTextEffect = S.intervalHRPool([
+  ...baseline, {nct: 'D', intervals: [interval('0e0', '6e0', '7.5e-1', '6e-1', '9.2e-1')]}
+], [0, 6]);
+assert.equal(scientificTextEffect.error, undefined);
+assert.equal(scientificTextEffect.intervals[0].k, 4);
 
 // Multiple objects with the same canonical NCT are still ONE study; the
 // pre-fix engine falsely reported k=4 with a 95% CI excluding the null.
@@ -197,7 +206,8 @@ assert.deepEqual(outOfScope.intervals.map(w => w.k), [1]);
 // JavaScript Number(null)/Number('') coercion. No clinical data are involved.
 for (const [label, start] of [
   ['blank', ''], ['whitespace', '   '], ['null', null],
-  ['boolean', false], ['negative', -1]
+  ['boolean', false], ['negative', -1],
+  ['hexadecimal', '0x0'], ['binary', '0b0'], ['octal', '0o0']
 ]) {
   const malformedTime = S.intervalHRPool([
     {name:'A', intervals:[interval(start, 6, 0.75, 0.60, 0.92)]},

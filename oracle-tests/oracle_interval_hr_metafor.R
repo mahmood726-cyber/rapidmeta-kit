@@ -12,8 +12,22 @@ if (as.character(getRversion()) != "4.4.3" ||
 if (length(commandArgs(trailingOnly = TRUE)) != 0L)
   stop("no command-line model overrides permitted", call. = FALSE)
 
-d <- read.table(file("stdin"), header = TRUE, sep = "\t", quote = "",
-                check.names = FALSE, stringsAsFactors = FALSE)
+# Require a literal decimal or scientific-notation number in each source
+# numeric field BEFORE read.table() can type-convert R hexadecimal literals.
+# A non-decimal source token is not an independently verified ratio or month.
+raw_lines <- readLines(file("stdin"), warn = FALSE)
+decimal_pattern <- "^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$"
+fields <- if (length(raw_lines) > 1L) {
+  strsplit(raw_lines[-1L], "\t", fixed = TRUE)
+} else list()
+valid_fields <- length(fields) > 0L && all(vapply(fields, function(x) {
+  length(x) == 6L && all(grepl(decimal_pattern, trimws(x[2:6]), perl = TRUE))
+}, logical(1L)))
+if (!valid_fields)
+  stop("invalid or incomplete interval-HR source table", call. = FALSE)
+d <- read.table(text = paste(raw_lines, collapse = "\n"), header = TRUE,
+                sep = "\t", quote = "", check.names = FALSE,
+                stringsAsFactors = FALSE)
 required <- c("trial", "t0", "t1", "HR", "lo", "hi")
 if (!identical(names(d), required) || nrow(d) < 1L ||
     anyNA(d) || any(!nzchar(trimws(d$trial))) ||

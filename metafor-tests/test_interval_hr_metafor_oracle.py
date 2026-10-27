@@ -307,6 +307,34 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         decimal_text = (("A", 0, 6, "0.75", "0.60", "0.92"),) + NEAR[1:]
         compare(run_js(decimal_text), run_r(decimal_text))
 
+    def test_non_decimal_numeric_source_tokens_refused_in_js_and_native_r(self):
+        # Prior JS Number coercion silently accepted non-decimal source
+        # representations as plausible trial effects or follow-up months.
+        # These are synthetic input-type refusals, not clinical R parity.
+        cases = (
+            ("hexadecimal_HR", ("A", 0, 6, "0x1", 0.8, 1.2),
+             "Invalid interval-HR effect"),
+            ("binary_HR", ("A", 0, 6, "0b1", 0.8, 1.2),
+             "Invalid interval-HR effect"),
+            ("octal_CI", ("A", 0, 6, 1.5, 1.0, "0o2"),
+             "Invalid interval-HR effect"),
+            ("hexadecimal_time", ("A", "0x0", 6, 0.75, 0.60, 0.92),
+             "Invalid interval-HR time boundaries"),
+        )
+        for label, row, reason in cases:
+            with self.subTest(source_token=label):
+                rows = (row,) + NEAR[1:]
+                observed = run_js(rows)
+                self.assertEqual(observed.get("intervals"), [])
+                self.assertRegex(observed.get("error", ""), reason)
+                native = r_process(rows)
+                self.assertNotEqual(native.returncode, 0, native.stdout)
+                self.assertIn("invalid or incomplete interval-HR source table",
+                              native.stderr)
+        # Decimal scientific notation remains valid in both executables.
+        good = (("A", "0e0", "6e0", "7.5e-1", "6e-1", "9.2e-1"),) + NEAR[1:]
+        compare(run_js(good), run_r(good))
+
     def test_unrepresentable_pooled_hr_interval_refused_in_js_and_r(self):
         # Finite source rows can yield nonrepresentable exp(CI). Before
         # the correction, shipped JS returned a zero lower bound and

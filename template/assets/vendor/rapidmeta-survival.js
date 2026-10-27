@@ -210,16 +210,24 @@
   // bp = sorted breakpoint array; pools each [t0,t1] window across trials.
   // A missing/blank follow-up boundary is not a reported month-zero value.
   // Preserve nonblank numeric-string compatibility with imported source data.
-  function validTimeBoundary(value) {
-    return (typeof value === 'number' && isFinite(value))
-      || (typeof value === 'string' && value.trim() !== '' && isFinite(Number(value)));
+  // Strict decimal / scientific-notation strings only.  Number("0x1"),
+  // Number("0b1") and Number("0o1") silently reinterpret non-decimal source
+  // text as numeric clinical effects or follow-up times.
+  function validDecimalText(value) {
+    if (typeof value !== 'string') return false;
+    var raw = value.trim();
+    return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)
+      && isFinite(Number(raw));
   }
 
-  // Reported effect measures may be finite numbers or nonblank numeric text.
-  // Coercing booleans/arrays with unary + fabricates a valid-looking HR or CI.
+  function validTimeBoundary(value) {
+    return (typeof value === 'number' && isFinite(value)) || validDecimalText(value);
+  }
+
+  // Reported effects must be finite numbers or explicitly decimal text.
+  // Refuse implicit boolean/array/hex/binary/octal conversions before fitting.
   function validEffectValue(value) {
-    return (typeof value === 'number' && isFinite(value))
-      || (typeof value === 'string' && value.trim() !== '' && isFinite(Number(value)));
+    return (typeof value === 'number' && isFinite(value)) || validDecimalText(value);
   }
 
   function intervalHRPool(trials, bp) {
