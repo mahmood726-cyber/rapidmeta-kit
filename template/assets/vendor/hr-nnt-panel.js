@@ -11,27 +11,57 @@
 
   var STORAGE_KEY = 'hr-nnt-panel-expanded';
 
+  // Source-safe number conversion: no boolean, null, array or radix coercion.
+  function decimalValue(raw) {
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw : NaN;
+    if (typeof raw !== 'string') return NaN;
+    var s = raw.trim();
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)) return NaN;
+    var n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function owns(obj, key) {
+    return Object.prototype.hasOwnProperty.call(obj, key);
+  }
+
+  function chosenNumber(t, primary, alias) {
+    // If a primary source field is present but invalid, do not silently fall
+    // back to an alternative estimate/CI from a different provenance.
+    if (owns(t, primary)) return decimalValue(t[primary]);
+    if (owns(t, alias)) return decimalValue(t[alias]);
+    return NaN;
+  }
+
   function extractSurvivalTrials(rd) {
-    if (!rd) return [];
+    if (!rd || typeof rd !== 'object') return [];
     var out = [];
     Object.values(rd).forEach(function (t) {
-      // Only pool genuine hazard-ratio trials — RR/OR packs (finerenone is
-      // estimandType:'RR') must NOT be surfaced as HRs (category error).
-      if (String(t.estimandType || 'HR').toUpperCase() !== 'HR') return;
-      // Accept either the survival-panel field names (HR/HR_ci_lo/HR_ci_hi) or
-      // the rapidmeta realData names (publishedHR/hrLCI/hrUCI).
-      var HR = isFinite(+t.HR) ? +t.HR : +t.publishedHR;
-      var lo = isFinite(+t.HR_ci_lo) ? +t.HR_ci_lo : +t.hrLCI;
-      var hi = isFinite(+t.HR_ci_hi) ? +t.HR_ci_hi : +t.hrUCI;
-      if (isFinite(HR) && isFinite(lo) && isFinite(hi)) {
-        out.push({
-          studlab: String(t.name || t.studlab || '?'),
-          HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
-          // baseline-risk for NNT: fall back to comparator-arm 2x2 (cE/cN).
-          events_ctl: isFinite(+t.events_ctl) ? +t.events_ctl : +t.cE,
-          n_ctl: isFinite(+t.n_ctl) ? +t.n_ctl : +t.cN
-        });
+      if (!t || typeof t !== 'object' || Array.isArray(t)) return;
+      // RR/OR packs must never be mislabeled as a summary HR.
+      if (String(t.estimandType || 'HR').trim().toUpperCase() !== 'HR') return;
+      var anyHR = ['HR', 'publishedHR', 'HR_ci_lo', 'hrLCI', 'HR_ci_hi', 'hrUCI']
+        .some(function (key) { return owns(t, key); });
+      if (!anyHR && t.estimandType == null) return;
+      var HR = chosenNumber(t, 'HR', 'publishedHR');
+      var lo = chosenNumber(t, 'HR_ci_lo', 'hrLCI');
+      var hi = chosenNumber(t, 'HR_ci_hi', 'hrUCI');
+      if (!(HR > 0 && lo > 0 && hi > lo && HR >= lo && HR <= hi)) {
+        throw new Error('declared summary-HR estimate/CI is malformed or internally inconsistent');
       }
+      var events = chosenNumber(t, 'events_ctl', 'cE');
+      var size = chosenNumber(t, 'n_ctl', 'cN');
+      var hasControl = ['events_ctl', 'cE', 'n_ctl', 'cN']
+        .some(function (key) { return owns(t, key); });
+      if (hasControl && !(Number.isInteger(events) && Number.isInteger(size) &&
+                          size > 0 && events >= 0 && events <= size)) {
+        throw new Error('declared comparator-arm baseline data malformed');
+      }
+      out.push({
+        studlab: String(t.name || t.studlab || '?'),
+        HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
+        events_ctl: events, n_ctl: size
+      });
     });
     return out;
   }
@@ -94,21 +124,39 @@
     return html;
   }
 
+  function refusedPanel(P) {
+    // A visible refusal rather than a missing panel or an NNT from fewer rows.
+    var panel = P.buildCollapsiblePanel({
+      id: 'hr-nnt-panel',
+      badge: 'NNT (HR)',
+      summary: 'NNT unavailable — HR source validation failed',
+      bodyHtml: '<div role="alert" style="padding:10px;border:1px solid #92400e;color:#fbbf24;">'
+              + 'Hazard-ratio evidence or confidence limits were malformed or inconsistent. '
+              + 'No pooled HR or NNT was calculated, and no study was silently dropped.'
+              + '</div>',
+      storageKey: STORAGE_KEY
+    });
+    var existing = document.getElementById('hr-nnt-panel');
+    if (existing) existing.replaceWith(panel);
+    else P.insertAfterRBadge(panel);
+    return true;
+  }
+
   function render() {
     var P = global.PanelHelper;
     var SURV = global.RapidMetaSurvival;
     if (!P || !SURV) return false;
     var rd = P.getRealData();
     if (!rd) return false;
-    var trials = extractSurvivalTrials(rd);
+    var trials;
+    try { trials = extractSurvivalTrials(rd); }
+    catch (e) { return refusedPanel(P); }
     if (trials.length < 2) return false;
 
     var fit;
     try { fit = SURV.fit(trials); }
-    catch (e) {
-      console.warn('[hr-nnt-panel] fit failed:', e);
-      return false;
-    }
+    catch (e) { return refusedPanel(P); }
+    if (!fit || fit.k !== trials.length) return refusedPanel(P);
 
     var baseline = inferBaselineRisk(trials);
     var nnt = SURV.nntForHR(fit.pooled_HR, baseline);

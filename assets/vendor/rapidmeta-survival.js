@@ -182,15 +182,32 @@
   }
 
   // ---- public: summary log-HR pool -----------------------------------------
+  // Preserve source types. Number(true), Number(null), arrays and radix text
+  // cannot be treated as published hazard-ratio observations. An invalid
+  // declared row must refuse the whole pool rather than silently changing k.
+  function strictSummaryNumber(raw) {
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw : NaN;
+    if (typeof raw !== 'string') return NaN;
+    var s = raw.trim();
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)) return NaN;
+    var n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
   function fit(trials) {
+    if (!Array.isArray(trials) || trials.length === 0) return null;
     var pts = [];
-    (trials || []).forEach(function (t) {
-      var HR = +t.HR, lo = +t.HR_ci_lo, hi = +t.HR_ci_hi;
-      if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
-        pts.push(logHRfromCI(HR, lo, hi));
-      }
-    });
-    if (pts.length < 1) return null;
+    for (var i = 0; i < trials.length; i++) {
+      var t = trials[i];
+      if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
+      if (t.estimandType != null && String(t.estimandType).trim().toUpperCase() !== 'HR') return null;
+      var HR = strictSummaryNumber(t.HR);
+      var lo = strictSummaryNumber(t.HR_ci_lo);
+      var hi = strictSummaryNumber(t.HR_ci_hi);
+      // A central HR outside its stated CI is internally inconsistent.
+      if (!(HR > 0 && lo > 0 && hi > lo && HR >= lo && HR <= hi)) return null;
+      pts.push(logHRfromCI(HR, lo, hi));
+    }
     var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));
     if (!p) return null;
     return {
