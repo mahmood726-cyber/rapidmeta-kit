@@ -70,6 +70,24 @@ for (const dir of dirs) {
     }
     count++;
   }
+  for (const [kind, badType] of [
+    ['false', false], ['zero', 0], ['null', null], ['array', []],
+    ['blank', '   ']
+  ]) {
+    const typed = {...a, estimandType:badType};
+    assert.equal(surv.fit([b,typed]),null,dir+' engine rejects '+kind+' effect type');
+    count++;
+    const refused = panel(p,surv,{A:b,B:typed});
+    assert.ok(refused.rendered && refused.bodyHtml.includes('role="alert"'),
+              dir+' visible refusal for '+kind+' effect type');
+    count++;
+  }
+  for (const [kind, broken] of [['null',null],['array',[]],['string','broken']]) {
+    const refused = panel(p,surv,{A:a,B:b,C:broken});
+    assert.ok(refused.rendered && refused.bodyHtml.includes('role="alert"'),
+              dir+' rejects malformed '+kind+' record without silently reducing k');
+    count++;
+  }
   let displayed = panel(p,surv,{A:a,B:{...a,HR:-1},C:b});
   assert.ok(displayed.rendered && displayed.bodyHtml.includes('role="alert"'),
             dir+' cannot silently shrink k=3 to k=2');

@@ -37,9 +37,18 @@
     if (!rd || typeof rd !== 'object') return [];
     var out = [];
     Object.values(rd).forEach(function (t) {
-      if (!t || typeof t !== 'object' || Array.isArray(t)) return;
-      // RR/OR packs must never be mislabeled as a summary HR.
-      if (String(t.estimandType || 'HR').trim().toUpperCase() !== 'HR') return;
+      if (!t || typeof t !== 'object' || Array.isArray(t)) {
+        throw new Error('malformed declared source record');
+      }
+      // Declared source effect types must be genuine, nonempty strings.
+      // Reject falsely defaulting false/0/null to the HR estimand.
+      if (owns(t, 'estimandType')) {
+        if (typeof t.estimandType !== 'string' || !t.estimandType.trim()) {
+          throw new Error('malformed declared effect type');
+        }
+        // Explicit RR/OR records are out of this HR-only panel, not HRs.
+        if (t.estimandType.trim().toUpperCase() !== 'HR') return;
+      }
       var anyHR = ['HR', 'publishedHR', 'HR_ci_lo', 'hrLCI', 'HR_ci_hi', 'hrUCI']
         .some(function (key) { return owns(t, key); });
       if (!anyHR && t.estimandType == null) return;
