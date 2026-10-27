@@ -73,6 +73,21 @@ const textControl = S.fit([
 assert.equal(textControl.k,2,'scientific notation accepted');
 assert.ok(Math.abs(textControl.pooled_HR-good.pooled_HR)<1e-12);
 
+// Cochrane Handbook Chapter 4: several reports of one registered trial
+// are one study, not independent inverse-variance observations.
+const trialIdA = {...goodA, nct:'NCT00000421'};
+const trialIdDuplicate = {...goodB, nct_id:' nct00000421 '};
+const trialIdDistinct = {...goodB, nctId:'NCT00000422'};
+const maskedDuplicate = {...trialIdDuplicate, nct:'NCT00000423'};
+assert.equal(S.fit([trialIdA,trialIdDuplicate]),null,
+             'same study across NCT aliases cannot be counted twice');
+assert.equal(S.fit([trialIdDuplicate,trialIdA]),null,'order cannot conceal reuse');
+assert.equal(S.fit([trialIdA,maskedDuplicate]),null,
+             'unrelated first alias must not hide a repeated identifier');
+assert.equal(S.fit([trialIdA,trialIdDistinct]).k,2,'distinct NCT positive');
+assert.equal(S.fit([{...trialIdA,studyId:' nct00000421 '},trialIdDistinct]).k,2,
+             'several aliases within one record are permitted');
+
 const panel = require('./' + copy + '/vendor/hr-nnt-panel.js');
 let cfg;
 const P = {
@@ -161,6 +176,18 @@ assert.match(cfg.bodyHtml,/fixed follow-up time/);
 P.getRealData=()=>({a:goodA,b:goodB});
 assert.equal(panel.HRNNTPanel.render(),true,'valid comparator counts');
 assert.match(cfg.summary,/Exploratory NNTB.*k=2/);
+
+// The panel must preserve source IDs rather than pooling duplicate reports.
+P.getRealData=()=>({a:trialIdA,b:trialIdDuplicate});
+assert.equal(panel.HRNNTPanel.render(),true,'duplicate NCT panel refusal');
+assert.match(cfg.summary,/^Refused:/,'duplicate NCT visible refusal');
+assert.match(cfg.bodyHtml,/role="alert"/,'no displayed NNT from duplicated study');
+P.getRealData=()=>({a:trialIdA,b:maskedDuplicate});
+assert.equal(panel.HRNNTPanel.render(),true,'checks all source ID aliases');
+assert.match(cfg.summary,/^Refused:/,'masked duplicate visibly refused');
+P.getRealData=()=>({a:trialIdA,b:trialIdDistinct});
+assert.equal(panel.HRNNTPanel.render(),true,'two distinct NCT studies permitted');
+assert.match(cfg.summary,/Exploratory NNTB.*k=2/,'distinct-study positive');
 
 console.log('PASS: synthetic summary-HR and HR-NNT source/refusal guards');
 """

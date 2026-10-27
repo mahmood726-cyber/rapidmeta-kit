@@ -56,12 +56,18 @@
         if (error === null) error = 'Invalid summary-HR effect or 95% CI in source row ' + (i + 1);
         return;
       }
-      out.push({
+      var sourceTrial = {
         studlab: String(t.name || t.studlab || '?'),
         HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
         events_ctl: finiteDecimal(sourceValue(t, 'events_ctl', 'cE')),
         n_ctl: finiteDecimal(sourceValue(t, 'n_ctl', 'cN'))
+      };
+      // Preserve source identifiers through panel extraction for the
+      // summary pool's independent-study unit-of-analysis check.
+      ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'].forEach(function (field) {
+        if (hasOwn(t, field)) sourceTrial[field] = t[field];
       });
+      out.push(sourceTrial);
     });
     return { trials: out, error: error };
   }

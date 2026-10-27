@@ -197,6 +197,9 @@
   function fit(trials) {
     if (!Array.isArray(trials) || trials.length < 1) return null;
     var pts = [];
+    // A reported trial is one study, even if it has multiple publications or IDs.
+    var seenStudyIds = Object.create(null);
+    var studyIdFields = ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'];
     for (var i = 0; i < trials.length; i++) {
       var t = trials[i];
       if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
@@ -205,6 +208,17 @@
       if (Object.prototype.hasOwnProperty.call(t, 'estimandType') &&
           (typeof t.estimandType !== 'string' ||
            t.estimandType.trim().toUpperCase() !== 'HR')) return null;
+      // Inspect every stable source alias. A different first alias cannot
+      // conceal a repeated NCT. Aliases within the same row are permitted.
+      for (var si = 0; si < studyIdFields.length; si++) {
+        var rawStudyId = t[studyIdFields[si]];
+        if (typeof rawStudyId !== 'string') continue;
+        var studyId = rawStudyId.trim().toLowerCase();
+        if (!studyId) continue;
+        if (Object.prototype.hasOwnProperty.call(seenStudyIds, studyId) &&
+            seenStudyIds[studyId] !== i) return null;
+        seenStudyIds[studyId] = i;
+      }
       var HR = finiteDecimal(t.HR);
       var lo = finiteDecimal(t.HR_ci_lo);
       var hi = finiteDecimal(t.HR_ci_hi);
