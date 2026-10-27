@@ -389,5 +389,131 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "HR differs"):
             compare(observed, expected)
 
+
+    def test_summary_hr_rem_l_hksj_against_live_metafor_and_nnt_r_formula(self):
+        """Method-matched, synthetic summary HR + specified-risk algebra only.
+
+        The separately executed interval-HR R oracle is valid here because
+        summary fit() uses the same logHRfromCI and poolLogRE functions as
+        intervalHRPool() but without time-window selection. Every input below
+        has exactly one common analysis window; the JS call exercises the
+        separate published summary fit(), not intervalHRPool(). The NNT R
+        calculation conditions on an explicitly synthetic fixed baseline
+        event risk and makes NO claim that crude counts are fixed-time
+        censoring-adjusted survival or clinically valid NNT evidence.
+        """
+        import hashlib
+
+        summary_js = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const records = JSON.parse(process.argv[1]);
+const trials = records.map(x=>({studlab:x[0],HR:x[1],HR_ci_lo:x[2],HR_ci_hi:x[3]}));
+const fitted = S.fit(trials);
+const risk = Number(process.argv[2]);
+console.log(JSON.stringify({fit:fitted,nnt:fitted?S.nntForHR(fitted.pooled_HR,risk):null}));
+"""
+        # Independent base-R implementation of S_control(t)^HR - S_control(t).
+        # The comparator tests arithmetic at a supplied synthetic risk;
+        # it does not validate estimation of S_control(t) in an actual trial.
+        nnt_r = r"""
+stopifnot(as.character(getRversion())=="4.4.3")
+a <- commandArgs(trailingOnly=TRUE)
+stopifnot(length(a)==2L)
+hr <- as.numeric(a[1]); risk <- as.numeric(a[2])
+stopifnot(is.finite(hr),hr>0,is.finite(risk),risk>0,risk<1)
+s0 <- 1-risk
+arr <- s0^hr-s0
+stopifnot(is.finite(arr),abs(arr)>1e-9)
+cat(sprintf("%.17g\t%.17g\t%.17g\t%s\n",arr,1-s0^hr,1/abs(arr),
+            ifelse(arr>0,"NNTB","NNTH")))
+"""
+        positive = (
+            ("single_normal", SINGLE),
+            ("two_study_reml", PAIR_NEAR),
+            ("three_study_reml", NEAR),
+            ("heterogeneous_reml", HETERO),
+        )
+        for label, rows in positive:
+            with self.subTest(case=label):
+                raw = [(trial, hr, lo, hi) for trial, _t0, _t1, hr, lo, hi in rows]
+                input_json = json.dumps(raw, separators=(",", ":"))
+                digest = hashlib.sha256(input_json.encode("utf-8")).hexdigest()
+                print(f"summary-HR native R synthetic fixture {label} sha256={digest}")
+                proc = subprocess.run(
+                    ["node", "-e", summary_js, input_json, "0.2"],
+                    cwd=ROOT, capture_output=True, text=True, timeout=30,
+                    check=False,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                js = json.loads(proc.stdout)
+                fitted = js["fit"]
+                self.assertIsNotNone(fitted, "summary fit refused positive fixture")
+                r_rows = run_r(rows)
+                self.assertEqual(len(r_rows), 1, "expected one source-matched window")
+                ref = r_rows[0]
+                self.assertEqual(fitted["k"], int(ref["k"]))
+                for js_key, r_key in (
+                    ("pooled_HR", "HR"),
+                    ("pooled_HR_ci_lo", "ci_lo"),
+                    ("pooled_HR_ci_hi", "ci_hi"),
+                    ("tau2", "tau2"),
+                ):
+                    self.assertTrue(
+                        math.isclose(fitted[js_key], ref[r_key],
+                                     rel_tol=1e-3, abs_tol=1e-3),
+                        f"{label}: {js_key} JS={fitted[js_key]} R={ref[r_key]}",
+                    )
+                # Test the separate NNT function against actual base R,
+                # using the JS pooled HR as the common formula input.
+                r_nnt = subprocess.run(
+                    ["Rscript", "--vanilla", "-e", nnt_r,
+                     format(fitted["pooled_HR"], ".17g"), "0.2"],
+                    cwd=ROOT, capture_output=True, text=True, timeout=30,
+                    check=False,
+                )
+                self.assertEqual(r_nnt.returncode, 0, r_nnt.stderr)
+                fields = r_nnt.stdout.strip().split("\t")
+                self.assertEqual(len(fields), 4, r_nnt.stdout)
+                for key, expected in zip(("arr", "tx_risk", "nnt"), fields[:3]):
+                    self.assertTrue(
+                        math.isclose(js["nnt"][key], float(expected),
+                                     rel_tol=1e-10, abs_tol=1e-10),
+                        f"{label}: NNT arithmetic {key} differs from live R",
+                    )
+                self.assertEqual(js["nnt"]["direction"], fields[3])
+                # Negative perturbation: fitted estimator differences beyond
+                # the declared tolerance MUST be detected, not swallowed.
+                self.assertFalse(
+                    math.isclose(fitted["pooled_HR"] + 0.1, ref["HR"],
+                                 rel_tol=1e-3, abs_tol=1e-3)
+                )
+
+    def test_summary_hr_source_refusal_against_live_r_oracle(self):
+        """R and summary JS refuse malformed declared evidence, never partial k."""
+        summary_js = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const rows=JSON.parse(process.argv[1]);
+console.log(JSON.stringify(S.fit(rows.map(x=>({HR:x[3],HR_ci_lo:x[4],HR_ci_hi:x[5]})))));
+"""
+        for label, bad_hr in (
+            ("boolean", True), ("hexadecimal", "0x1"),
+            ("nonpositive", -1), ("point_above_CI", 2.0),
+        ):
+            with self.subTest(case=label):
+                # A bad middle record cannot be silently removed to pool k=2.
+                rows = (NEAR[0], ("BAD", 0, 6, bad_hr, 0.6, 1.2), NEAR[1])
+                js = subprocess.run(
+                    ["node", "-e", summary_js, json.dumps(rows)],
+                    cwd=ROOT, capture_output=True, text=True, timeout=30,
+                    check=False,
+                )
+                self.assertEqual(js.returncode, 0, js.stderr)
+                self.assertIsNone(json.loads(js.stdout),
+                                  "malformed source must not yield summary HR")
+                r = r_process(rows)
+                self.assertNotEqual(r.returncode, 0, r.stdout)
+                self.assertIn("invalid or incomplete interval-HR source table",
+                              r.stderr)
+
 if __name__ == "__main__":
     unittest.main()
