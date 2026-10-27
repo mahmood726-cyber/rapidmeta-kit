@@ -117,8 +117,35 @@ assert.match(cfg.summary,/^Refused:/,'malformed primary must not use fallback');
 P.getRealData=()=>({a:{...goodA,HR:undefined,publishedHR:0.75},b:goodB});
 assert.equal(panel.HRNNTPanel.render(),true);
 assert.match(cfg.summary,/^Refused:/,'missing explicit primary must not use fallback');
-P.getRealData=()=>({a:{...goodA,estimandType:'RR'},b:{...goodB,estimandType:'OR'}});
+// Cochrane Ch 6: a declared RR/OR and a reported HR are distinct measures.
+const rrOnly={name:'RR-only outcome',estimandType:'RR',RR:0.76};
+const orOnly={name:'OR-only outcome',estimandType:'OR',OR:0.87};
+P.getRealData=()=>({a:rrOnly,b:orOnly});
 assert.equal(panel.HRNNTPanel.render(),false,'RR/OR-only pack cannot produce an HR NNT');
+for (const [label,bad] of [
+  ['RR type conflicts with explicit HR', {...goodA,estimandType:'RR'}],
+  ['OR type conflicts with explicit HR', {...goodB,estimandType:'OR'}],
+  ['RR type conflicts with HR alias', {
+    name:'HR alias conflict',estimandType:'RR',
+    publishedHR:0.75,hrLCI:0.60,hrUCI:0.92
+  }]
+]) {
+  for (const payload of [
+    {a:bad,b:goodA,c:goodB},
+    {a:goodA,b:goodB,c:bad}
+  ]) {
+    P.getRealData=()=>payload;
+    assert.equal(panel.HRNNTPanel.render(),true,label);
+    assert.match(cfg.summary,/^Refused:/,label);
+    assert.match(cfg.bodyHtml,/Conflicting non-HR estimand type/,label);
+    assert.match(cfg.bodyHtml,/role="alert"/,label);
+    assert.doesNotMatch(cfg.summary,/NNTB|NNTH|k=/,label);
+  }
+}
+P.getRealData=()=>({a:goodA,b:goodB,c:rrOnly});
+assert.equal(panel.HRNNTPanel.render(),true,
+             'unambiguous separate RR-only outcome may be excluded');
+assert.match(cfg.summary,/Exploratory NNTB.*k=2/);
 
 for (const [index, badType] of malformedTypes.entries()) {
   for (const data of [
