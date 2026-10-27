@@ -61,22 +61,28 @@
   }
 
   function inferBaselineRisk(trials) {
-    // If multiple trials carry events_ctl + n_ctl, take the median crude rate.
+    // This is only a crude-risk, exploratory proxy, NOT fixed-time survival.
+    // Missing/malformed comparator arms cannot justify an invented 10% risk.
     var rates = [];
-    trials.forEach(function (t) {
-      if (typeof t.events_ctl === 'number' && typeof t.n_ctl === 'number' && t.n_ctl > 0) {
-        rates.push(t.events_ctl / t.n_ctl);
-      }
-    });
-    if (rates.length === 0) return 0.10; // 10% fallback
+    for (var i = 0; i < trials.length; i++) {
+      var e = trials[i].events_ctl, n = trials[i].n_ctl;
+      if (!Number.isSafeInteger(e) || !Number.isSafeInteger(n) ||
+          n <= 0 || e < 0 || e > n) return null;
+      rates.push(e / n);
+    }
+    if (!rates.length) return null;
     rates.sort(function (a, b) { return a - b; });
     var mid = Math.floor(rates.length / 2);
-    return rates.length % 2 ? rates[mid] : 0.5 * (rates[mid - 1] + rates[mid]);
+    var median = rates.length % 2 ? rates[mid] : 0.5 * (rates[mid - 1] + rates[mid]);
+    // A zero/one baseline makes an HR-based finite NNT non-identifiable.
+    return isFinite(median) && median > 0 && median < 1 ? median : null;
   }
 
   function buildBody(P, trials, fit, baselineRisk, nnt, nntCiLo, nntCiHi) {
     var fmt = P.fmt;
-    var html = '';
+    var html = '<div role="note">Exploratory HR-to-NNT conversion only: crude control-arm event rates ' +
+               'do not establish a common fixed follow-up time or Kaplan–Meier baseline survival. ' +
+               'No clinically validated time-specific NNT is claimed.</div>';
 
     if (nnt.nnt == null) {
       html += '<div style="background:#3a2a0a;border:1px solid #92400e;color:#fbbf24;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
@@ -108,7 +114,7 @@
     html += '</div>';
 
     html += '<div style="font-size:10.5px;color:#94a3b8;margin-top:8px;line-height:1.5;">'
-          + 'Method: NNT for time-to-event meta-analyses (Altman & Andersen 2002). '
+          + 'Method: NNT for time-to-event meta-analyses (Altman & Andersen 1999). '
           + 'ARR = R_ctl − (1 − (1 − R_ctl)^HR); NNT = 1/|ARR|. '
           + 'Baseline risk inferred as the median crude control-arm event rate across trials. '
           + 'Confidence bounds derived by applying the formula to the pooled HR CI limits. '
@@ -154,6 +160,9 @@
     }
 
     var baseline = inferBaselineRisk(trials);
+    if (baseline === null) {
+      return showRefusal(P, 'Missing or invalid comparator-arm event counts; no source-based baseline risk');
+    }
     var nnt = SURV.nntForHR(fit.pooled_HR, baseline);
     var nntCiLo = null, nntCiHi = null;
     if (fit.pooled_HR_ci_lo > 0 && fit.pooled_HR_ci_hi > 0) {
@@ -170,7 +179,7 @@
     if (nnt.nnt == null) {
       summary = 'NNT undefined · pooled HR ' + fmt(fit.pooled_HR, 2);
     } else {
-      summary = nnt.direction + ' ' + Math.ceil(nnt.nnt) +
+      summary = 'Exploratory ' + nnt.direction + ' ' + Math.ceil(nnt.nnt) +
                 (nntCiLo != null ? ' [' + Math.ceil(nntCiLo) + '–' + Math.ceil(nntCiHi) + ']' : '') +
                 ' · baseline ' + fmt(baseline * 100, 1) + '% · k=' + trials.length;
     }

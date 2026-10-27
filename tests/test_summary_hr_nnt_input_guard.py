@@ -98,6 +98,42 @@ P.getRealData=()=>({a:{...goodA,HR:'7.5e-1',HR_ci_lo:'6e-1',HR_ci_hi:'9.2e-1'},
 assert.equal(panel.HRNNTPanel.render(),true);
 assert.match(cfg.summary,/k=2/);
 assert.doesNotMatch(cfg.summary,/^Refused:/);
+// BMJ 1999 Altman-Andersen: time-to-event NNT requires baseline risk at a
+// defined time; invented 10% baseline or impossible source counts must refuse.
+const invalidBaselines = [
+  ['all comparator counts absent', {...goodA,events_ctl:undefined,n_ctl:undefined},
+    {...goodB,events_ctl:undefined,n_ctl:undefined}],
+  ['one comparator count missing', goodA, {...goodB,n_ctl:undefined}],
+  ['late invalid comparator events', goodA, {...goodB,events_ctl:-3}],
+  ['events exceed arm size', {...goodA,events_ctl:200},goodB],
+  ['fractional comparator events', {...goodA,events_ctl:1.5},goodB],
+  ['fractional denominator', {...goodA,n_ctl:99.5},goodB],
+  ['zero comparator size', {...goodA,n_ctl:0},goodB],
+  ['boolean comparator size', {...goodA,n_ctl:true},goodB],
+  ['hex comparator total', {...goodA,n_ctl:'0x64'},goodB],
+  ['overflow comparator size', {...goodA,n_ctl:1e20},goodB],
+  ['malformed primary baseline alias', {...goodA,events_ctl:'',cE:20},goodB],
+  ['zero risk in all trials', {...goodA,events_ctl:0},{...goodB,events_ctl:0}],
+  ['unit risk in all trials', {...goodA,events_ctl:100},{...goodB,events_ctl:100}]
+];
+for (const [label,a,b] of invalidBaselines) {
+  P.getRealData=()=>({a,b});
+  assert.ok(S.fit([a,b]) && S.fit([a,b]).k===2,
+            label+' should not modify valid HR fit');
+  assert.equal(panel.HRNNTPanel.render(),true,label);
+  assert.match(cfg.summary,/^Refused:/,label);
+  assert.match(cfg.bodyHtml,/role="alert"/,label);
+  assert.doesNotMatch(cfg.summary,/NNTB|NNTH|k=/,label);
+}
+P.getRealData=()=>({a:{...goodA,events_ctl:'2e1',n_ctl:'1e2'},b:goodB});
+assert.equal(panel.HRNNTPanel.render(),true,'integer scientific count control');
+assert.match(cfg.summary,/Exploratory NNTB.*k=2/);
+assert.match(cfg.bodyHtml,/role="note"/);
+assert.match(cfg.bodyHtml,/fixed follow-up time/);
+P.getRealData=()=>({a:goodA,b:goodB});
+assert.equal(panel.HRNNTPanel.render(),true,'valid comparator counts');
+assert.match(cfg.summary,/Exploratory NNTB.*k=2/);
+
 console.log('PASS: synthetic summary-HR and HR-NNT source/refusal guards');
 """
 
