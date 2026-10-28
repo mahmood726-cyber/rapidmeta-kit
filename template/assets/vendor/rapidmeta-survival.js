@@ -320,7 +320,11 @@
         return { intervals: [], error: 'Non-HR estimand for interval-HR trial '
           + (ti + 1) + '; pooling refused' };
       }
-      var records = trial.intervals || [];
+      // Only an absent field denotes an unreported legacy interval list.
+      // A present null/false/zero/empty text list is malformed source data;
+      // never silently omit that trial while pooling the remaining evidence.
+      var records = Object.prototype.hasOwnProperty.call(trial, 'intervals')
+        ? trial.intervals : [];
       if (!Array.isArray(records)) {
         return { intervals: [], error: 'Malformed interval-HR records for trial '
           + (ti + 1) + '; pooling refused' };
