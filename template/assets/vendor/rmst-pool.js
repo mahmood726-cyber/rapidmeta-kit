@@ -96,7 +96,7 @@
     html += '</tbody></table>';
 
     html += '<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.5;">'
-          + 'Method: Per-trial RMST computed by trapezoid integration of the supplied KM survival to τ*. '
+          + 'Method: Per-trial RMST computed as the area under the supplied right-continuous Kaplan–Meier step curve to τ*. '
           + 'Reported, source-based RMST-difference standard errors are required; no variance is inferred from a curve. '
           + 'Differences pooled using inverse-variance REML with floored HKSJ t-inference for k≥2; '
           + 'k=1 uses a fixed-effect normal interval. '

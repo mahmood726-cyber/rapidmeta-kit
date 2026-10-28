@@ -399,27 +399,24 @@
 
   // ---- public: RMST-difference pool  [EXPERIMENTAL] -------------------------
   // trials[i].km_curve = [{ t_months, surv_trt, surv_ctl }, ...] (monotone t).
-  // Per-trial RMST = trapezoid integral of S(t) to tau*; pool the DIFFERENCES.
-  function trapezoidRMST(curve, tau, key) {
-    // integrate step-/trapezoid survival to tau (clamp last point at tau).
+  // Per-trial RMST = exact KM step-function area to tau*; pool DIFFERENCES.
+  // KM is a right-continuous step function: area before an event
+  // uses the preceding survival value, not trapezoid interpolation.
+  // A drop at exactly tau has zero impact on the interval preceding tau.
+  // Source: survRM2 vignette, restricted mean survival time estimator.
+  function stepKMIntegral(curve, tau, key) {
     var area = 0, prevT = 0, prevS = 1;
     for (var i = 0; i < curve.length; i++) {
       var t = +curve[i].t_months, s = +curve[i][key];
-      if (!isFinite(t) || !isFinite(s)) continue;
       if (t >= tau) {
-        area += (tau - prevT) * 0.5 * (prevS + interpAt(prevT, prevS, t, s, tau));
+        area += (tau - prevT) * prevS;
         return area;
       }
-      area += (t - prevT) * 0.5 * (prevS + s);
+      area += (t - prevT) * prevS;
       prevT = t; prevS = s;
     }
-    // curve ended before tau: extend flat at last S
-    area += (tau - prevT) * prevS;
-    return area;
-  }
-  function interpAt(t0, s0, t1, s1, t) {
-    if (t1 === t0) return s1;
-    return s0 + (s1 - s0) * (t - t0) / (t1 - t0);
+    // validKMCurve rejects truncated support; defensive fallback only.
+    return area + (tau - prevT) * prevS;
   }
 
   // A malformed or truncated KM curve cannot be silently skipped or repaired.
@@ -481,8 +478,8 @@
           'Invalid, truncated or nonmonotone KM curve for trial '
           + (trialIndex + 1) + '; pooling refused' };
       }
-      var rmstT = trapezoidRMST(c, horizon, 'surv_trt');
-      var rmstC = trapezoidRMST(c, horizon, 'surv_ctl');
+      var rmstT = stepKMIntegral(c, horizon, 'surv_trt');
+      var rmstC = stepKMIntegral(c, horizon, 'surv_ctl');
       var diff = rmstT - rmstC;
       // A KM curve alone does not establish the sampling variance of RMST.
       // Never invent precision from a default n_eff, arm size, or survival

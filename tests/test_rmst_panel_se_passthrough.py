@@ -2,8 +2,7 @@
 
 The panel must carry the reported source RMST difference SE into the engine.
 This is synthetic JavaScript source-integrity coverage, NOT native-R RMST
-parity or independently checked clinical survival data. The engine uses
-experimental trapezoid integration of supplied survival curves.
+parity or independently checked clinical survival data. The engine uses right-continuous KM step-function integration of supplied survival curves.
 RMST methods: https://doi.org/10.1177/17407745241254995
 """
 from pathlib import Path
@@ -52,6 +51,7 @@ assert.match(built.summary,/k=2/,'source SE must reach true numerical engine');
 assert.match(built.bodyHtml,/Pooled RMST difference/);
 assert.match(built.bodyHtml,/source-based RMST-difference standard errors/);
 assert.match(built.bodyHtml,/HKSJ/);
+assert.match(built.bodyHtml,/Kaplan–Meier step curve/);
 assert.doesNotMatch(built.summary,/UNAVAILABLE/);
 assert.doesNotMatch(built.bodyHtml,/Greenwood-style finite-difference/);
 

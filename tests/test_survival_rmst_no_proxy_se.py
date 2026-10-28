@@ -65,10 +65,10 @@ const valid = records.map((r,i)=>({...r,rmst_diff_se:i===0?.3:.4}));
 const result = S.poolRMSTDiff(valid,6);
 assert.equal(result.k,2,'valid independent sources pool');
 assert.equal(result.error,undefined);
-assert.ok(Math.abs(result.pooled_diff-.9)<1e-12);
-assert.ok(Math.abs(result.ci_lo-(-2.149489136681656))<1e-9,
-          'reported-SE positive control remains numerically unchanged');
-assert.ok(Math.abs(result.ci_hi-3.949489136681656)<1e-9);
+assert.ok(Math.abs(result.pooled_diff-.6)<1e-12);
+assert.ok(Math.abs(result.ci_lo-(-2.449489136681656))<1e-9,
+          'reported-SE positive control uses correct KM step area');
+assert.ok(Math.abs(result.ci_hi-3.649489136681656)<1e-9);
 assert.deepEqual(result.per_study.map(x=>x.se),[.3,.4]);
 // The same NCT can occur in separately materialized source records. Inverse
 // variance pooling must not count it twice, even with differing local IDs.
