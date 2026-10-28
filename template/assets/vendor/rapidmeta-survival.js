@@ -306,9 +306,38 @@
     // Only source effects overlapping the requested analysis range are relevant.
     var requestedStart = boundaries[0], requestedEnd = boundaries[boundaries.length - 1];
     for (var ti = 0; ti < (trials || []).length; ti++) {
-      var records = trials[ti].intervals || [];
+      var trial = trials[ti];
+      if (!trial || typeof trial !== 'object' || Array.isArray(trial)) {
+        return { intervals: [], error: 'Malformed interval-HR trial evidence for trial '
+          + (ti + 1) + '; pooling refused' };
+      }
+      // RR/OR and HR are different estimands even when numerically similar.
+      // Preserve absent legacy metadata, but refuse every explicitly
+      // non-HR or malformed source declaration before inverse-variance pooling.
+      if (Object.prototype.hasOwnProperty.call(trial, 'estimandType') &&
+          (typeof trial.estimandType !== 'string' ||
+           trial.estimandType.trim().toUpperCase() !== 'HR')) {
+        return { intervals: [], error: 'Non-HR estimand for interval-HR trial '
+          + (ti + 1) + '; pooling refused' };
+      }
+      var records = trial.intervals || [];
+      if (!Array.isArray(records)) {
+        return { intervals: [], error: 'Malformed interval-HR records for trial '
+          + (ti + 1) + '; pooling refused' };
+      }
       for (var ri = 0; ri < records.length; ri++) {
-        var rawStart = records[ri].t0, rawEnd = records[ri].t1;
+        var record = records[ri];
+        if (!record || typeof record !== 'object' || Array.isArray(record)) {
+          return { intervals: [], error: 'Malformed interval-HR effect record for trial '
+            + (ti + 1) + '; pooling refused' };
+        }
+        if (Object.prototype.hasOwnProperty.call(record, 'estimandType') &&
+            (typeof record.estimandType !== 'string' ||
+             record.estimandType.trim().toUpperCase() !== 'HR')) {
+          return { intervals: [], error: 'Non-HR estimand in interval-HR effect record for trial '
+            + (ti + 1) + '; pooling refused' };
+        }
+        var rawStart = record.t0, rawEnd = record.t1;
         var a = Number(rawStart), b = Number(rawEnd);
         if (!validTimeBoundary(rawStart) || !validTimeBoundary(rawEnd)
             || !(a >= 0) || !(b > a)) {
