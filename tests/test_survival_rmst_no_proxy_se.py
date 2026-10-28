@@ -43,6 +43,24 @@ for (const bad of [null,0,-.1,true,[],{},'0x1','bad','',Infinity,NaN]) {
   refusal([{...records[0],rmst_diff_se:.3},
            {...records[1],rmst_diff_se:bad}],String(bad));
 }
+// Extreme but syntactically valid positive SEs must not produce a populated
+// result with NaN/Infinity (or JSON-null after serialization).  Synthetic
+// numerical stress only; this is not a native-R RMST oracle.
+for (const se of [1e-200,1e200]) {
+  const result = S.poolRMSTDiff(records.map(r=>({...r,rmst_diff_se:se})),6);
+  assert.equal(result.k,0,'unrepresentable sampling variance must refuse');
+  assert.deepEqual(result.per_study,[]);
+  assert.match(result.error,/Unrepresentable RMST sampling variance/);
+  assert.equal(result.ci_lo,undefined);
+}
+for (const se of [1e-100,1e100]) {
+  const result = S.poolRMSTDiff(records.map(r=>({...r,rmst_diff_se:se})),6);
+  assert.equal(result.k,0,'nonfinite pooled fitting must refuse');
+  assert.deepEqual(result.per_study,[]);
+  assert.match(result.error,/Numerically unrepresentable RMST pooled estimate/);
+  assert.equal(result.pooled_diff,undefined);
+  assert.equal(result.ci_lo,undefined);
+}
 const valid = records.map((r,i)=>({...r,rmst_diff_se:i===0?.3:.4}));
 const result = S.poolRMSTDiff(valid,6);
 assert.equal(result.k,2,'valid independent sources pool');
