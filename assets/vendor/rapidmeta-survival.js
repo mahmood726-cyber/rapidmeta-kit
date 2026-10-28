@@ -494,12 +494,31 @@
           'Missing or invalid reported RMST difference standard error for trial '
           + (trialIndex + 1) + '; pooling refused without source-based uncertainty' };
       }
+      // Even a finite, positive reported SE can square to zero/Infinity in
+      // double precision. Never hand a nonrepresentable sampling variance to
+      // inverse-variance REML/HKSJ and emit NaN/Infinity as a clinical result.
+      var samplingVariance = se * se;
+      if (!isFinite(samplingVariance) || !(samplingVariance > 0) ||
+          !isFinite(1 / samplingVariance)) {
+        return { k: 0, per_study: [], error:
+          'Unrepresentable RMST sampling variance for trial ' + (trialIndex + 1) +
+          '; pooling refused' };
+      }
       per.push({ studlab: String(t.studlab || t.name || '?'),
                  rmst_trt: rmstT, rmst_ctl: rmstC, rmst_diff: diff, se: se });
-      yi.push(diff); vi.push(se * se);
+      yi.push(diff); vi.push(samplingVariance);
     }
     if (per.length === 0) return { k: 0, per_study: [] };
     var p = poolLogRE(yi, vi);   // raw-scale RE pool (not log) — diff is additive
+    // Overflow can still occur inside the REML/HKSJ iteration with extreme but
+    // finite weights; a malformed numerical fit must never reach the UI.
+    if (!p || !isFinite(p.mu) || !isFinite(p.ci_lo) || !isFinite(p.ci_hi) ||
+        !(p.ci_lo <= p.mu && p.mu <= p.ci_hi) ||
+        !isFinite(p.se) || !(p.se > 0) ||
+        !isFinite(p.tau2) || p.tau2 < 0 || !isFinite(p.I2)) {
+      return { k: 0, per_study: [], error:
+        'Numerically unrepresentable RMST pooled estimate or confidence limits; pooling refused' };
+    }
     return {
       k: p.k, pooled_diff: p.mu, ci_lo: p.ci_lo, ci_hi: p.ci_hi,
       tau2: p.tau2, I2: p.I2, fallback: p.fallback, per_study: per
