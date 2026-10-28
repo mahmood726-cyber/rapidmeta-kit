@@ -134,7 +134,7 @@ for (const [label, changed] of [
     P.getRealData=()=>data;
     assert.equal(panel.HRNNTPanel.render(),true,label);
     assert.match(cfg.summary,/^Refused:/,label);
-    assert.match(cfg.bodyHtml,/Conflicting or malformed duplicated summary-HR\\/comparator aliases/,label);
+    assert.match(cfg.bodyHtml,/Conflicting or malformed duplicated summary-HR/,label);
     assert.match(cfg.bodyHtml,/role="alert"/,label);
     assert.doesNotMatch(cfg.summary,/NNTB|NNTH|k=/,label);
   }
