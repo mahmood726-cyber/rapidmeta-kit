@@ -281,12 +281,30 @@
   }
 
   function intervalHRPool(trials, bp) {
-    if (!Array.isArray(bp) || bp.length < 2) return null;
+    if (!Array.isArray(bp) || bp.length < 2) {
+      return { intervals: [], error:
+        'At least two interval-HR time boundaries required; pooling refused' };
+    }
+    // Interpret decimal/scientific-notation windows once, before both
+    // the source-alignment check and the fitting loop. Without normalization,
+    // text windows pass alignment but fail strict number===string selection,
+    // silently dropping every source effect. Reject malformed/duplicate/
+    // nonchronological windows rather than publishing a partial analysis.
+    var boundaries = [];
+    for (var bi = 0; bi < bp.length; bi++) {
+      var boundary = finiteDecimal(bp[bi]);
+      if (boundary === null || boundary < 0 ||
+          (bi > 0 && !(boundary > boundaries[bi - 1]))) {
+        return { intervals: [], error:
+          'Invalid or non-increasing interval-HR time boundaries; pooling refused' };
+      }
+      boundaries.push(boundary);
+    }
     // A reported HR for [0,6] is not an HR for [0,3] or [3,6].
     // Unioning trial breakpoints can otherwise silently omit spanning effects
     // and publish a subset of the requested evidence without disclosure.
     // Only source effects overlapping the requested analysis range are relevant.
-    var requestedStart = +bp[0], requestedEnd = +bp[bp.length - 1];
+    var requestedStart = boundaries[0], requestedEnd = boundaries[boundaries.length - 1];
     for (var ti = 0; ti < (trials || []).length; ti++) {
       var records = trials[ti].intervals || [];
       for (var ri = 0; ri < records.length; ri++) {
@@ -299,8 +317,8 @@
         }
         if (b <= requestedStart || a >= requestedEnd) continue;
         var aligned = false;
-        for (var wi = 0; wi + 1 < bp.length; wi++) {
-          if (a === +bp[wi] && b === +bp[wi + 1]) {
+        for (var wi = 0; wi + 1 < boundaries.length; wi++) {
+          if (a === boundaries[wi] && b === boundaries[wi + 1]) {
             aligned = true;
             break;
           }
@@ -312,8 +330,8 @@
       }
     }
     var windows = [];
-    for (var i = 0; i + 1 < bp.length; i++) {
-      var t0 = bp[i], t1 = bp[i + 1];
+    for (var i = 0; i + 1 < boundaries.length; i++) {
+      var t0 = boundaries[i], t1 = boundaries[i + 1];
       var pts = [], repeatedTrial = null, invalidTrial = null;
       // Multiple input objects can represent the SAME randomized study.
       // Track every supplied stable study identifier per analysis window.
