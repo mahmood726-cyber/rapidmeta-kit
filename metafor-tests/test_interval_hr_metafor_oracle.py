@@ -515,5 +515,73 @@ console.log(JSON.stringify(S.fit(rows.map(x=>({HR:x[3],HR_ci_lo:x[4],HR_ci_hi:x[
                 self.assertIn("invalid or incomplete interval-HR source table",
                               r.stderr)
 
+
+    def test_summary_hksj_prediction_interval_matches_live_metafor(self):
+        """Synthetic REML/adhoc PI including HKSJ-floored pooled-mean SE.
+
+        This checks the *prediction* interval, which the prior external-R
+        summary-HR fit comparisons did not test. A narrower pre-HKSJ formula
+        must not pass. Not original clinical input or validated survival PI.
+        """
+        import hashlib
+        yi = [0.18834274230829667, 0.6136462688923738,
+              -0.8979944856056723, 0.1459654781547634]
+        vi = [0.007078724762954062, 0.01585607885918258,
+              0.3701926996080275, 0.007318246865161381]
+        payload = json.dumps({"yi": yi, "vi": vi}, separators=(",", ":"))
+        print("HKSJ PI synthetic raw JSON sha256="
+              + hashlib.sha256(payload.encode("utf-8")).hexdigest())
+        js_program = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const data=JSON.parse(process.argv[1]);
+console.log(JSON.stringify(S._poolLogRE(data.yi,data.vi)));
+"""
+        js_proc = subprocess.run(
+            ["node", "-e", js_program, payload],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        self.assertEqual(js_proc.returncode, 0, js_proc.stderr)
+        js = json.loads(js_proc.stdout)
+        self.assertEqual(js["k"], 4)
+        self.assertTrue(js["tau2"] > 0)
+        self.assertTrue(math.isfinite(js["pi_lo"]) and
+                        math.isfinite(js["pi_hi"]))
+
+        r_code = r"""
+stopifnot(as.character(getRversion())=="4.4.3")
+stopifnot(packageVersion("metafor")==package_version("4.8-0"))
+a <- commandArgs(trailingOnly=TRUE)
+stopifnot(length(a)==2L)
+yi <- as.numeric(strsplit(a[1],",",fixed=TRUE)[[1]])
+vi <- as.numeric(strsplit(a[2],",",fixed=TRUE)[[1]])
+stopifnot(length(yi)==4L,length(vi)==4L,all(is.finite(yi)),
+          all(is.finite(vi)),all(vi>0))
+fit <- metafor::rma.uni(yi=yi,vi=vi,method="REML",test="adhoc")
+prediction <- predict(fit)
+out <- c(tau2=fit$tau2, mu=as.numeric(fit$b),
+         pi_lo=prediction$pi.lb, pi_hi=prediction$pi.ub)
+stopifnot(all(is.finite(out)), out[["tau2"]]>0,
+          out[["pi_lo"]]<out[["pi_hi"]])
+cat(paste(sprintf("%.17g",out),collapse="\t"),"\n",sep="")
+"""
+        r_proc = subprocess.run(
+            ["Rscript", "--vanilla", "-e", r_code,
+             ",".join(format(v, ".17g") for v in yi),
+             ",".join(format(v, ".17g") for v in vi)],
+            cwd=ROOT, capture_output=True, text=True, timeout=60, check=False,
+        )
+        self.assertEqual(r_proc.returncode, 0, r_proc.stderr)
+        ref = list(map(float, r_proc.stdout.strip().split("\t")))
+        self.assertEqual(len(ref), 4, r_proc.stdout)
+        for key, observed in zip(("tau2", "mu", "pi_lo", "pi_hi"), ref):
+            self.assertTrue(
+                math.isclose(js[key], observed, rel_tol=2e-3, abs_tol=2e-3),
+                f"method-matched R {key}: JS {js[key]} vs R {observed}",
+            )
+        # Negative control: a materially narrowed interval cannot be accepted.
+        self.assertFalse(math.isclose(js["pi_lo"] + 0.08, ref[2],
+                                      rel_tol=2e-3, abs_tol=2e-3))
+
+
 if __name__ == "__main__":
     unittest.main()
