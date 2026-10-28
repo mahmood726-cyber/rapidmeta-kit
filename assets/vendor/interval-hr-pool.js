@@ -151,7 +151,10 @@
     } else {
       if (trials.length < 1) return false;
       var bp = defaultBreakpoints(trials);
-      if (bp.length < 2) return false;
+      // Even a sole malformed/zero-width declared interval must render the
+      // engine's explicit refusal rather than silently suppressing the panel.
+      // intervalHRPool() checks bp.length and refuses without fitting.
+
       try { pool = SURV.intervalHRPool(trials, bp); }
       catch (e) {
         console.warn('[interval-hr-pool] failed:', e);
