@@ -43,6 +43,12 @@ for(const value of [null,false,0,'not-an-interval']){
 for(const extra of [{name:'Unrelated row'}, {name:'Empty legacy list',intervals:[]}]){
  assert.match(render({...source,d:extra}).summary,/^Interval HRs across 1 windows/);
 }
+// Fixed synthetic identity of the degenerate sole interval; NOT clinical input.
+const soleInvalid={single:{nct:'NCT00000005',intervals:[{...iv(.75),t0:0,t1:0}]}};
+assert.equal(require('node:crypto').createHash('sha256')
+  .update(JSON.stringify(soleInvalid),'utf8').digest('hex'),
+  '8d4b71c5be58e5376fa865c9497a35ebb6bc301ee96b25b94f79924c492dbb30',
+  'degenerate source fixture SHA-256');
 // A declared but malformed one-window source must not disappear merely
 // because breakpoint collection produces fewer than two distinct values.
 // Cochrane Handbook Ch 10: source follow-up definitions must be coherent.
