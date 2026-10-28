@@ -14,11 +14,25 @@ NODE = r"""
 const fs = require('fs');
 const assert = require('node:assert/strict');
 const path = require('path');
+const crypto = require('node:crypto');
 const copies = ['assets/vendor', 'docs/assets/vendor', 'template/assets/vendor'];
 function trial(id, type) {
   return {studyId: id, estimandType: type,
     intervals: [{t0: 0, t1: 6, HR: 0.8, HR_ci_lo: 0.6, HR_ci_hi: 1.1}]};
 }
+// This hashes exact UTF-8 synthetic input bytes; it is not original clinical
+// evidence and must not be represented as a raw trial-extraction manifest.
+const malformedFixture = trial('bad', 'HR');
+malformedFixture.intervals = null;
+const rawFixture = JSON.stringify({
+  trials: [trial('s1', 'HR'), trial('s2', 'HR'), malformedFixture],
+  breakpoints: [0, 6]
+});
+assert.equal(
+  crypto.createHash('sha256').update(rawFixture, 'utf8').digest('hex'),
+  '4202b80ad57cb691f1227fb9973f77e4cc2e0f657b2a5d53383d1e340ab80da4',
+  'pinned canonical synthetic malformed interval-list fixture'
+);
 let cases = 0;
 for (const dir of copies) {
   const code = fs.readFileSync(path.join(process.cwd(), dir, 'rapidmeta-survival.js'), 'utf8');
