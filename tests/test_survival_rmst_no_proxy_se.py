@@ -52,6 +52,31 @@ assert.ok(Math.abs(result.ci_lo-(-2.149489136681656))<1e-9,
           'reported-SE positive control remains numerically unchanged');
 assert.ok(Math.abs(result.ci_hi-3.949489136681656)<1e-9);
 assert.deepEqual(result.per_study.map(x=>x.se),[.3,.4]);
+// The same NCT can occur in separately materialized source records. Inverse
+// variance pooling must not count it twice, even with differing local IDs.
+const duplicated = S.poolRMSTDiff([
+  {...valid[0],nct:'NCT00000042',studyId:'local-A'},
+  {...valid[1],nct:' nct00000042 ',studyId:'local-B'}
+],6);
+assert.equal(duplicated.k,0,'repeated NCT must not inflate k');
+assert.deepEqual(duplicated.per_study,[],'no partial evidence from duplicate');
+assert.match(duplicated.error,/Repeated RMST study identity/);
+assert.equal(duplicated.ci_lo,undefined,'no confidence interval on refusal');
+// Alias-based duplicates must also fail; a different first alias must not
+// conceal the canonical NCT shared by the source records.
+const aliases = S.poolRMSTDiff([
+  {...valid[0],studyId:'Trial One',nct:'NCT00000042'},
+  {...valid[1],study_id:' trial one ',nct:'NCT00000043'}
+],6);
+assert.equal(aliases.k,0,'cross-alias duplicate must be refused');
+assert.match(aliases.error,/Repeated RMST study identity/);
+const independent = S.poolRMSTDiff([
+  {...valid[0],nct:'NCT00000042',studyId:'local-A'},
+  {...valid[1],nct:'NCT00000043',studyId:'local-B'}
+],6);
+assert.equal(independent.k,2,'genuinely separate studies remain eligible');
+assert.ok(Math.abs(independent.pooled_diff-result.pooled_diff)<1e-12);
+assert.ok(Math.abs(independent.ci_lo-result.ci_lo)<1e-12);
 const decimal = S.poolRMSTDiff([
   {...records[0],rmst_diff_se:'3e-1'},
   {...records[1],rmst_diff_se:'0.4'}],6);

@@ -22,6 +22,10 @@
         out.push({
           studlab: String(t.name || t.studlab || '?'),
           km_curve: t.km_curve,
+          // Preserve every stable identity alias: the direct engine must
+          // detect reports from the same trial before pooling RMST contrasts.
+          nct: t.nct, nctId: t.nctId, nct_id: t.nct_id,
+          studyId: t.studyId, study_id: t.study_id,
           // Keep the reported study-level uncertainty attached to its curve.
           // The engine must refuse missing/invalid source SE rather than invent one.
           rmst_diff_se: t.rmst_diff_se

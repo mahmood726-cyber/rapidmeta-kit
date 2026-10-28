@@ -104,6 +104,21 @@ const direct = S.poolRMSTDiff([
 ],7);
 assert.match(direct.error,/Invalid, truncated or nonmonotone KM curve/);
 assert.equal(direct.k,0);
+// Panel must forward canonical source identities to the numerical engine.
+// Different materialized objects referring to one NCT are not k=2 trials.
+rd.syntheticA.nct='NCT00000042';
+rd.syntheticB.nct=' nct00000042 ';
+rd.syntheticA.studyId='local-A';
+rd.syntheticB.studyId='local-B';
+assert.equal(ctx.RMSTPanel.render(),true,'duplicate identity is displayed as refusal');
+assert.match(built.summary,/RMST unavailable/);
+assert.match(built.bodyHtml,/Repeated RMST study identity/);
+assert.doesNotMatch(built.bodyHtml,/Pooled RMST difference:/);
+// Distinct IDs keep the original positive pathway and pooled estimates.
+rd.syntheticB.nct='NCT00000043';
+assert.equal(ctx.RMSTPanel.render(),true);
+assert.match(built.summary,/k=2/);
+assert.match(built.bodyHtml,/Pooled RMST difference:/);
 console.log('RMST PANEL SOURCE SE WIRING PASS '+copy);
 """
 

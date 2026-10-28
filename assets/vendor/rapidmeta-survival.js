@@ -453,8 +453,28 @@
         'Invalid RMST restriction horizon; pooling refused' };
     }
     var per = [], yi = [], vi = [];
+    // This simple IV pool assumes one independent RMST contrast per study.
+    // Multiple reports or materialized records with a common stable ID
+    // cannot be treated as independent studies without their covariance.
+    var seenStudyIds = Object.create(null);
+    var studyIdFields = ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'];
     for (var trialIndex = 0; trialIndex < (trials || []).length; trialIndex++) {
       var t = trials[trialIndex];
+      if (t && typeof t === 'object' && !Array.isArray(t)) {
+        for (var idIndex = 0; idIndex < studyIdFields.length; idIndex++) {
+          var rawId = t[studyIdFields[idIndex]];
+          if (typeof rawId !== 'string') continue;
+          var studyId = rawId.trim().toLowerCase();
+          if (!studyId) continue;
+          if (Object.prototype.hasOwnProperty.call(seenStudyIds, studyId) &&
+              seenStudyIds[studyId] !== trialIndex) {
+            return { k: 0, per_study: [], error:
+              'Repeated RMST study identity for trial ' + (trialIndex + 1) +
+              '; pooling refused to avoid double-counting independent evidence' };
+          }
+          seenStudyIds[studyId] = trialIndex;
+        }
+      }
       var c = t && t.km_curve;
       if (!validKMCurve(c, horizon)) {
         return { k: 0, per_study: [], error:
