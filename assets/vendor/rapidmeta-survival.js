@@ -8,11 +8,12 @@
  * EXPERIMENTAL — RMST-difference pooling (poolRMSTDiff) and the interval-HR
  * pool (intervalHRPool) operate on inputs (reconstructed KM curves / per-window
  * HRs) that are NOT carried by the default rapidmeta data model and have NO
- * external R oracle bit-check on disk. They self-skip silently unless a topic
- * pack supplies km_curve / intervals. The summary-HR pool (fit) and NNT
+ * original-study validation. A pinned R 4.4.3 / metafor 4.8-0 oracle checks
+ * synthetic interval-HR REML/HKSJ cases only (no clinical or RMST oracle).
+ * Panels self-skip unless a topic pack supplies km_curve / intervals. The summary-HR pool (fit) and NNT
  * conversion (nntForHR) ARE R-checkable: fit() reproduces the in-page
  * REML + HKSJ-floor + t_{k-1} pooler (Cochrane v6.5 / metafor rma(method="REML",
- * test="knha")) on the log-HR scale; nntForHR is the closed-form Altman-Andersen
+ * test="adhoc")) on the log-HR scale; nntForHR is the closed-form Altman-Andersen
  * (2002) survival NNT. Panels that surface RMST / interval-HR results MUST badge
  * them "Experimental" at the point of display.
  *
@@ -111,7 +112,7 @@
   // ---- core IV random-effects pool on a generic log-effect scale ------------
   // REML τ² (Viechtbauer 2005 Fisher scoring, matches in-page engine), then
   // RE weights; CI by HKSJ with the Cochrane v6.5 floor max(1, q*) and t_{k-1}.
-  // For k < 5 falls back to a fixed-effect pool (REML τ² unstable at tiny k).
+  // Only k=1 uses a fixed-effect normal CI; k>=2 uses REML + floored HKSJ.
   function poolLogRE(yi, vi) {
     var k = yi.length;
     if (k < 1) return null;
@@ -207,28 +208,139 @@
   // ---- public: per-window (interval) HR pool  [EXPERIMENTAL] ----------------
   // trials[i].intervals = [{ t0, t1, HR, HR_ci_lo, HR_ci_hi }, ...]
   // bp = sorted breakpoint array; pools each [t0,t1] window across trials.
+  // A missing/blank follow-up boundary is not a reported month-zero value.
+  // Preserve nonblank numeric-string compatibility with imported source data.
+  // Strict decimal / scientific-notation strings only.  Number("0x1"),
+  // Number("0b1") and Number("0o1") silently reinterpret non-decimal source
+  // text as numeric clinical effects or follow-up times.
+  function validDecimalText(value) {
+    if (typeof value !== 'string') return false;
+    var raw = value.trim();
+    return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)
+      && isFinite(Number(raw));
+  }
+
+  function validTimeBoundary(value) {
+    return (typeof value === 'number' && isFinite(value)) || validDecimalText(value);
+  }
+
+  // Reported effects must be finite numbers or explicitly decimal text.
+  // Refuse implicit boolean/array/hex/binary/octal conversions before fitting.
+  function validEffectValue(value) {
+    return (typeof value === 'number' && isFinite(value)) || validDecimalText(value);
+  }
+
   function intervalHRPool(trials, bp) {
     if (!Array.isArray(bp) || bp.length < 2) return null;
+    // A reported HR for [0,6] is not an HR for [0,3] or [3,6].
+    // Unioning trial breakpoints can otherwise silently omit spanning effects
+    // and publish a subset of the requested evidence without disclosure.
+    // Only source effects overlapping the requested analysis range are relevant.
+    var requestedStart = +bp[0], requestedEnd = +bp[bp.length - 1];
+    for (var ti = 0; ti < (trials || []).length; ti++) {
+      var records = trials[ti].intervals || [];
+      for (var ri = 0; ri < records.length; ri++) {
+        var rawStart = records[ri].t0, rawEnd = records[ri].t1;
+        var a = Number(rawStart), b = Number(rawEnd);
+        if (!validTimeBoundary(rawStart) || !validTimeBoundary(rawEnd)
+            || !(a >= 0) || !(b > a)) {
+          return { intervals: [], error: 'Invalid interval-HR time boundaries for trial '
+            + (ti + 1) + '; pooling refused' };
+        }
+        if (b <= requestedStart || a >= requestedEnd) continue;
+        var aligned = false;
+        for (var wi = 0; wi + 1 < bp.length; wi++) {
+          if (a === +bp[wi] && b === +bp[wi + 1]) {
+            aligned = true;
+            break;
+          }
+        }
+        if (!aligned) {
+          return { intervals: [], error: 'Non-aligned interval-HR time window for trial '
+            + (ti + 1) + '; pooling refused rather than silently omitting a study effect' };
+        }
+      }
+    }
     var windows = [];
     for (var i = 0; i + 1 < bp.length; i++) {
       var t0 = bp[i], t1 = bp[i + 1];
-      var pts = [];
-      (trials || []).forEach(function (t) {
+      var pts = [], repeatedTrial = null, invalidTrial = null;
+      // Multiple input objects can represent the SAME randomized study.
+      // Track every supplied stable study identifier per analysis window.
+      var seenTrialIds = Object.create(null);
+      (trials || []).forEach(function (t, trialIndex) {
+        var matchingIntervals = 0;
         (t.intervals || []).forEach(function (iv) {
           if (+iv.t0 === t0 && +iv.t1 === t1) {
-            var HR = +iv.HR, lo = +iv.HR_ci_lo, hi = +iv.HR_ci_hi;
-            if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
+            matchingIntervals++;
+            var typedEffect = validEffectValue(iv.HR)
+              && validEffectValue(iv.HR_ci_lo) && validEffectValue(iv.HR_ci_hi);
+            var HR = typedEffect ? Number(iv.HR) : NaN;
+            var lo = typedEffect ? Number(iv.HR_ci_lo) : NaN;
+            var hi = typedEffect ? Number(iv.HR_ci_hi) : NaN;
+            // The point estimate and its 95% CI must represent one coherent effect.
+            // A point HR outside those bounds cannot be inverse-variance pooled.
+            if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo
+                && HR >= lo && HR <= hi) {
               pts.push(logHRfromCI(HR, lo, hi));
+            } else {
+              invalidTrial = trialIndex + 1;
             }
           }
         });
+        // A single trial cannot contribute two independent inverse-variance
+        // observations to the same follow-up window. Count even malformed
+        // duplicates: ignoring one would silently change the evidence set.
+        if (matchingIntervals > 1) repeatedTrial = trialIndex + 1;
+        if (matchingIntervals > 0) {
+          // nct is the canonical config identifier (AGENTS.md).  Inspect ALL
+          // supplied aliases: an unrelated first alias must not hide an NCT
+          // shared by separately materialized records of one study.
+          ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'].forEach(function (field) {
+            var raw = t[field];
+            if (typeof raw !== 'string') return;
+            var id = raw.trim().toLowerCase();
+            if (!id) return;
+            if (Object.prototype.hasOwnProperty.call(seenTrialIds, id)
+                && seenTrialIds[id] !== trialIndex) {
+              repeatedTrial = trialIndex + 1;
+            } else {
+              seenTrialIds[id] = trialIndex;
+            }
+          });
+        }
       });
+      if (repeatedTrial !== null) {
+        // Refuse both within-object duplicates and matching stable study IDs
+        // across distinct input objects. Never expose partial pooled windows.
+        return { intervals: [], error: 'Repeated interval-HR records for trial '
+          + repeatedTrial + ' within one time window; pooling refused to avoid double-counting study evidence' };
+      }
+      // An explicit record for a requested window must not disappear
+      // merely because its HR/CI is unusable; refuse the whole analysis.
+      if (invalidTrial !== null) {
+        return { intervals: [], error: 'Invalid interval-HR effect or confidence limits for trial '
+          + invalidTrial + ' within one time window; pooling refused to avoid silently omitting study evidence' };
+      }
       if (pts.length === 0) continue;
       var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));
       if (!p) continue;
+      // A computed log-scale fit is not a representable hazard ratio if
+      // exponentiation overflows or underflows a confidence limit.
+      // Reject rather than render zero, Infinity or JSON-null as a valid CI.
+      var pooledHR = Math.exp(p.mu);
+      var pooledLo = Math.exp(p.ci_lo);
+      var pooledHi = Math.exp(p.ci_hi);
+      if (!isFinite(pooledHR) || !isFinite(pooledLo) || !isFinite(pooledHi)
+          || !(pooledLo > 0) || !(pooledLo <= pooledHR)
+          || !(pooledHR <= pooledHi) || !isFinite(p.tau2)
+          || !(p.tau2 >= 0) || !isFinite(p.I2)) {
+        return { intervals: [], error: 'Unrepresentable interval-HR pooled estimate or confidence limits'
+          + ' for ' + t0 + '–' + t1 + ' mo; pooling refused' };
+      }
       windows.push({
         label: t0 + '–' + t1 + ' mo', t0: t0, t1: t1, k: p.k,
-        HR: Math.exp(p.mu), HR_ci_lo: Math.exp(p.ci_lo), HR_ci_hi: Math.exp(p.ci_hi),
+        HR: pooledHR, HR_ci_lo: pooledLo, HR_ci_hi: pooledHi,
         tau2: p.tau2, I2: p.I2
       });
     }

@@ -17,6 +17,14 @@
       if (Array.isArray(t.intervals) && t.intervals.length > 0) {
         out.push({
           studlab: String(t.name || t.studlab || '?'),
+          // Preserve source study identities for the interval-HR unit-of-analysis
+          // check. Stripping them here bypasses cross-object duplicate refusal.
+          // Do not invent an identifier when the source record lacks one.
+          nct: t.nct,
+          nctId: t.nctId,
+          nct_id: t.nct_id,
+          studyId: t.studyId,
+          study_id: t.study_id,
           HR: +t.HR,
           HR_ci_lo: +t.HR_ci_lo,
           HR_ci_hi: +t.HR_ci_hi,
@@ -41,6 +49,10 @@
     var fmt = P.fmt;
     var html = '';
 
+    if (pool && pool.error) {
+      return '<div role="alert" style="color:#fbbf24;font-size:11.5px;">'
+          + 'Interval-HR pooling refused: ' + pool.error + '</div>';
+    }
     if (!pool || !pool.intervals || pool.intervals.length === 0) {
       return '<div style="color:#fbbf24;font-size:11.5px;">No matching intervals across trials.</div>';
     }
@@ -53,10 +65,11 @@
       hrSpread = first - last;
     }
     if (hrSpread != null && Math.abs(hrSpread) > 0.15) {
-      var sign = hrSpread > 0 ? 'late' : 'early';
+      // Descriptive difference only: this is NOT a within-trial PH diagnostic.
+      // Cochrane Handbook v6.5, §§6.8 and 10.9: follow-up/estimand matter.
       html += '<div style="background:#3a2a0a;border:1px solid #92400e;color:#fbbf24;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
-            + '⚠ <strong>Interval-HR spread = ' + fmt(Math.abs(hrSpread), 2) + '</strong> (' + sign + ' window favours treatment) — '
-            + 'consistent with non-proportional hazards; the pooled overall HR averages across these.'
+            + '⚠ <strong>Descriptive interval-HR spread = ' + fmt(Math.abs(hrSpread), 2) + '</strong>. '
+            + 'This is not a proportional-hazards test: sampling variation, different study sets, or different reported estimands can produce cross-window differences.'
             + '</div>';
     }
 
@@ -84,9 +97,10 @@
     html += '</tbody></table>';
 
     html += '<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.5;">'
-          + 'Method: For each prespecified time window [t₀, t₁], pool the trial-reported within-window HRs '
-          + 'via inverse-variance random-effects (REML if k≥5, fixed-effect if k&lt;5). '
-          + 'A pooled HR that visibly differs between early and late windows is direct evidence of non-PH.'
+          + 'Method: For each supplied time window [t₀, t₁], inverse-variance pooling of trial-reported log-HRs. '
+          + 'For k≥2: REML random-effects with floored HKSJ and t(k−1) 95% CI; '
+          + 'for k=1: fixed-effect normal 95% CI (not a meta-analysis). '
+          + 'Cross-window differences are descriptive only and do not establish non-proportional hazards.'
           + '</div>';
 
     return html;
@@ -113,10 +127,12 @@
     if (!pool) return false;
 
     var fmt = P.fmt;
-    var summary = 'Interval HRs across ' + pool.intervals.length + ' windows · '
-                + pool.intervals.map(function (iv) {
-                    return iv.label + '=' + fmt(iv.HR, 2);
-                  }).join(' · ');
+    var summary = pool.error
+      ? 'Refused: invalid, non-aligned, or repeated interval-HR evidence'
+      : 'Interval HRs across ' + pool.intervals.length + ' windows · '
+        + pool.intervals.map(function (iv) {
+            return iv.label + '=' + fmt(iv.HR, 2);
+          }).join(' · ');
 
     var panel = P.buildCollapsiblePanel({
       id: 'interval-hr-pool-panel',
