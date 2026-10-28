@@ -161,6 +161,65 @@ class IntervalHRMetaforOracle(unittest.TestCase):
                 self.assertEqual(tuple(int(r["k"]) for r in external), expected_k)
                 compare(run_js(rows), external)
 
+    def test_extreme_precision_imbalance_matches_pinned_reml_mkh(self):
+        # Reviewer-requested small-k coverage: Bender et al., Research
+        # Synthesis Methods (2018), doi:10.1002/jrsm.1297.
+        # Synthetic effects only; CI widths generated from known log-HR SEs.
+        z = 1.959963984540054
+
+        def study(trial, hr, se):
+            log_hr = math.log(hr)
+            return (trial, 0, 6, hr,
+                    math.exp(log_hr - z * se), math.exp(log_hr + z * se))
+
+        cases = (
+            ("k2_zero_tau", (
+                study("P1", 0.78, 0.006), study("P2", 0.82, 0.6))),
+            ("k2_heterogeneous", (
+                study("Q1", 0.65, 0.008), study("Q2", 1.8, 0.35))),
+            ("k4_mixed", (
+                study("R1", 0.75, 0.012), study("R2", 1.15, 0.18),
+                study("R3", 0.9, 0.45), study("R4", 0.7, 0.6))),
+            ("k4_zero_tau", (
+                study("S1", 0.75, 0.008), study("S2", 0.76, 0.09),
+                study("S3", 0.74, 0.3), study("S4", 0.78, 0.7))),
+        )
+        # Canonical SHA-256 identifies only this synthetic fixture.
+        import hashlib
+        raw = json.dumps(cases, separators=(",", ":")).encode("utf-8")
+        self.assertEqual(
+            hashlib.sha256(raw).hexdigest(),
+            "d7758576cdbdd2f437b1ea1bc8d09e013edf3eb5d9dbb16fe2fb60d8bb71aae8",
+        )
+        for label, rows in cases:
+            with self.subTest(case=label):
+                ses = [(math.log(row[5]) - math.log(row[4])) / (2 * z)
+                       for row in rows]
+                self.assertGreater(max(ses) / min(ses), 20)
+                external = run_r(rows)  # real R 4.4.3 / metafor 4.8-0
+                self.assertEqual(len(external), 1)
+                self.assertEqual(int(external[0]["k"]), len(rows))
+                observed = run_js(rows)
+                compare(observed, external)
+                self.assertLessEqual(
+                    observed["intervals"][0]["HR_ci_lo"],
+                    observed["intervals"][0]["HR_ci_hi"],
+                )
+                # Deliberately forged heterogeneity must fail the comparator.
+                observed["intervals"][0]["tau2"] += 0.05
+                with self.assertRaisesRegex(AssertionError, "tau2 differs"):
+                    compare(observed, external)
+
+        # Refuse incoherent HR/CI evidence instead of partial pooling.
+        bad = (("P1", 0, 6, 0.78, 0.79, 0.80),
+               study("P2", 0.82, 0.6))
+        js = run_js(bad)
+        self.assertEqual(js.get("intervals"), [])
+        self.assertRegex(js.get("error", ""), "Invalid interval-HR")
+        native = r_process(bad)
+        self.assertNotEqual(native.returncode, 0)
+        self.assertIn("invalid or incomplete interval-HR source table", native.stderr)
+
     def test_small_k_invalid_and_duplicate_evidence_fail_closed(self):
         # Negative controls prove the expanded k>=1 R oracle still refuses
         # a contradictory HR/CI and a duplicated one-study window.
