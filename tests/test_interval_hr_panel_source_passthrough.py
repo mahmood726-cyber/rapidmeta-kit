@@ -43,6 +43,19 @@ for(const value of [null,false,0,'not-an-interval']){
 for(const extra of [{name:'Unrelated row'}, {name:'Empty legacy list',intervals:[]}]){
  assert.match(render({...source,d:extra}).summary,/^Interval HRs across 1 windows/);
 }
+// A declared but malformed one-window source must not disappear merely
+// because breakpoint collection produces fewer than two distinct values.
+// Cochrane Handbook Ch 10: source follow-up definitions must be coherent.
+assert.match(render({single:{nct:'NCT00000005',intervals:[iv(.75)]}}).summary,
+             /^Interval HRs across 1 windows/, 'valid single source window');
+for (const [label,t0,t1] of [
+  ['zero-width window',0,0],
+  ['explicit null windows',null,null],
+  ['nonnumeric duplicate windows','not-a-time','not-a-time']
+]) {
+  refuse({single:{nct:'NCT00000005',intervals:[{...iv(.75),t0,t1}]}},
+         label,/time boundar|invalid.*window/i);
+}
 console.log('interval-HR panel source-refusal tests PASS');
 """
 @pytest.mark.parametrize("copy", COPIES)
