@@ -525,11 +525,14 @@
   // ---- public: NNT from HR (Altman & Andersen 2002) -------------------------
   // ARR = R_ctl - (1 - (1 - R_ctl)^HR);  NNT = 1/|ARR|.
   function nntForHR(HR, baselineRisk) {
-    var Rc = +baselineRisk;
-    if (!isFinite(HR) || HR <= 0 || !isFinite(Rc) || Rc <= 0 || Rc >= 1) {
+    // Effect and fixed-time control risk must be numeric evidence, not
+    // booleans, arrays, objects, blank strings or radix-prefixed tokens.
+    // Preserve legitimate finite decimal/scientific string inputs.
+    var hr = finiteDecimal(HR), Rc = finiteDecimal(baselineRisk);
+    if (hr === null || !(hr > 0) || Rc === null || !(Rc > 0 && Rc < 1)) {
       return { nnt: null, arr: null, tx_risk: null, direction: null };
     }
-    var txRisk = 1 - Math.pow(1 - Rc, HR);
+    var txRisk = 1 - Math.pow(1 - Rc, hr);
     var arr = Rc - txRisk;                       // >0 ⇒ treatment lowers risk
     if (Math.abs(arr) < 1e-9) {
       return { nnt: null, arr: arr, tx_risk: txRisk, direction: null };
