@@ -94,7 +94,7 @@ def compare(actual,expected):
 class NativeRHRNNTOracle(unittest.TestCase):
     def test_version_pinned_numerical_parity_three_shipped_copies(self):
         reference,digest=comparator()
-        self.assertEqual(len(digest),64)
+        self.assertEqual(digest, "a2e6481d09d385f0b0356e383c89873f02a5501069cf130661a48e63db7cc236")
         for copy in COPIES:
             with self.subTest(copy=copy):
                 compare(run_js(copy),reference)
