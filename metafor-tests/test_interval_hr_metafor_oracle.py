@@ -583,5 +583,88 @@ cat(paste(sprintf("%.17g",out),collapse="\t"),"\n",sep="")
                                       rel_tol=2e-3, abs_tol=2e-3))
 
 
+    def test_zero_heterogeneity_summary_pi_equals_ci_in_live_metafor(self):
+        """Boundary oracle: at tau2=0, metafor's default adhoc PI equals CI.
+
+        This covers an untested prediction-interval boundary, distinct from
+        the prior heterogeneous q*>1 PI test. As documented by predict.rma,
+        with k-p t degrees of freedom PI=CI when tau2=0:
+        https://wviechtb.github.io/metafor/reference/predict.rma.html
+        Synthetic only, no original clinical study effect or KM follow-up.
+        A deliberately forged PI endpoint must fail the numerical comparator.
+        """
+        import hashlib
+
+        yi = [math.log(0.8)] * 4
+        vi = [0.02, 0.04, 0.03, 0.05]
+        payload = json.dumps({"yi": yi, "vi": vi}, separators=(",", ":"))
+        self.assertEqual(
+            hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+            "6e3080edf042a0e1ff7f489e440a95f84344b32e39b2226e76f6426cd146ddbd",
+            "synthetic zero-tau input identity changed",
+        )
+        js_code = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const d = JSON.parse(process.argv[1]);
+console.log(JSON.stringify(S._poolLogRE(d.yi,d.vi)));
+"""
+        js_proc = subprocess.run(
+            ["node", "-e", js_code, payload], cwd=ROOT, capture_output=True,
+            text=True, timeout=30, check=False,
+        )
+        self.assertEqual(js_proc.returncode, 0, js_proc.stderr)
+        js = json.loads(js_proc.stdout)
+        self.assertEqual(js["k"], 4)
+        self.assertTrue(math.isfinite(js["pi_lo"]) and
+                        math.isfinite(js["pi_hi"]))
+        self.assertAlmostEqual(js["tau2"], 0.0, delta=1e-12)
+
+        r_code = r"""
+stopifnot(as.character(getRversion())=="4.4.3")
+stopifnot(packageVersion("metafor")==package_version("4.8-0"))
+args <- commandArgs(trailingOnly=TRUE)
+stopifnot(length(args)==2L)
+yi <- as.numeric(strsplit(args[1],",",fixed=TRUE)[[1]])
+vi <- as.numeric(strsplit(args[2],",",fixed=TRUE)[[1]])
+stopifnot(length(yi)==4L, length(vi)==4L,
+          all(is.finite(yi)), all(is.finite(vi)), all(vi>0))
+fit <- metafor::rma.uni(yi=yi, vi=vi, method="REML", test="adhoc",
+                        control=list(tol=1e-12,maxiter=500))
+pred <- predict(fit)
+v <- c(as.numeric(fit$b), fit$tau2, fit$ci.lb, fit$ci.ub,
+       pred$pi.lb, pred$pi.ub)
+stopifnot(length(v)==6L, all(is.finite(v)), abs(v[2])<1e-10,
+          abs(v[3]-v[5])<1e-10, abs(v[4]-v[6])<1e-10)
+cat(paste(sprintf("%.17g",v),collapse="\t"),"\n",sep="")
+"""
+        r_proc = subprocess.run(
+            ["Rscript", "--vanilla", "-e", r_code,
+             ",".join(format(v, ".17g") for v in yi),
+             ",".join(format(v, ".17g") for v in vi)],
+            cwd=ROOT, capture_output=True, text=True, timeout=60,
+            check=False,
+        )
+        self.assertEqual(r_proc.returncode, 0, r_proc.stderr)
+        vals = r_proc.stdout.strip().split("\t")
+        self.assertEqual(len(vals), 6, r_proc.stdout)
+        ref = dict(zip(("mu", "tau2", "ci_lo", "ci_hi", "pi_lo", "pi_hi"),
+                       map(float, vals)))
+        self.assertAlmostEqual(js["pi_lo"], js["ci_lo"], delta=1e-9)
+        self.assertAlmostEqual(js["pi_hi"], js["ci_hi"], delta=1e-9)
+
+        def assert_method_concordance(observed):
+            for key in ("mu", "tau2", "ci_lo", "ci_hi", "pi_lo", "pi_hi"):
+                if not math.isclose(observed[key], ref[key],
+                                    rel_tol=2e-5, abs_tol=2e-5):
+                    raise AssertionError(
+                        f"zero-tau {key} mismatch: JS={observed[key]!r}, "
+                        f"live metafor={ref[key]:.17g}"
+                    )
+        assert_method_concordance(js)
+        forged = dict(js, pi_lo=js["pi_lo"] + 0.05)
+        with self.assertRaisesRegex(AssertionError, "pi_lo mismatch"):
+            assert_method_concordance(forged)
+
+
 if __name__ == "__main__":
     unittest.main()
