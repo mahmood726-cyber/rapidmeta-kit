@@ -245,6 +245,30 @@ P.getRealData=()=>({a:trialIdA,b:trialIdDistinct});
 assert.equal(panel.HRNNTPanel.render(),true,'two distinct NCT studies permitted');
 assert.match(cfg.summary,/Exploratory NNTB.*k=2/,'distinct-study positive');
 
+// A malformed source entry must not vanish while two valid HR trials are
+// pooled; otherwise the displayed k and NNT misrepresent the input cohort.
+for (const [label,badRow] of [
+  ['null row', null],
+  ['array row', []],
+  ['numeric row', 0],
+  ['string row', 'not-a-trial']
+]) {
+  for (const payload of [
+    {bad:badRow,a:goodA,b:goodB},
+    {a:goodA,b:goodB,bad:badRow}
+  ]) {
+    P.getRealData=()=>payload;
+    assert.equal(panel.HRNNTPanel.render(),true,label);
+    assert.match(cfg.summary,/^Refused:/,label);
+    assert.match(cfg.bodyHtml,/Malformed study record/,label);
+    assert.match(cfg.bodyHtml,/role="alert"/,label);
+    assert.doesNotMatch(cfg.summary,/NNTB|NNTH|k=/,label);
+  }
+}
+P.getRealData=()=>({a:goodA,b:goodB});
+assert.equal(panel.HRNNTPanel.render(),true,'valid two-study control');
+assert.match(cfg.summary,/Exploratory NNTB.*k=2/);
+
 console.log('PASS: synthetic summary-HR and HR-NNT source/refusal guards');
 """
 

@@ -42,7 +42,12 @@
     if (!rd || typeof rd !== 'object') return { trials: [] };
     var out = [], error = null;
     Object.values(rd).forEach(function (t, i) {
-      if (!t || typeof t !== 'object' || Array.isArray(t)) return;
+      if (!t || typeof t !== 'object' || Array.isArray(t)) {
+        // Do not silently omit a malformed study entry and pool the
+        // remaining rows as though the declared evidence set were complete.
+        if (error === null) error = 'Malformed study record in source row ' + (i + 1);
+        return;
+      }
       var hasEffect = ['HR', 'HR_ci_lo', 'HR_ci_hi',
                        'publishedHR', 'hrLCI', 'hrUCI'].some(function (key) {
         return hasOwn(t, key);
