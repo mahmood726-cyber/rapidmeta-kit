@@ -15,8 +15,10 @@
     if (!rd) return [];
     var out = [];
     Object.values(rd).forEach(function (t) {
-      if (Array.isArray(t.km_curve) && t.km_curve.length >= 2 &&
-          isFinite(+t.km_curve[0].surv_trt) && isFinite(+t.km_curve[0].surv_ctl)) {
+      // Retain every explicitly supplied curve, including malformed ones.
+      // The engine must refuse an invalid study instead of pooling a subset.
+      if (t && typeof t === 'object' &&
+          Object.prototype.hasOwnProperty.call(t, 'km_curve')) {
         out.push({
           studlab: String(t.name || t.studlab || '?'),
           km_curve: t.km_curve,
@@ -32,7 +34,9 @@
   function defaultTau(trials) {
     // Use the minimum last-knot across trials as the conservative default
     var taus = trials.map(function (t) {
-      return t.km_curve[t.km_curve.length - 1].t_months;
+      var curve = t.km_curve;
+      var last = Array.isArray(curve) && curve.length ? curve[curve.length - 1] : null;
+      return last && typeof last === 'object' ? +last.t_months : NaN;
     });
     return Math.min.apply(null, taus);
   }

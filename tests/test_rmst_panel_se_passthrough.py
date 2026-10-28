@@ -69,6 +69,41 @@ delete rd.syntheticB.rmst_diff_se;
 assert.equal(ctx.RMSTPanel.render(),true);
 assert.match(built.bodyHtml,/RMST unavailable: Missing or invalid reported/);
 assert.doesNotMatch(built.bodyHtml,/No trials supplied/);
+// Malformed curves must fail closed instead of silently losing that trial,
+// accepting impossible survival probabilities or integrating backwards in time.
+rd.syntheticB.rmst_diff_se=.4;
+const goodB=curve(.9,.7,.8,.6);
+const brokenCurves=[
+  ['invalid first knot',[{t_months:0,surv_trt:'not-a-probability',surv_ctl:1},...goodB.slice(1)]],
+  ['non-decimal middle time',goodB.map((v,i)=>i===1?{...v,t_months:'not-a-time'}:v)],
+  ['time moves backwards',goodB.map((v,i)=>i===2?{...v,t_months:2}:v)],
+  ['survival probability exceeds one',goodB.map((v,i)=>i===1?{...v,surv_trt:1.1}:v)],
+  ['survival increases after censoring',goodB.map((v,i)=>i===2?{...v,surv_trt:.95}:v)],
+  ['insufficient curve support',goodB.slice(0,1)],
+  ['null explicitly supplied curve',null],
+  ['non-array explicitly supplied curve',{t_months:6}]
+];
+for(const [name,badCurve] of brokenCurves){
+  rd.syntheticB.km_curve=badCurve;
+  assert.equal(ctx.RMSTPanel.render(),true,name+' should render a refusal');
+  assert.match(built.summary,/RMST unavailable/,name);
+  assert.match(built.bodyHtml,/RMST unavailable: (Invalid RMST restriction horizon|Invalid, truncated or nonmonotone KM curve)/,name);
+  assert.doesNotMatch(built.bodyHtml,/Pooled RMST difference:/,name);
+}
+// A valid supplied curve alongside a record with no KM data remains eligible.
+rd.syntheticB.km_curve=goodB;
+rd.noCurve={name:'No KM supplied'};
+assert.equal(ctx.RMSTPanel.render(),true);
+assert.match(built.summary,/k=2/);
+assert.match(built.bodyHtml,/Pooled RMST difference/);
+delete rd.noCurve;
+// Direct API must not extrapolate beyond observed follow-up.
+const direct = S.poolRMSTDiff([
+  {studlab:'Synthetic A',km_curve:rd.syntheticA.km_curve,rmst_diff_se:.3},
+  {studlab:'Synthetic B',km_curve:goodB,rmst_diff_se:.4}
+],7);
+assert.match(direct.error,/Invalid, truncated or nonmonotone KM curve/);
+assert.equal(direct.k,0);
 console.log('RMST PANEL SOURCE SE WIRING PASS '+copy);
 """
 

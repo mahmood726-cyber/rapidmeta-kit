@@ -422,14 +422,47 @@
     return s0 + (s1 - s0) * (t - t0) / (t1 - t0);
   }
 
+  // A malformed or truncated KM curve cannot be silently skipped or repaired.
+  // RMST requires an in-range, chronological, non-increasing survival curve
+  // over a common restriction horizon. This is input validation only: the
+  // experimental integration estimator is not changed or R-validated here.
+  function validKMCurve(curve, horizon) {
+    if (!Array.isArray(curve) || curve.length < 2) return false;
+    var prevT = -Infinity, prevTrt = 1, prevCtl = 1;
+    for (var idx = 0; idx < curve.length; idx++) {
+      var knot = curve[idx];
+      if (!knot || typeof knot !== 'object' || Array.isArray(knot)) return false;
+      var time = finiteDecimal(knot.t_months);
+      var trt = finiteDecimal(knot.surv_trt);
+      var ctl = finiteDecimal(knot.surv_ctl);
+      if (time === null || trt === null || ctl === null ||
+          time < 0 || time < prevT ||
+          trt < 0 || trt > 1 || ctl < 0 || ctl > 1 ||
+          trt > prevTrt || ctl > prevCtl) return false;
+      prevT = time;
+      prevTrt = trt;
+      prevCtl = ctl;
+    }
+    return prevT >= horizon;  // never extrapolate RMST beyond supplied support
+  }
+
   function poolRMSTDiff(trials, tau) {
+    var horizon = finiteDecimal(tau);
+    if (horizon === null || !(horizon > 0)) {
+      return { k: 0, per_study: [], error:
+        'Invalid RMST restriction horizon; pooling refused' };
+    }
     var per = [], yi = [], vi = [];
     for (var trialIndex = 0; trialIndex < (trials || []).length; trialIndex++) {
       var t = trials[trialIndex];
-      var c = t.km_curve;
-      if (!Array.isArray(c) || c.length < 2) continue;
-      var rmstT = trapezoidRMST(c, tau, 'surv_trt');
-      var rmstC = trapezoidRMST(c, tau, 'surv_ctl');
+      var c = t && t.km_curve;
+      if (!validKMCurve(c, horizon)) {
+        return { k: 0, per_study: [], error:
+          'Invalid, truncated or nonmonotone KM curve for trial '
+          + (trialIndex + 1) + '; pooling refused' };
+      }
+      var rmstT = trapezoidRMST(c, horizon, 'surv_trt');
+      var rmstC = trapezoidRMST(c, horizon, 'surv_ctl');
       var diff = rmstT - rmstC;
       // A KM curve alone does not establish the sampling variance of RMST.
       // Never invent precision from a default n_eff, arm size, or survival
