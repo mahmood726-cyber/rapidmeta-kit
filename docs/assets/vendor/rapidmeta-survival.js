@@ -169,7 +169,9 @@
                 Q: Q, df: df, I2: I2, method: 'REML+HKSJ', fallback: null };
     // Cochrane v6.5 prediction interval: t_{k-1} × sqrt(tau2 + SE_mu^2); undefined k<3.
     if (k >= 3) {
-      var seP = Math.sqrt(tau2 + seMu * seMu);
+      // Use the HKSJ-floored SE of the summary mean in the prediction interval,
+      // as in the fitted CI. The unadjusted seMu understates uncertainty when q* > 1.
+      var seP = Math.sqrt(tau2 + hSE * hSE);
       out.pi_lo = mu - tc * seP; out.pi_hi = mu + tc * seP;
     }
     return out;
