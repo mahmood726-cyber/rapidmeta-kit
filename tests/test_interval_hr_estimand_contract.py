@@ -66,4 +66,4 @@ def test_interval_hr_rejects_non_hr_effect_types_in_all_copies():
         capture_output=True, timeout=60, check=False,
     )
     assert result.returncode == 0, result.stdout + "\n" + result.stderr
-    assert "INTERVAL_HR_ESTIMAND_GUARD_PASS 48 synthetic checks" in result.stdout
+    assert "INTERVAL_HR_ESTIMAND_GUARD_PASS 51 synthetic checks" in result.stdout
