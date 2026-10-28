@@ -29,6 +29,15 @@
     return hasOwn(row, primary) ? row[primary] : row[alias];
   }
 
+  function aliasesAgree(row, primary, alias) {
+    // Parallel source keys for the same estimate/count must not conflict.
+    // A malformed secondary alias cannot be hidden by a valid primary.
+    if (!hasOwn(row, primary) || !hasOwn(row, alias)) return true;
+    var first = finiteDecimal(row[primary]);
+    var second = finiteDecimal(row[alias]);
+    return first !== null && second !== null && first === second;
+  }
+
   function extractSurvivalTrials(rd) {
     if (!rd || typeof rd !== 'object') return { trials: [] };
     var out = [], error = null;
@@ -54,6 +63,20 @@
         }
       }
       if (!hasEffect && String(t.estimandType || '').trim().toUpperCase() !== 'HR') return;
+      // Do not silently choose an HR, interval or comparator count when
+      // the source supplies contradictory representations of one value.
+      var duplicatedAliases = [
+        ['HR', 'publishedHR'], ['HR_ci_lo', 'hrLCI'],
+        ['HR_ci_hi', 'hrUCI'], ['events_ctl', 'cE'], ['n_ctl', 'cN']
+      ];
+      if (duplicatedAliases.some(function (pair) {
+        return !aliasesAgree(t, pair[0], pair[1]);
+      })) {
+        if (error === null) {
+          error = 'Conflicting or malformed duplicated summary-HR/comparator aliases in source row ' + (i + 1);
+        }
+        return;
+      }
       var HR = finiteDecimal(sourceValue(t, 'HR', 'publishedHR'));
       var lo = finiteDecimal(sourceValue(t, 'HR_ci_lo', 'hrLCI'));
       var hi = finiteDecimal(sourceValue(t, 'HR_ci_hi', 'hrUCI'));

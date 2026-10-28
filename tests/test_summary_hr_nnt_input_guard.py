@@ -111,6 +111,35 @@ for (const [label,bad] of invalid) {
   assert.doesNotMatch(cfg.bodyHtml,/<div[^>]*>Pooled HR<\/div>/,label);
   assert.doesNotMatch(cfg.summary,/NNTB|NNTH|k=/,label);
 }
+// Identical source facts in paired aliases are permitted; contradictory
+// effect and comparator aliases must not silently select the primary value.
+// Cochrane Handbook Ch 6: source effect and arm denominators must be coherent.
+P.getRealData=()=>({a:{...goodA,publishedHR:'0.750',hrLCI:'0.60',
+                        hrUCI:'0.920',cE:'20',cN:'100'},b:goodB});
+assert.equal(panel.HRNNTPanel.render(),true,'equivalent aliases accepted');
+assert.match(cfg.summary,/Exploratory NNTB.*k=2/,'equivalent alias positive');
+for (const [label, changed] of [
+  ['conflicting point HR', {publishedHR:1.60}],
+  ['conflicting HR lower limit', {hrLCI:0.30}],
+  ['conflicting HR upper limit', {hrUCI:1.40}],
+  ['conflicting comparator events', {cE:50}],
+  ['conflicting comparator denominator', {cN:80}],
+  ['invalid HR secondary alias', {publishedHR:true}],
+  ['invalid count secondary alias', {cE:'bad'}]
+]) {
+  for (const data of [
+    {a:{...goodA,...changed},b:goodB},
+    {a:goodA,b:{...goodB,...changed}}
+  ]) {
+    P.getRealData=()=>data;
+    assert.equal(panel.HRNNTPanel.render(),true,label);
+    assert.match(cfg.summary,/^Refused:/,label);
+    assert.match(cfg.bodyHtml,/Conflicting or malformed duplicated summary-HR\\/comparator aliases/,label);
+    assert.match(cfg.bodyHtml,/role="alert"/,label);
+    assert.doesNotMatch(cfg.summary,/NNTB|NNTH|k=/,label);
+  }
+}
+P.getRealData=()=>({a:goodA,b:goodB});
 P.getRealData=()=>({a:{...goodA,HR:true,publishedHR:0.75},b:goodB});
 assert.equal(panel.HRNNTPanel.render(),true);
 assert.match(cfg.summary,/^Refused:/,'malformed primary must not use fallback');
