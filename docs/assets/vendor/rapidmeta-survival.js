@@ -583,13 +583,27 @@
     if (hr === null || !(hr > 0) || Rc === null || !(Rc > 0 && Rc < 1)) {
       return { nnt: null, arr: null, tx_risk: null, direction: null };
     }
-    var txRisk = 1 - Math.pow(1 - Rc, hr);
-    var arr = Rc - txRisk;                       // >0 ⇒ treatment lowers risk
-    if (Math.abs(arr) < 1e-9) {
+    // Altman-Andersen fixed-time ARR on the survival scale.  Subtracting
+    // nearly equal absolute risks cancels valid near-null differences;
+    // an arbitrary 1e-9 ARR floor also mislabels finite NNT as undefined.
+    // This computes only conditional arithmetic: a real source-derived
+    // S_control(t), shared horizon, and appropriate PH assumption remain
+    // the caller's responsibility (crude event fractions are insufficient).
+    var logSc = Math.log1p(-Rc);
+    var txRisk = -Math.expm1(hr * logSc);
+    var arr = (1 - Rc) * Math.expm1((hr - 1) * logSc);
+    if (!isFinite(txRisk) || txRisk < 0 || txRisk > 1 || !isFinite(arr)) {
+      return { nnt: null, arr: null, tx_risk: null, direction: null };
+    }
+    if (arr === 0) {
+      return { nnt: null, arr: arr, tx_risk: txRisk, direction: null };
+    }
+    var nnt = 1 / Math.abs(arr);
+    if (!isFinite(nnt)) {
       return { nnt: null, arr: arr, tx_risk: txRisk, direction: null };
     }
     return {
-      nnt: 1 / Math.abs(arr),
+      nnt: nnt,
       arr: arr,
       tx_risk: txRisk,
       direction: arr > 0 ? 'NNTB' : 'NNTH'
