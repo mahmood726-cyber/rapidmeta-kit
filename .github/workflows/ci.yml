@@ -144,3 +144,6 @@ jobs:
           node --version
           Rscript --version
           python -m unittest discover -s metafor-tests -p 'test_interval_hr_metafor_oracle.py' -v
+
+      - name: Compare synthetic pooled RMST to live external REML/HKSJ R
+        run: python -m unittest discover -s metafor-tests -p 'test_rmst_pool_metafor_oracle.py' -v
