@@ -51,6 +51,26 @@ for (const dir of copies) {
     assert.match(res.error || '', /estimand|effect.type|non.hr/i, dir + ': explicit refusal');
     cases++;
   }
+  // A present but falsy interval-list field is malformed source evidence, not
+  // an absent (legacy) field. It must never silently remove a declared study.
+  for (const [label, badList] of [
+    ['explicit null', null], ['explicit false', false],
+    ['explicit zero', 0], ['explicit empty text', '']
+  ]) {
+    const declared = trial('bad', 'HR');
+    declared.intervals = badList;
+    const res = pool([trial('s1', 'HR'), trial('s2', 'HR'), declared], [0, 6]);
+    assert.deepEqual(res.intervals, [], dir + ': refuse ' + label);
+    assert.match(res.error || '', /malformed.*interval.*record/i,
+                 dir + ': explanation of ' + label);
+    cases++;
+  }
+  const unreported = trial('no-interval-record', 'HR');
+  delete unreported.intervals;
+  const skippedLegacy = pool([trial('s1', 'HR'), trial('s2', 'HR'), unreported], [0, 6]);
+  assert.equal(skippedLegacy.intervals.length, 1, dir + ': genuinely absent legacy list');
+  assert.equal(skippedLegacy.intervals[0].k, 2, dir + ': preserve legacy independent trials');
+  cases++;
   const explicitHR = trial('s1', 'HR');
   explicitHR.intervals[0].estimandType = ' HR ';
   const typed = pool([explicitHR, trial('s2', 'HR')], [0, 6]);
@@ -60,10 +80,10 @@ for (const dir of copies) {
 console.log('INTERVAL_HR_ESTIMAND_GUARD_PASS ' + cases + ' synthetic checks');
 """
 
-def test_interval_hr_rejects_non_hr_effect_types_in_all_copies():
+def test_interval_hr_rejects_bad_types_and_explicit_malformed_lists_in_all_copies():
     result = subprocess.run(
         ["node", "-e", NODE], cwd=ROOT, text=True,
         capture_output=True, timeout=60, check=False,
     )
     assert result.returncode == 0, result.stdout + "\n" + result.stderr
-    assert "INTERVAL_HR_ESTIMAND_GUARD_PASS 51 synthetic checks" in result.stdout
+    assert "INTERVAL_HR_ESTIMAND_GUARD_PASS 66 synthetic checks" in result.stdout
