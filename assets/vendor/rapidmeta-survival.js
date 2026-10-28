@@ -296,7 +296,7 @@
       if (boundary === null || boundary < 0 ||
           (bi > 0 && !(boundary > boundaries[bi - 1]))) {
         return { intervals: [], error:
-          'Invalid or non-increasing interval-HR time boundaries; pooling refused' };
+          'Invalid interval-HR time boundaries (non-increasing or malformed); pooling refused' };
       }
       boundaries.push(boundary);
     }
