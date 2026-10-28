@@ -424,27 +424,27 @@
 
   function poolRMSTDiff(trials, tau) {
     var per = [], yi = [], vi = [];
-    (trials || []).forEach(function (t) {
+    for (var trialIndex = 0; trialIndex < (trials || []).length; trialIndex++) {
+      var t = trials[trialIndex];
       var c = t.km_curve;
-      if (!Array.isArray(c) || c.length < 2) return;
+      if (!Array.isArray(c) || c.length < 2) continue;
       var rmstT = trapezoidRMST(c, tau, 'surv_trt');
       var rmstC = trapezoidRMST(c, tau, 'surv_ctl');
       var diff = rmstT - rmstC;
-      // SE: if curve carries per-point se, use Greenwood-style finite diff;
-      // else fall back to a coarse area-variance proxy. Honest: this is the
-      // EXPERIMENTAL part — no R oracle for the SE without IPD.
-      var se;
-      if (isFinite(+t.rmst_diff_se)) {
-        se = +t.rmst_diff_se;
-      } else {
-        // proxy: variance ~ (tau/ (2*sqrt(n_eff)))^2 scaled by survival spread.
-        var nEff = isFinite(+t.n_eff) ? +t.n_eff : (isFinite(+t.tN) && isFinite(+t.cN) ? (+t.tN + +t.cN) : 200);
-        se = tau / (2 * Math.sqrt(Math.max(1, nEff))) * Math.max(0.25, Math.abs(rmstT + rmstC) / (2 * tau));
+      // A KM curve alone does not establish the sampling variance of RMST.
+      // Never invent precision from a default n_eff, arm size, or survival
+      // spread; preserve the valid reported-SE pathway only. Original
+      // individual-level/censoring-based RMST variance remains unverified.
+      var se = finiteDecimal(t.rmst_diff_se);
+      if (se === null || !(se > 0)) {
+        return { k: 0, per_study: [], error:
+          'Missing or invalid reported RMST difference standard error for trial '
+          + (trialIndex + 1) + '; pooling refused without source-based uncertainty' };
       }
       per.push({ studlab: String(t.studlab || t.name || '?'),
                  rmst_trt: rmstT, rmst_ctl: rmstC, rmst_diff: diff, se: se });
       yi.push(diff); vi.push(se * se);
-    });
+    }
     if (per.length === 0) return { k: 0, per_study: [] };
     var p = poolLogRE(yi, vi);   // raw-scale RE pool (not log) — diff is additive
     return {
