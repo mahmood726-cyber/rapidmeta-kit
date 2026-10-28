@@ -11,28 +11,57 @@
   var STORAGE_KEY = 'interval-hr-pool-expanded';
 
   function extractTrialsWithIntervals(rd) {
-    if (!rd) return [];
-    var out = [];
-    Object.values(rd).forEach(function (t) {
-      if (Array.isArray(t.intervals) && t.intervals.length > 0) {
-        out.push({
-          studlab: String(t.name || t.studlab || '?'),
-          // Preserve source study identities for the interval-HR unit-of-analysis
-          // check. Stripping them here bypasses cross-object duplicate refusal.
-          // Do not invent an identifier when the source record lacks one.
-          nct: t.nct,
-          nctId: t.nctId,
-          nct_id: t.nct_id,
-          studyId: t.studyId,
-          study_id: t.study_id,
-          HR: +t.HR,
-          HR_ci_lo: +t.HR_ci_lo,
-          HR_ci_hi: +t.HR_ci_hi,
-          intervals: t.intervals
-        });
+    if (!rd || typeof rd !== 'object') return { trials: [], error: null };
+    var out = [], error = null;
+    Object.values(rd).forEach(function (t, index) {
+      if (!t || typeof t !== 'object' || Array.isArray(t)) {
+        // A malformed declared study cannot be discarded while other
+        // studies contribute an apparently complete pooled result.
+        if (error === null) {
+          error = 'Malformed interval-HR study record in source row ' + (index + 1);
+        }
+        return;
       }
+      if (!Object.prototype.hasOwnProperty.call(t, 'intervals')) return;
+      // Only a truly absent/empty legacy list may be noncontributing.
+      // Passing malformed present lists through the engine would refuse,
+      // but the panel must also avoid .forEach() crashing before rendering.
+      if (!Array.isArray(t.intervals)) {
+        if (error === null) {
+          error = 'Malformed interval-HR records in source row ' + (index + 1);
+        }
+        return;
+      }
+      if (t.intervals.length === 0) return;
+      if (t.intervals.some(function (iv) {
+        return !iv || typeof iv !== 'object' || Array.isArray(iv);
+      })) {
+        if (error === null) {
+          error = 'Malformed interval-HR effect record in source row ' + (index + 1);
+        }
+        return;
+      }
+      var row = {
+        studlab: String(t.name || t.studlab || '?'),
+        // Preserve every stable study identity for unit-of-analysis checks.
+        nct: t.nct,
+        nctId: t.nctId,
+        nct_id: t.nct_id,
+        studyId: t.studyId,
+        study_id: t.study_id,
+        HR: +t.HR,
+        HR_ci_lo: +t.HR_ci_lo,
+        HR_ci_hi: +t.HR_ci_hi,
+        intervals: t.intervals
+      };
+      // The engine refuses RR/OR or malformed declared trial types, but
+      // only if the panel does not strip this source provenance.
+      if (Object.prototype.hasOwnProperty.call(t, 'estimandType')) {
+        row.estimandType = t.estimandType;
+      }
+      out.push(row);
     });
-    return out;
+    return { trials: out, error: error };
   }
 
   function defaultBreakpoints(trials) {
@@ -112,17 +141,22 @@
     if (!P || !SURV) return false;
     var rd = P.getRealData();
     if (!rd) return false;
-    var trials = extractTrialsWithIntervals(rd);
-    if (trials.length < 1) return false;
-
-    var bp = defaultBreakpoints(trials);
-    if (bp.length < 2) return false;
-
+    var extracted = extractTrialsWithIntervals(rd);
+    var trials = extracted.trials;
     var pool;
-    try { pool = SURV.intervalHRPool(trials, bp); }
-    catch (e) {
-      console.warn('[interval-hr-pool] failed:', e);
-      return false;
+    if (extracted.error) {
+      // Preserve the declared evidence-set error in the normal visible
+      // refusal panel; never publish only the remaining valid studies.
+      pool = { intervals: [], error: extracted.error };
+    } else {
+      if (trials.length < 1) return false;
+      var bp = defaultBreakpoints(trials);
+      if (bp.length < 2) return false;
+      try { pool = SURV.intervalHRPool(trials, bp); }
+      catch (e) {
+        console.warn('[interval-hr-pool] failed:', e);
+        return false;
+      }
     }
     if (!pool) return false;
 
