@@ -24,6 +24,12 @@ const trials = [
     {t0:0,t1:3,HR:.75,HR_ci_lo:.55,HR_ci_hi:.94},
     {t0:3,t1:6,HR:.85,HR_ci_lo:.65,HR_ci_hi:1.02}]}
 ];
+const syntheticRawJSON = JSON.stringify({trials, breakpoints:[0,3,6]});
+const inputSHA256 = require('node:crypto').createHash('sha256')
+  .update(syntheticRawJSON, 'utf8').digest('hex');
+assert.equal(inputSHA256,
+  'efefeb2583d2cdc4b5006706aac19aaea1e76f92976aec30e7144092172866ec',
+  'canonical synthetic raw fixture identity must not drift');
 const reference = S.intervalHRPool(trials, [0,3,6]);
 assert.equal(reference.error, undefined);
 assert.equal(reference.intervals.length, 2, 'numeric windows should pool');
