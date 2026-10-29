@@ -448,5 +448,282 @@ class IntervalHRMetaforOracle(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "HR differs"):
             compare(observed, expected)
 
+
+    def test_summary_hr_rem_l_hksj_against_live_metafor_and_nnt_r_formula(self):
+        """Method-matched, synthetic summary HR + specified-risk algebra only.
+
+        The separately executed interval-HR R oracle is valid here because
+        summary fit() uses the same logHRfromCI and poolLogRE functions as
+        intervalHRPool() but without time-window selection. Every input below
+        has exactly one common analysis window; the JS call exercises the
+        separate published summary fit(), not intervalHRPool(). The NNT R
+        calculation conditions on an explicitly synthetic fixed baseline
+        event risk and makes NO claim that crude counts are fixed-time
+        censoring-adjusted survival or clinically valid NNT evidence.
+        """
+        import hashlib
+
+        summary_js = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const records = JSON.parse(process.argv[1]);
+const trials = records.map(x=>({studlab:x[0],HR:x[1],HR_ci_lo:x[2],HR_ci_hi:x[3]}));
+const fitted = S.fit(trials);
+const risk = Number(process.argv[2]);
+console.log(JSON.stringify({fit:fitted,nnt:fitted?S.nntForHR(fitted.pooled_HR,risk):null}));
+"""
+        # Independent base-R implementation of S_control(t)^HR - S_control(t).
+        # The comparator tests arithmetic at a supplied synthetic risk;
+        # it does not validate estimation of S_control(t) in an actual trial.
+        nnt_r = r"""
+stopifnot(as.character(getRversion())=="4.4.3")
+a <- commandArgs(trailingOnly=TRUE)
+stopifnot(length(a)==2L)
+hr <- as.numeric(a[1]); risk <- as.numeric(a[2])
+stopifnot(is.finite(hr),hr>0,is.finite(risk),risk>0,risk<1)
+s0 <- 1-risk
+arr <- s0^hr-s0
+stopifnot(is.finite(arr),abs(arr)>1e-9)
+cat(sprintf("%.17g\t%.17g\t%.17g\t%s\n",arr,1-s0^hr,1/abs(arr),
+            ifelse(arr>0,"NNTB","NNTH")))
+"""
+        positive = (
+            ("single_normal", SINGLE),
+            ("two_study_reml", PAIR_NEAR),
+            ("three_study_reml", NEAR),
+            ("heterogeneous_reml", HETERO),
+        )
+        for label, rows in positive:
+            with self.subTest(case=label):
+                raw = [(trial, hr, lo, hi) for trial, _t0, _t1, hr, lo, hi in rows]
+                input_json = json.dumps(raw, separators=(",", ":"))
+                digest = hashlib.sha256(input_json.encode("utf-8")).hexdigest()
+                print(f"summary-HR native R synthetic fixture {label} sha256={digest}")
+                proc = subprocess.run(
+                    ["node", "-e", summary_js, input_json, "0.2"],
+                    cwd=ROOT, capture_output=True, text=True, timeout=30,
+                    check=False,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                js = json.loads(proc.stdout)
+                fitted = js["fit"]
+                self.assertIsNotNone(fitted, "summary fit refused positive fixture")
+                r_rows = run_r(rows)
+                self.assertEqual(len(r_rows), 1, "expected one source-matched window")
+                ref = r_rows[0]
+                self.assertEqual(fitted["k"], int(ref["k"]))
+                for js_key, r_key in (
+                    ("pooled_HR", "HR"),
+                    ("pooled_HR_ci_lo", "ci_lo"),
+                    ("pooled_HR_ci_hi", "ci_hi"),
+                    ("tau2", "tau2"),
+                ):
+                    self.assertTrue(
+                        math.isclose(fitted[js_key], ref[r_key],
+                                     rel_tol=1e-3, abs_tol=1e-3),
+                        f"{label}: {js_key} JS={fitted[js_key]} R={ref[r_key]}",
+                    )
+                # Test the separate NNT function against actual base R,
+                # using the JS pooled HR as the common formula input.
+                r_nnt = subprocess.run(
+                    ["Rscript", "--vanilla", "-e", nnt_r,
+                     format(fitted["pooled_HR"], ".17g"), "0.2"],
+                    cwd=ROOT, capture_output=True, text=True, timeout=30,
+                    check=False,
+                )
+                self.assertEqual(r_nnt.returncode, 0, r_nnt.stderr)
+                fields = r_nnt.stdout.strip().split("\t")
+                self.assertEqual(len(fields), 4, r_nnt.stdout)
+                for key, expected in zip(("arr", "tx_risk", "nnt"), fields[:3]):
+                    self.assertTrue(
+                        math.isclose(js["nnt"][key], float(expected),
+                                     rel_tol=1e-10, abs_tol=1e-10),
+                        f"{label}: NNT arithmetic {key} differs from live R",
+                    )
+                self.assertEqual(js["nnt"]["direction"], fields[3])
+                # Negative perturbation: fitted estimator differences beyond
+                # the declared tolerance MUST be detected, not swallowed.
+                self.assertFalse(
+                    math.isclose(fitted["pooled_HR"] + 0.1, ref["HR"],
+                                 rel_tol=1e-3, abs_tol=1e-3)
+                )
+
+    def test_summary_hr_source_refusal_against_live_r_oracle(self):
+        """R and summary JS refuse malformed declared evidence, never partial k."""
+        summary_js = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const rows=JSON.parse(process.argv[1]);
+console.log(JSON.stringify(S.fit(rows.map(x=>({HR:x[3],HR_ci_lo:x[4],HR_ci_hi:x[5]})))));
+"""
+        for label, bad_hr in (
+            ("boolean", True), ("hexadecimal", "0x1"),
+            ("nonpositive", -1), ("point_above_CI", 2.0),
+        ):
+            with self.subTest(case=label):
+                # A bad middle record cannot be silently removed to pool k=2.
+                rows = (NEAR[0], ("BAD", 0, 6, bad_hr, 0.6, 1.2), NEAR[1])
+                js = subprocess.run(
+                    ["node", "-e", summary_js, json.dumps(rows)],
+                    cwd=ROOT, capture_output=True, text=True, timeout=30,
+                    check=False,
+                )
+                self.assertEqual(js.returncode, 0, js.stderr)
+                self.assertIsNone(json.loads(js.stdout),
+                                  "malformed source must not yield summary HR")
+                r = r_process(rows)
+                self.assertNotEqual(r.returncode, 0, r.stdout)
+                self.assertIn("invalid or incomplete interval-HR source table",
+                              r.stderr)
+
+
+    def test_summary_hksj_prediction_interval_matches_live_metafor(self):
+        """Synthetic REML/adhoc PI including HKSJ-floored pooled-mean SE.
+
+        This checks the *prediction* interval, which the prior external-R
+        summary-HR fit comparisons did not test. A narrower pre-HKSJ formula
+        must not pass. Not original clinical input or validated survival PI.
+        """
+        import hashlib
+        yi = [0.18834274230829667, 0.6136462688923738,
+              -0.8979944856056723, 0.1459654781547634]
+        vi = [0.007078724762954062, 0.01585607885918258,
+              0.3701926996080275, 0.007318246865161381]
+        payload = json.dumps({"yi": yi, "vi": vi}, separators=(",", ":"))
+        print("HKSJ PI synthetic raw JSON sha256="
+              + hashlib.sha256(payload.encode("utf-8")).hexdigest())
+        js_program = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const data=JSON.parse(process.argv[1]);
+console.log(JSON.stringify(S._poolLogRE(data.yi,data.vi)));
+"""
+        js_proc = subprocess.run(
+            ["node", "-e", js_program, payload],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False,
+        )
+        self.assertEqual(js_proc.returncode, 0, js_proc.stderr)
+        js = json.loads(js_proc.stdout)
+        self.assertEqual(js["k"], 4)
+        self.assertTrue(js["tau2"] > 0)
+        self.assertTrue(math.isfinite(js["pi_lo"]) and
+                        math.isfinite(js["pi_hi"]))
+
+        r_code = r"""
+stopifnot(as.character(getRversion())=="4.4.3")
+stopifnot(packageVersion("metafor")==package_version("4.8-0"))
+a <- commandArgs(trailingOnly=TRUE)
+stopifnot(length(a)==2L)
+yi <- as.numeric(strsplit(a[1],",",fixed=TRUE)[[1]])
+vi <- as.numeric(strsplit(a[2],",",fixed=TRUE)[[1]])
+stopifnot(length(yi)==4L,length(vi)==4L,all(is.finite(yi)),
+          all(is.finite(vi)),all(vi>0))
+fit <- metafor::rma.uni(yi=yi,vi=vi,method="REML",test="adhoc")
+prediction <- predict(fit)
+out <- c(tau2=fit$tau2, mu=as.numeric(fit$b),
+         pi_lo=prediction$pi.lb, pi_hi=prediction$pi.ub)
+stopifnot(all(is.finite(out)), out[["tau2"]]>0,
+          out[["pi_lo"]]<out[["pi_hi"]])
+cat(paste(sprintf("%.17g",out),collapse="\t"),"\n",sep="")
+"""
+        r_proc = subprocess.run(
+            ["Rscript", "--vanilla", "-e", r_code,
+             ",".join(format(v, ".17g") for v in yi),
+             ",".join(format(v, ".17g") for v in vi)],
+            cwd=ROOT, capture_output=True, text=True, timeout=60, check=False,
+        )
+        self.assertEqual(r_proc.returncode, 0, r_proc.stderr)
+        ref = list(map(float, r_proc.stdout.strip().split("\t")))
+        self.assertEqual(len(ref), 4, r_proc.stdout)
+        for key, observed in zip(("tau2", "mu", "pi_lo", "pi_hi"), ref):
+            self.assertTrue(
+                math.isclose(js[key], observed, rel_tol=2e-3, abs_tol=2e-3),
+                f"method-matched R {key}: JS {js[key]} vs R {observed}",
+            )
+        # Negative control: a materially narrowed interval cannot be accepted.
+        self.assertFalse(math.isclose(js["pi_lo"] + 0.08, ref[2],
+                                      rel_tol=2e-3, abs_tol=2e-3))
+
+
+    def test_zero_heterogeneity_summary_pi_equals_ci_in_live_metafor(self):
+        """Boundary oracle: at tau2=0, metafor's default adhoc PI equals CI.
+
+        This covers an untested prediction-interval boundary, distinct from
+        the prior heterogeneous q*>1 PI test. As documented by predict.rma,
+        with k-p t degrees of freedom PI=CI when tau2=0:
+        https://wviechtb.github.io/metafor/reference/predict.rma.html
+        Synthetic only, no original clinical study effect or KM follow-up.
+        A deliberately forged PI endpoint must fail the numerical comparator.
+        """
+        import hashlib
+
+        yi = [math.log(0.8)] * 4
+        vi = [0.02, 0.04, 0.03, 0.05]
+        payload = json.dumps({"yi": yi, "vi": vi}, separators=(",", ":"))
+        self.assertEqual(
+            hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+            "6e3080edf042a0e1ff7f489e440a95f84344b32e39b2226e76f6426cd146ddbd",
+            "synthetic zero-tau input identity changed",
+        )
+        js_code = r"""
+const S = require('./assets/vendor/rapidmeta-survival.js').RapidMetaSurvival;
+const d = JSON.parse(process.argv[1]);
+console.log(JSON.stringify(S._poolLogRE(d.yi,d.vi)));
+"""
+        js_proc = subprocess.run(
+            ["node", "-e", js_code, payload], cwd=ROOT, capture_output=True,
+            text=True, timeout=30, check=False,
+        )
+        self.assertEqual(js_proc.returncode, 0, js_proc.stderr)
+        js = json.loads(js_proc.stdout)
+        self.assertEqual(js["k"], 4)
+        self.assertTrue(math.isfinite(js["pi_lo"]) and
+                        math.isfinite(js["pi_hi"]))
+        self.assertAlmostEqual(js["tau2"], 0.0, delta=1e-12)
+
+        r_code = r"""
+stopifnot(as.character(getRversion())=="4.4.3")
+stopifnot(packageVersion("metafor")==package_version("4.8-0"))
+args <- commandArgs(trailingOnly=TRUE)
+stopifnot(length(args)==2L)
+yi <- as.numeric(strsplit(args[1],",",fixed=TRUE)[[1]])
+vi <- as.numeric(strsplit(args[2],",",fixed=TRUE)[[1]])
+stopifnot(length(yi)==4L, length(vi)==4L,
+          all(is.finite(yi)), all(is.finite(vi)), all(vi>0))
+fit <- metafor::rma.uni(yi=yi, vi=vi, method="REML", test="adhoc",
+                        control=list(tol=1e-12,maxiter=500))
+pred <- predict(fit)
+v <- c(as.numeric(fit$b), fit$tau2, fit$ci.lb, fit$ci.ub,
+       pred$pi.lb, pred$pi.ub)
+stopifnot(length(v)==6L, all(is.finite(v)), abs(v[2])<1e-10,
+          abs(v[3]-v[5])<1e-10, abs(v[4]-v[6])<1e-10)
+cat(paste(sprintf("%.17g",v),collapse="\t"),"\n",sep="")
+"""
+        r_proc = subprocess.run(
+            ["Rscript", "--vanilla", "-e", r_code,
+             ",".join(format(v, ".17g") for v in yi),
+             ",".join(format(v, ".17g") for v in vi)],
+            cwd=ROOT, capture_output=True, text=True, timeout=60,
+            check=False,
+        )
+        self.assertEqual(r_proc.returncode, 0, r_proc.stderr)
+        vals = r_proc.stdout.strip().split("\t")
+        self.assertEqual(len(vals), 6, r_proc.stdout)
+        ref = dict(zip(("mu", "tau2", "ci_lo", "ci_hi", "pi_lo", "pi_hi"),
+                       map(float, vals)))
+        self.assertAlmostEqual(js["pi_lo"], js["ci_lo"], delta=1e-9)
+        self.assertAlmostEqual(js["pi_hi"], js["ci_hi"], delta=1e-9)
+
+        def assert_method_concordance(observed):
+            for key in ("mu", "tau2", "ci_lo", "ci_hi", "pi_lo", "pi_hi"):
+                if not math.isclose(observed[key], ref[key],
+                                    rel_tol=2e-5, abs_tol=2e-5):
+                    raise AssertionError(
+                        f"zero-tau {key} mismatch: JS={observed[key]!r}, "
+                        f"live metafor={ref[key]:.17g}"
+                    )
+        assert_method_concordance(js)
+        forged = dict(js, pi_lo=js["pi_lo"] + 0.05)
+        with self.assertRaisesRegex(AssertionError, "pi_lo mismatch"):
+            assert_method_concordance(forged)
+
+
 if __name__ == "__main__":
     unittest.main()
