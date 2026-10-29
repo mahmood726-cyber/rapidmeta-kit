@@ -141,6 +141,37 @@ class ActualRPairwiseOracle(unittest.TestCase):
                             run_r(rows, measure, method),
                         )
 
+
+    def test_dl_imbalanced_weights_match_stable_native_r(self):
+        # Deliberately synthetic IEEE-754 stress inputs, NOT clinical data.
+        # A dominant 2x2 table makes the subtractive DL C denominator
+        # lose the contributions of the two small-weight studies.
+        n = 2**53 - 1
+        a = (n - 1) // 2
+        rows = (
+            (a, n, a, n),
+            (1, 100, 90, 100),
+            (90, 100, 1, 100),
+        )
+        for measure in ("RR", "OR"):
+            with self.subTest(measure=measure):
+                shipped = run_js(rows, measure, "DL")
+                native_r = run_r(rows, measure, "DL")
+                self.assertEqual(shipped["k_used"], 3)
+                self.assertGreater(native_r["Q"], 2)
+                compare_results(shipped, native_r)
+                # Original source produced these incorrectly rounded tau2
+                # values (subtractive-C implementation). The new R result
+                # must remain meaningfully distinguishable.
+                legacy_tau2 = {
+                    "RR": 9.71494302818273,
+                    "OR": 20.074136663594505,
+                }[measure]
+                self.assertGreater(
+                    abs(legacy_tau2 - native_r["tau2"]) / native_r["tau2"],
+                    0.005,
+                )
+
     def test_high_study_counts_against_actual_r_t_quantiles(self):
         # The former two-term df>30 approximation understated qt(.975, df).
         # Three independent synthetic comparison sets cross RR/OR with DL.

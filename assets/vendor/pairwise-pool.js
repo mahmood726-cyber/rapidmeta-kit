@@ -59,7 +59,15 @@
   // DerSimonian-Laird tau^2 (opts.tau2Method='DL').
   function tau2DL(wFE, sumWFE, Q, df) {
     if (Q <= df) return 0;
-    const C = sumWFE - wFE.reduce((s, w) => s + w * w, 0) / sumWFE;
+    // C = 2 * sum_{i<j}(w_i * w_j) / sum(w), algebraically identical
+    // to sum(w) - sum(w^2)/sum(w). Avoid catastrophic cancellation when
+    // one highly precise study dwarfs the other inverse-variance weights.
+    let preceding = 0, crossProducts = 0;
+    for (let i = 0; i < wFE.length; i++) {
+      crossProducts += preceding * wFE[i];
+      preceding += wFE[i];
+    }
+    const C = 2 * crossProducts / sumWFE;
     return Math.max(0, (Q - df) / C);
   }
 
