@@ -11,48 +11,124 @@
 
   var STORAGE_KEY = 'hr-nnt-panel-expanded';
 
+  function hasOwn(row, key) {
+    return Object.prototype.hasOwnProperty.call(row, key);
+  }
+
+  function finiteDecimal(value) {
+    if (typeof value === 'number') return isFinite(value) ? value : null;
+    if (typeof value !== 'string') return null;
+    var raw = value.trim();
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)) return null;
+    var numeric = Number(raw);
+    return isFinite(numeric) ? numeric : null;
+  }
+
+  function sourceValue(row, primary, alias) {
+    // Explicitly invalid/missing primary data must not silently fall back.
+    return hasOwn(row, primary) ? row[primary] : row[alias];
+  }
+
+  function aliasesAgree(row, primary, alias) {
+    // Parallel source keys for the same estimate/count must not conflict.
+    // A malformed secondary alias cannot be hidden by a valid primary.
+    if (!hasOwn(row, primary) || !hasOwn(row, alias)) return true;
+    var first = finiteDecimal(row[primary]);
+    var second = finiteDecimal(row[alias]);
+    return first !== null && second !== null && first === second;
+  }
+
   function extractSurvivalTrials(rd) {
-    if (!rd) return [];
-    var out = [];
-    Object.values(rd).forEach(function (t) {
-      // Only pool genuine hazard-ratio trials — RR/OR packs (finerenone is
-      // estimandType:'RR') must NOT be surfaced as HRs (category error).
-      if (String(t.estimandType || 'HR').toUpperCase() !== 'HR') return;
-      // Accept either the survival-panel field names (HR/HR_ci_lo/HR_ci_hi) or
-      // the rapidmeta realData names (publishedHR/hrLCI/hrUCI).
-      var HR = isFinite(+t.HR) ? +t.HR : +t.publishedHR;
-      var lo = isFinite(+t.HR_ci_lo) ? +t.HR_ci_lo : +t.hrLCI;
-      var hi = isFinite(+t.HR_ci_hi) ? +t.HR_ci_hi : +t.hrUCI;
-      if (isFinite(HR) && isFinite(lo) && isFinite(hi)) {
-        out.push({
-          studlab: String(t.name || t.studlab || '?'),
-          HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
-          // baseline-risk for NNT: fall back to comparator-arm 2x2 (cE/cN).
-          events_ctl: isFinite(+t.events_ctl) ? +t.events_ctl : +t.cE,
-          n_ctl: isFinite(+t.n_ctl) ? +t.n_ctl : +t.cN
-        });
+    if (!rd || typeof rd !== 'object') return { trials: [] };
+    var out = [], error = null;
+    Object.values(rd).forEach(function (t, i) {
+      if (!t || typeof t !== 'object' || Array.isArray(t)) {
+        // Do not silently omit a malformed study entry and pool the
+        // remaining rows as though the declared evidence set were complete.
+        if (error === null) error = 'Malformed study record in source row ' + (i + 1);
+        return;
       }
+      var hasEffect = ['HR', 'HR_ci_lo', 'HR_ci_hi',
+                       'publishedHR', 'hrLCI', 'hrUCI'].some(function (key) {
+        return hasOwn(t, key);
+      });
+      // Non-HR-only rows may belong to another outcome. But an explicitly
+      // non-HR row also reporting an HR is a contradictory source record:
+      // refusing is safer than silently excluding it and pooling fewer trials.
+      if (hasOwn(t, 'estimandType')) {
+        if (typeof t.estimandType !== 'string' || !t.estimandType.trim()) {
+          if (error === null) error = 'Malformed explicit estimand type in source row ' + (i + 1);
+          return;
+        }
+        if (t.estimandType.trim().toUpperCase() !== 'HR') {
+          if (hasEffect && error === null) {
+            error = 'Conflicting non-HR estimand type and reported HR effect in source row ' + (i + 1);
+          }
+          return;
+        }
+      }
+      if (!hasEffect && String(t.estimandType || '').trim().toUpperCase() !== 'HR') return;
+      // Do not silently choose an HR, interval or comparator count when
+      // the source supplies contradictory representations of one value.
+      var duplicatedAliases = [
+        ['HR', 'publishedHR'], ['HR_ci_lo', 'hrLCI'],
+        ['HR_ci_hi', 'hrUCI'], ['events_ctl', 'cE'], ['n_ctl', 'cN']
+      ];
+      if (duplicatedAliases.some(function (pair) {
+        return !aliasesAgree(t, pair[0], pair[1]);
+      })) {
+        if (error === null) {
+          error = 'Conflicting or malformed duplicated summary-HR/comparator aliases in source row ' + (i + 1);
+        }
+        return;
+      }
+      var HR = finiteDecimal(sourceValue(t, 'HR', 'publishedHR'));
+      var lo = finiteDecimal(sourceValue(t, 'HR_ci_lo', 'hrLCI'));
+      var hi = finiteDecimal(sourceValue(t, 'HR_ci_hi', 'hrUCI'));
+      if (HR === null || lo === null || hi === null ||
+          !(0 < lo && lo <= HR && HR <= hi && lo < hi)) {
+        if (error === null) error = 'Invalid summary-HR effect or 95% CI in source row ' + (i + 1);
+        return;
+      }
+      var sourceTrial = {
+        studlab: String(t.name || t.studlab || '?'),
+        HR: HR, HR_ci_lo: lo, HR_ci_hi: hi,
+        events_ctl: finiteDecimal(sourceValue(t, 'events_ctl', 'cE')),
+        n_ctl: finiteDecimal(sourceValue(t, 'n_ctl', 'cN'))
+      };
+      // Preserve source identifiers through panel extraction for the
+      // summary pool's independent-study unit-of-analysis check.
+      ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'].forEach(function (field) {
+        if (hasOwn(t, field)) sourceTrial[field] = t[field];
+      });
+      out.push(sourceTrial);
     });
-    return out;
+    return { trials: out, error: error };
   }
 
   function inferBaselineRisk(trials) {
-    // If multiple trials carry events_ctl + n_ctl, take the median crude rate.
+    // This is only a crude-risk, exploratory proxy, NOT fixed-time survival.
+    // Missing/malformed comparator arms cannot justify an invented 10% risk.
     var rates = [];
-    trials.forEach(function (t) {
-      if (typeof t.events_ctl === 'number' && typeof t.n_ctl === 'number' && t.n_ctl > 0) {
-        rates.push(t.events_ctl / t.n_ctl);
-      }
-    });
-    if (rates.length === 0) return 0.10; // 10% fallback
+    for (var i = 0; i < trials.length; i++) {
+      var e = trials[i].events_ctl, n = trials[i].n_ctl;
+      if (!Number.isSafeInteger(e) || !Number.isSafeInteger(n) ||
+          n <= 0 || e < 0 || e > n) return null;
+      rates.push(e / n);
+    }
+    if (!rates.length) return null;
     rates.sort(function (a, b) { return a - b; });
     var mid = Math.floor(rates.length / 2);
-    return rates.length % 2 ? rates[mid] : 0.5 * (rates[mid - 1] + rates[mid]);
+    var median = rates.length % 2 ? rates[mid] : 0.5 * (rates[mid - 1] + rates[mid]);
+    // A zero/one baseline makes an HR-based finite NNT non-identifiable.
+    return isFinite(median) && median > 0 && median < 1 ? median : null;
   }
 
   function buildBody(P, trials, fit, baselineRisk, nnt, nntCiLo, nntCiHi) {
     var fmt = P.fmt;
-    var html = '';
+    var html = '<div role="note">Exploratory HR-to-NNT conversion only: crude control-arm event rates ' +
+               'do not establish a common fixed follow-up time or Kaplan–Meier baseline survival. ' +
+               'No clinically validated time-specific NNT is claimed.</div>';
 
     if (nnt.nnt == null) {
       html += '<div style="background:#3a2a0a;border:1px solid #92400e;color:#fbbf24;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
@@ -84,7 +160,7 @@
     html += '</div>';
 
     html += '<div style="font-size:10.5px;color:#94a3b8;margin-top:8px;line-height:1.5;">'
-          + 'Method: NNT for time-to-event meta-analyses (Altman & Andersen 2002). '
+          + 'Method: NNT for time-to-event meta-analyses (Altman & Andersen 1999). '
           + 'ARR = R_ctl − (1 − (1 − R_ctl)^HR); NNT = 1/|ARR|. '
           + 'Baseline risk inferred as the median crude control-arm event rate across trials. '
           + 'Confidence bounds derived by applying the formula to the pooled HR CI limits. '
@@ -94,23 +170,45 @@
     return html;
   }
 
+  function showRefusal(P, reason) {
+    var panel = P.buildCollapsiblePanel({
+      id: 'hr-nnt-panel',
+      badge: 'NNT (HR)',
+      summary: 'Refused: summary-HR/NNT evidence invalid',
+      bodyHtml: '<div role="alert">Summary-HR/NNT pooling refused: ' +
+                reason + '. No pooled HR or NNT has been calculated.</div>',
+      storageKey: STORAGE_KEY
+    });
+    var existing = document.getElementById('hr-nnt-panel');
+    if (existing) existing.replaceWith(panel);
+    else P.insertAfterRBadge(panel);
+    return true;
+  }
+
   function render() {
     var P = global.PanelHelper;
     var SURV = global.RapidMetaSurvival;
     if (!P || !SURV) return false;
     var rd = P.getRealData();
     if (!rd) return false;
-    var trials = extractSurvivalTrials(rd);
+    var extracted = extractSurvivalTrials(rd);
+    if (extracted.error) return showRefusal(P, extracted.error);
+    var trials = extracted.trials;
     if (trials.length < 2) return false;
 
     var fit;
     try { fit = SURV.fit(trials); }
     catch (e) {
-      console.warn('[hr-nnt-panel] fit failed:', e);
-      return false;
+      return showRefusal(P, 'The summary-HR estimator rejected these records');
+    }
+    if (!fit || fit.error) {
+      return showRefusal(P, 'Invalid or numerically unrepresentable summary-HR evidence');
     }
 
     var baseline = inferBaselineRisk(trials);
+    if (baseline === null) {
+      return showRefusal(P, 'Missing or invalid comparator-arm event counts; no source-based baseline risk');
+    }
     var nnt = SURV.nntForHR(fit.pooled_HR, baseline);
     var nntCiLo = null, nntCiHi = null;
     if (fit.pooled_HR_ci_lo > 0 && fit.pooled_HR_ci_hi > 0) {
@@ -127,7 +225,7 @@
     if (nnt.nnt == null) {
       summary = 'NNT undefined · pooled HR ' + fmt(fit.pooled_HR, 2);
     } else {
-      summary = nnt.direction + ' ' + Math.ceil(nnt.nnt) +
+      summary = 'Exploratory ' + nnt.direction + ' ' + Math.ceil(nnt.nnt) +
                 (nntCiLo != null ? ' [' + Math.ceil(nntCiLo) + '–' + Math.ceil(nntCiHi) + ']' : '') +
                 ' · baseline ' + fmt(baseline * 100, 1) + '% · k=' + trials.length;
     }
