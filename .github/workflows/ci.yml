@@ -109,3 +109,41 @@ jobs:
           node --version
           Rscript --version
           python -m unittest discover -s oracle-tests -p 'test_*.py' -v
+
+  native-metafor-interval-hr:
+    name: external metafor 4.8-0 interval-HR REML/HKSJ oracle
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11.9"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20.19.5"
+      - uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05
+        with:
+          r-version: "4.4.3"
+      - name: Install SHA-pinned metafor 4.8-0 (fail closed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript -e 'install.packages(c("metadat", "numDeriv", "mathjaxr", "pbapply", "digest"), repos="https://cloud.r-project.org")'
+          curl --fail --location --show-error --silent --retry 2 \
+            "https://cran.r-project.org/src/contrib/metafor_4.8-0.tar.gz" \
+            --output /tmp/metafor_4.8-0.tar.gz || \
+          curl --fail --location --show-error --silent --retry 2 \
+            "https://cran.r-project.org/src/contrib/Archive/metafor/metafor_4.8-0.tar.gz" \
+            --output /tmp/metafor_4.8-0.tar.gz
+          echo "59003bece34b2ed39f29dce61ca5a68287be07ec683f2f6c51f17bb50ca87801  /tmp/metafor_4.8-0.tar.gz" | sha256sum --check -
+          R CMD INSTALL /tmp/metafor_4.8-0.tar.gz
+          Rscript -e 'stopifnot(as.character(getRversion())=="4.4.3", packageDescription("metafor", fields="Version")=="4.8-0")'
+      - name: Compare shipped interval HR to live external REML/HKSJ R
+        run: |
+          python --version
+          node --version
+          Rscript --version
+          python -m unittest discover -s metafor-tests -p 'test_interval_hr_metafor_oracle.py' -v
+
+      - name: Compare synthetic pooled RMST to live external REML/HKSJ R
+        run: python -m unittest discover -s metafor-tests -p 'test_rmst_pool_metafor_oracle.py' -v
