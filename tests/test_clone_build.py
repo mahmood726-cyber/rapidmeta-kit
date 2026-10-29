@@ -35,6 +35,39 @@ def test_bundled_examples_build(cfg_name, tmp_path):
     assert (out.parent / "assets" / "plotly.min.js").exists()
 
 
+@pytest.mark.parametrize("cfg_name", sorted(p.name for p in CONFIGS.glob("*.json")))
+def test_every_bundled_topic_config_remains_buildable(cfg_name, tmp_path):
+    out = tmp_path / "topic.html"
+    res = run_clone([str(CONFIGS / cfg_name), "--out", str(out)])
+    assert res.returncode == 0, f"{cfg_name}: {res.stderr}"
+    assert out.exists()
+
+
+def test_served_demo_is_exactly_generated_from_reviewed_config(tmp_path):
+    # Guard against a clinically corrected config leaving an older, inconsistent
+    # 3-trial HTML page served on GitHub Pages after a merge.
+    out = tmp_path / "index.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
+                     "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    assert out.read_bytes() == (REPO_ROOT / "docs" / "index.html").read_bytes(), \
+        "docs/index.html must be rebuilt from configs/example_finerenone_ckd.json"
+
+
+def test_clone_does_not_inherit_fictitious_author_assurance(tmp_path):
+    out = tmp_path / "draft.html"
+    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"), "--out", str(out)])
+    assert res.returncode == 0, res.stderr
+    html = out.read_text("utf-8")
+    assert "ILLUSTRATIVE REVIEW DRAFT" in html
+    assert "UNASSESSED: RoB-2 and GRADE" in html
+    assert "No prospective protocol registration has been established" in html
+    assert "Not supplied; authors must declare actual funding" in html
+    assert "Not supplied; authors must declare actual interests" in html
+    assert "All AI-generated content was reviewed and verified by the human author" not in html
+    assert "equivalent to PROSPERO for tracking" not in html
+
+
 def test_every_referenced_asset_ships_in_bundle(tmp_path):
     # OFFLINE GUARD: every src=/href="assets/..." the template emits must (a) land
     # in the output bundle and (b) be present in template/assets (so fresh clones
@@ -69,6 +102,21 @@ def test_finerenone_tokens_stamped(tmp_path):
     assert "rapid_meta_dupilumab_copd" not in html
     # The trial NCTs from the config are wired into the include set.
     assert "NCT02540993" in html and "NCT02545049" in html
+
+
+def test_finerenone_example_has_two_compatible_ckd_cv_trials():
+    # These are the two DKD/T2D trials' four-part cardiovascular composite.
+    # FINEARTS-HF enrolled HFmrEF/HFpEF and reported a recurrent-event rate
+    # ratio. It cannot be silently pooled here as a CKD hazard ratio.
+    cfg = json.loads((CONFIGS / "example_finerenone_ckd.json").read_text("utf-8"))
+    assert {t["nct"] for t in cfg["trials"]} == {"NCT02540993", "NCT02545049"}
+    assert "NCT04435626" not in cfg["acronyms"]
+    assert "nonfatal" in cfg["pico"]["out"].lower()
+    assert "living meta-analysis" not in cfg["title"].lower()
+    for trial in cfg["trials"]:
+        assert trial["reportedEffectType"] == "HR"
+        assert "nonfatal" in trial["allOutcomes"][0]["title"].lower()
+        assert trial["sourceUrl"].startswith("https://doi.org/10.1056/")
 
 
 def test_no_stale_provenance_leaks(tmp_path):
@@ -234,16 +282,29 @@ def test_no_inherited_base_claims_leak(tmp_path):
 
 def test_jsonld_dates_are_build_date_not_frozen(tmp_path):
     # P0-3: datePublished/dateModified default to the build date, never the
-    # inherited 2026-05-24. With no config 'date' they should be today's ISO.
+    # inherited 2026-05-24. With no config 'date' they should be today's ISO;
+    # the *bundled* example pins the date so its own output is repeatable.
     import datetime
+    cfg = json.loads((CONFIGS / "example_finerenone_ckd.json").read_text("utf-8"))
+    cfg.pop("date")
+    cfg_path = tmp_path / "default_date.json"
+    cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
     out = tmp_path / "fin.html"
-    res = run_clone([str(CONFIGS / "example_finerenone_ckd.json"),
-                     "--out", str(out)])
+    res = run_clone([str(cfg_path), "--out", str(out)])
     assert res.returncode == 0, res.stderr
     html = out.read_text(encoding="utf-8")
     today = datetime.date.today().isoformat()
     assert f'"datePublished":"{today}"' in html
     assert f'"dateModified":"{today}"' in html
+
+
+def test_example_is_reproducible_when_date_pinned(tmp_path):
+    a, b = tmp_path / "a" / "index.html", tmp_path / "b" / "index.html"
+    cfg = str(CONFIGS / "example_finerenone_ckd.json")
+    assert run_clone([cfg, "--out", str(a)]).returncode == 0
+    assert run_clone([cfg, "--out", str(b)]).returncode == 0
+    assert a.read_bytes() == b.read_bytes()
+    assert '"datePublished":"2026-10-22"' in a.read_text("utf-8")
 
 
 def test_config_date_overrides_build_date(tmp_path):
