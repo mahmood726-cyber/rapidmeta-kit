@@ -281,7 +281,11 @@
       c.trials.forEach(ref => {
         const identities = [];
         if (typeof ref === 'string' && ref.trim()) {
-          identities.push('reference:' + ref.trim());
+          const referenceId = ref.trim();
+          // Registry IDs are case-insensitive even when data-map aliases differ.
+          // Leave non-registry keys untouched: they may be distinct study aliases.
+          const canonicalRef = /^NCT\d{8}$/i.test(referenceId) ? referenceId.toUpperCase() : referenceId;
+          identities.push('reference:' + canonicalRef);
         }
         const trial = (typeof ref === 'string' && rd[ref]) ? rd[ref] : ref;
         if (trial && typeof trial === 'object') {
