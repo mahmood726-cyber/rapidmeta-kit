@@ -105,4 +105,4 @@ for (const [i, source] of sources.entries()) {
   }
 }
 assert.equal(passed, cases.length * sources.length * 2);
-console.log("PASS: 60 source-executed OR/MD same-study refusal and control scenarios; no R parity claimed.");
+console.log("PASS: " + passed + " source-executed OR/MD same-study refusal and control scenarios; no R parity claimed.");
