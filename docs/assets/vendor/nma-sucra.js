@@ -76,6 +76,15 @@
        Object.prototype.hasOwnProperty.call(o, 'se')));
   }
 
+  // A separately reported time-to-event effect is not an odds ratio from
+  // crude 2x2 counts. Select and source-verify one endpoint/estimand first.
+  function hasPublishedSurvivalCandidate(o) {
+    return !!o && typeof o === 'object' &&
+      (['pubHR', 'pubHR_LCI', 'pubHR_UCI', 'publishedHR', 'hrLCI', 'hrUCI']
+        .some(key => Object.prototype.hasOwnProperty.call(o, key)) ||
+       (typeof o.type === 'string' &&
+        ['HR', 'HAZARD_RATIO', 'TIME_TO_EVENT'].includes(o.type.trim().toUpperCase())));
+  }
   function trialContinuous(t) {
     const ao = t.allOutcomes;
     if (!Array.isArray(ao)) return null;
@@ -333,6 +342,7 @@
     let invalidContinuousRows = 0;
     let ambiguousContinuousRows = 0;
     let ambiguousMixedEffectRows = 0;
+    let ambiguousMixedSurvivalRows = 0;
     let malformedOutcomeMetadataRows = 0;
     let unstablePools = 0;
     let unresolvedTrialRefs = 0;
@@ -384,6 +394,13 @@
             // Refuse until an outcome-level extraction is source-verified.
             if (counts && Array.isArray(t.allOutcomes) && t.allOutcomes.some(hasContinuousCandidate)) {
               ambiguousMixedEffectRows++;
+              return;
+            }
+            // Published HR/time-to-event evidence and crude event-count ORs
+            // cannot be selected interchangeably on the basis of field order.
+            if (counts && Array.isArray(t.allOutcomes) &&
+                t.allOutcomes.some(hasPublishedSurvivalCandidate)) {
+              ambiguousMixedSurvivalRows++;
               return;
             }
             const lo = counts && counts !== false ? trialLogOR(counts) : null;
@@ -474,6 +491,24 @@
                   'No SUCRA, treatment hierarchy or pooled result was computed. ' +
                   'Select one prespecified endpoint and verify its data type, ' +
                   'effect measure and study extraction against primary sources.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (ambiguousMixedSurvivalRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: binary counts and time-to-event effect candidate',
+        bodyHtml: '<div role="alert">Found ' + ambiguousMixedSurvivalRows +
+                  ' trial row(s) with both binary 2x2 event counts and ' +
+                  'published hazard-ratio or time-to-event evidence. These ' +
+                  'are not interchangeable effects, and a binary-first OR ' +
+                  'ranking could silently replace the requested endpoint. ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Select the protocol outcome and source-verify its effect ' +
+                  'measure and uncertainty before synthesis.</div>',
         storageKey: STORAGE_KEY,
       });
       const existing = document.getElementById('nma-sucra-panel');

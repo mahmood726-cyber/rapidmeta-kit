@@ -38,6 +38,25 @@ const cases = [
   { name: "object-shaped continuous metadata must not silently select OR", a: { ...binary(), allOutcomes: { type: "CONTINUOUS", md: 12, se: 2 } }, b: binary(1), want: "shape" },
   { name: "string allOutcomes must not silently select OR", a: binary(), b: { ...binary(1), allOutcomes: "CONTINUOUS" }, want: "shape" },
   { name: "null allOutcomes cannot establish absent continuous endpoint", a: { ...binary(), allOutcomes: null }, b: binary(1), want: "shape" },
+  // Red-before-green: the old engine silently ranked crude ORs despite a
+  // competing reported survival effect for the same trial. These source-executed
+  // cases are synthetic refusals, not an R or clinical-source oracle.
+  { name: "published HR inside allOutcomes cannot silently select OR",
+    a: { ...binary(), allOutcomes: [{ type: "PRIMARY", shortLabel: "KCCQ",
+      pubHR: 0.8, pubHR_LCI: 0.7, pubHR_UCI: 0.94 }] }, b: binary(1), want: "survival" },
+  { name: "typed hazard ratio inside allOutcomes cannot silently select OR",
+    a: binary(), b: { ...binary(1), allOutcomes: [{ type: "hazard_ratio", HR: 0.8 }] },
+    want: "survival" },
+  { name: "publishedHR inside allOutcomes cannot silently select OR",
+    a: { ...binary(), allOutcomes: [{ type: "PRIMARY", publishedHR: 0.8 }] },
+    b: binary(1), want: "survival" },
+  // Preserve the established RapidMeta config pattern: a top-level publishedHR
+  // accompanied by explicit BINARY outcome metadata is not itself a competing
+  // allOutcomes candidate, so this guard does not indiscriminately refuse it.
+  { name: "top-level historical publishedHR with binary-only outcomes",
+    a: { ...binary(), publishedHR: 0.8,
+      allOutcomes: [{ type: "binary", shortLabel: "mortality" }] },
+    b: binary(1), want: "OR" },
   { name: "ordinary binary studies", a: binary(), b: binary(1), want: "OR" },
   { name: "binary plus non-continuous metadata", a: { ...binary(), allOutcomes: [{ type: "PRIMARY", shortLabel: "mortality" }] }, b: binary(1), want: "OR" },
   { name: "MD-only studies", a: md(3), b: md(2), want: "MD" },
@@ -80,6 +99,7 @@ function exercise(source, fixture, reversed) {
 
 const starts = {
   mixed: "Refused: mixed binary and continuous candidate outcomes in a trial",
+  survival: "Refused: binary counts and time-to-event effect candidate",
   shape: "Refused: malformed outcome metadata",
   OR: "OR scale",
   MD: "MD scale",
@@ -93,7 +113,7 @@ for (const [i, source] of sources.entries()) {
       const panel = exercise(source, fixture, reversed);
       const label = paths[i] + " / " + fixture.name + " / reversed=" + reversed;
       assert.ok(panel.summary.startsWith(starts[fixture.want]), label + ": " + panel.summary);
-      if (["mixed", "invalid", "zero", "shape"].includes(fixture.want)) {
+      if (["mixed", "invalid", "zero", "shape", "survival"].includes(fixture.want)) {
         assert.match(panel.bodyHtml, /role="alert"/, label);
         const requiredRefusal = fixture.want === "invalid"
           ? /No SUCRA, treatment hierarchy or pooled estimate was computed/
