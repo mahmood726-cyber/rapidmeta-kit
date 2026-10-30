@@ -83,6 +83,16 @@ const scenarios = [
   ["independent records with distinct multiple ID aliases",
     [A([{ ...a, studyId: "alpha", nct: "NCT007" }]),
       B([{ ...b, studyId: "beta", nct: "NCT008" }])], {}, false],
+  // Registry-like string references are canonical regardless of map-key case.
+  ["NCT registry references differing only by case are reused evidence",
+    [A(["NCT00012345"]), B(["nct00012345"])],
+    { NCT00012345: { ...a }, nct00012345: { ...b } }, true],
+  ["distinct NCT registry references remain independent",
+    [A(["NCT00012345"]), B(["NCT00012346"])],
+    { NCT00012345: { ...a }, NCT00012346: { ...b } }, false],
+  ["nonregistry reference names differing only by case remain distinct",
+    [A(["TrialA"]), B(["triala"])],
+    { TrialA: { ...a }, triala: { ...b } }, false],
 ];
 let passed = 0;
 contents.forEach((code, copy) => {
