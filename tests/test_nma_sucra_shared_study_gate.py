@@ -21,4 +21,4 @@ def test_sucra_shared_study_refusal():
         f"Node SUCRA shared-study gate failed ({proc.returncode})\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     )
-    assert "42 source-executed SUCRA shared-study refusal scenarios" in proc.stdout
+    assert "51 source-executed SUCRA shared-study refusal scenarios" in proc.stdout
