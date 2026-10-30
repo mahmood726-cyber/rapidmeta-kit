@@ -85,6 +85,15 @@
        (typeof o.type === 'string' &&
         ['HR', 'HAZARD_RATIO', 'TIME_TO_EVENT'].includes(o.type.trim().toUpperCase())));
   }
+  // Multiple explicitly typed binary outcomes can have different events,
+  // follow-up and estimands. Trial-level tE/tN/cE/cN cannot identify which
+  // endpoint they belong to; choosing them without an outcome key is unsafe.
+  // This is a source-identity/selection gate, not a network model.
+  function hasMultipleBinaryOutcomeCandidates(t) {
+    return Array.isArray(t.allOutcomes) &&
+      t.allOutcomes.filter(o => o && typeof o.type === 'string' &&
+        o.type.trim().toUpperCase() === 'BINARY').length > 1;
+  }
   function trialContinuous(t) {
     const ao = t.allOutcomes;
     if (!Array.isArray(ao)) return null;
@@ -360,6 +369,7 @@
     let ambiguousContinuousRows = 0;
     let ambiguousMixedEffectRows = 0;
     let ambiguousMixedSurvivalRows = 0;
+    let ambiguousBinaryOutcomeRows = 0;
     let malformedOutcomeMetadataRows = 0;
     let unstablePools = 0;
     let unresolvedTrialRefs = 0;
@@ -418,6 +428,13 @@
             if (counts && Array.isArray(t.allOutcomes) &&
                 t.allOutcomes.some(hasPublishedSurvivalCandidate)) {
               ambiguousMixedSurvivalRows++;
+              return;
+            }
+            // Without an outcome key, trial-level counts do not establish which
+            // of several binary endpoints the protocol requested. Refuse a
+            // potentially wrong arm/endpoint rather than rank unrelated counts.
+            if (counts && hasMultipleBinaryOutcomeCandidates(t)) {
+              ambiguousBinaryOutcomeRows++;
               return;
             }
             const lo = counts && counts !== false ? trialLogOR(counts) : null;
@@ -526,6 +543,24 @@
                   'No SUCRA, treatment hierarchy or pooled result was computed. ' +
                   'Select the protocol outcome and source-verify its effect ' +
                   'measure and uncertainty before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (ambiguousBinaryOutcomeRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: multiple binary outcomes without endpoint selection',
+        bodyHtml: '<div role="alert">Found ' + ambiguousBinaryOutcomeRows +
+                  ' trial row(s) with more than one typed binary outcome but ' +
+                  'only trial-level event counts. Those counts cannot identify ' +
+                  'which endpoint, follow-up or estimand they describe; ' +
+                  'automatically choosing one can produce a wrong-endpoint OR ' +
+                  'ranking. No SUCRA, treatment hierarchy or pooled result ' +
+                  'was computed. Select and source-verify the protocol outcome ' +
+                  'and its arm-specific event counts before synthesis.</div>',
         storageKey: STORAGE_KEY,
       });
       const existing = document.getElementById('nma-sucra-panel');
