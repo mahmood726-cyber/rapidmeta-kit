@@ -298,6 +298,8 @@
           // Leave non-registry keys untouched: they may be distinct study aliases.
           const canonicalRef = /^NCT\d{8}$/i.test(referenceId) ? referenceId.toUpperCase() : referenceId;
           identities.push('reference:' + canonicalRef);
+          // Match a registry reference to the same trial's materialized nct.
+          if (/^NCT\d{8}$/i.test(referenceId)) identities.push('registry:' + canonicalRef);
         }
         const trial = (typeof ref === 'string' && rd[ref]) ? rd[ref] : ref;
         if (trial && typeof trial === 'object') {
@@ -309,7 +311,11 @@
           // duplicated participants / correlated multi-arm contrasts.
           [trial.studyId, trial.study_id, trial.nctId, trial.nct_id, trial.nct].forEach(id => {
             if (typeof id === 'string' && id.trim()) {
-              identities.push('study:' + id.trim().toLowerCase());
+              const normalizedId = id.trim();
+              identities.push('study:' + normalizedId.toLowerCase());
+              if (/^NCT\d{8}$/i.test(normalizedId)) {
+                identities.push('registry:' + normalizedId.toUpperCase());
+              }
             }
           });
         }
