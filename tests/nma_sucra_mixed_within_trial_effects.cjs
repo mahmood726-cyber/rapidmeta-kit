@@ -50,6 +50,28 @@ const cases = [
   { name: "publishedHR inside allOutcomes cannot silently select OR",
     a: { ...binary(), allOutcomes: [{ type: "PRIMARY", publishedHR: 0.8 }] },
     b: binary(1), want: "survival" },
+  // Root-level counts have no outcome key. Two binary outcome rows, even
+  // when individually well-typed, leave endpoint selection ambiguous.
+  // Synthetic regression: old source produced an OR ranking for these cases.
+  { name: "two distinct binary outcomes in A cannot select root counts",
+    a: { ...binary(), allOutcomes: [
+      { type: "binary", shortLabel: "CV death" },
+      { type: "BINARY", shortLabel: "HF admission" }] },
+    b: binary(1), want: "multiBinary" },
+  { name: "two binary outcomes in B cannot select root counts",
+    a: binary(), b: { ...binary(1), allOutcomes: [
+      { type: "BINARY", shortLabel: "Stroke" },
+      { type: "binary", shortLabel: "Bleeding" }] },
+    want: "multiBinary" },
+  { name: "padded binary outcome types remain multiple candidates",
+    a: { ...binary(), allOutcomes: [
+      { type: " BiNaRy ", shortLabel: "Mortality" },
+      { type: " binary", shortLabel: "Readmission" }] },
+    b: binary(1), want: "multiBinary" },
+  { name: "single typed binary endpoint is still eligible",
+    a: { ...binary(), allOutcomes: [{ type: "BINARY", shortLabel: "Mortality" }] },
+    b: { ...binary(1), allOutcomes: [{ type: "binary", shortLabel: "Mortality" }] },
+    want: "OR" },
   // Preserve the established RapidMeta config pattern: a top-level publishedHR
   // accompanied by explicit BINARY outcome metadata is not itself a competing
   // allOutcomes candidate, so this guard does not indiscriminately refuse it.
@@ -100,6 +122,7 @@ function exercise(source, fixture, reversed) {
 const starts = {
   mixed: "Refused: mixed binary and continuous candidate outcomes in a trial",
   survival: "Refused: binary counts and time-to-event effect candidate",
+  multiBinary: "Refused: multiple binary outcomes without endpoint selection",
   shape: "Refused: malformed outcome metadata",
   OR: "OR scale",
   MD: "MD scale",
@@ -113,7 +136,7 @@ for (const [i, source] of sources.entries()) {
       const panel = exercise(source, fixture, reversed);
       const label = paths[i] + " / " + fixture.name + " / reversed=" + reversed;
       assert.ok(panel.summary.startsWith(starts[fixture.want]), label + ": " + panel.summary);
-      if (["mixed", "invalid", "zero", "shape", "survival"].includes(fixture.want)) {
+      if (["mixed", "invalid", "zero", "shape", "survival", "multiBinary"].includes(fixture.want)) {
         assert.match(panel.bodyHtml, /role="alert"/, label);
         const requiredRefusal = fixture.want === "invalid"
           ? /No SUCRA, treatment hierarchy or pooled estimate was computed/
@@ -129,4 +152,18 @@ for (const [i, source] of sources.entries()) {
   }
 }
 assert.equal(passed, cases.length * sources.length * 2);
+// In-memory mutation/refusal check: deleting this gate must make the
+// regression fail by reverting to the original false-positive OR ranking.
+const needle = "if (counts && hasMultipleBinaryOutcomeCandidates(t)) {";
+const ambiguous = cases.find(c => c.want === "multiBinary");
+assert.ok(ambiguous);
+for (const [i, original] of sources.entries()) {
+  assert.equal(original.split(needle).length - 1, 1, paths[i] + ": mutation anchor");
+  const deletedGate = original.replace(needle,
+    "if (false && hasMultipleBinaryOutcomeCandidates(t)) {");
+  const bad = exercise(deletedGate, ambiguous, false);
+  assert.ok(bad.summary.startsWith("OR scale"),
+    paths[i] + ": removing refusal gate must reproduce false OR acceptance");
+}
+console.log("PASS: 3 in-memory gate-deletion mutants reproducibly restore false OR acceptance.");
 console.log("PASS: " + passed + " source-executed OR/MD same-study refusal and control scenarios; no R parity claimed.");
