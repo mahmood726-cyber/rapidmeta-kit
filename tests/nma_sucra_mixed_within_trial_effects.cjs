@@ -29,6 +29,12 @@ const cases = [
   { name: "lowercase continuous type", a: { ...binary(), allOutcomes: [{ ...kccq, type: "continuous" }] }, b: binary(1), want: "mixed" },
   { name: "malformed coexisting MD still needs selection", a: { ...binary(), allOutcomes: [{ type: "CONTINUOUS", md: NaN, se: 0 }] }, b: binary(1), want: "mixed" },
   { name: "PRIMARY metadata cannot select between effect types", a: { ...binary(), allOutcomes: [{ type: "PRIMARY", shortLabel: "mortality" }, kccq] }, b: binary(1), want: "mixed" },
+  { name: "title-case continuous type in A", a: { ...binary(), allOutcomes: [{ ...kccq, type: "Continuous" }] }, b: binary(1), want: "mixed" },
+  { name: "padded mixed-case continuous type in B", a: binary(), b: { ...binary(1), allOutcomes: [{ ...kccq, type: " CoNtInUoUs " }] }, want: "mixed" },
+  { name: "malformed title-case continuous data still needs endpoint selection", a: { ...binary(), allOutcomes: [{ ...kccq, type: "Continuous", se: NaN }] }, b: binary(1), want: "mixed" },
+  { name: "unknown effect type with explicit MD and SE cannot silently select OR", a: { ...binary(), allOutcomes: [{ type: "UNKNOWN", md: 12, se: 2 }] }, b: binary(1), want: "mixed" },
+  { name: "missing effect type with explicit MD and SE cannot silently select OR", a: { ...binary(), allOutcomes: [{ md: 12, se: 2 }] }, b: binary(1), want: "mixed" },
+  { name: "MD-only title-case outcomes remain valid", a: { allOutcomes: [{ ...kccq, type: "Continuous", md: 3, se: 1 }] }, b: { allOutcomes: [{ ...kccq, type: " CoNtInUoUs ", md: 2, se: 1 }] }, want: "MD" },
   { name: "ordinary binary studies", a: binary(), b: binary(1), want: "OR" },
   { name: "binary plus non-continuous metadata", a: { ...binary(), allOutcomes: [{ type: "PRIMARY", shortLabel: "mortality" }] }, b: binary(1), want: "OR" },
   { name: "MD-only studies", a: md(3), b: md(2), want: "MD" },
@@ -98,5 +104,5 @@ for (const [i, source] of sources.entries()) {
     }
   }
 }
-assert.equal(passed, 60);
-console.log("PASS: 60 source-executed OR/MD same-study refusal and control scenarios; no R parity claimed.");
+assert.equal(passed, cases.length * sources.length * 2);
+console.log("PASS: " + passed + " source-executed OR/MD same-study refusal and control scenarios; no R parity claimed.");

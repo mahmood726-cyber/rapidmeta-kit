@@ -64,10 +64,22 @@
 
   const CONT_LABEL_RE = /^(CDR_?SB|CDR-?SB|MMSE|ADAS|PPF[Ee]V1|FEV1|BCVA|KCCQ|SF36|EQ5D|EQ-?5D|ETDRS|HADS|PHQ|GAD|HRSD|MADRS|YBOCS|SLEDAI|UPDRS|MD|change|score)/i;
 
+  // Effect types are extraction metadata; casing or whitespace cannot cause
+  // a continuous endpoint to be silently replaced by an unrelated binary one.
+  function isContinuousOutcome(o) {
+    return !!o && typeof o.type === 'string' &&
+      o.type.trim().toUpperCase() === 'CONTINUOUS';
+  }
+  function hasContinuousCandidate(o) {
+    return isContinuousOutcome(o) || (!!o && typeof o === 'object' &&
+      (Object.prototype.hasOwnProperty.call(o, 'md') ||
+       Object.prototype.hasOwnProperty.call(o, 'se')));
+  }
+
   function trialContinuous(t) {
     const ao = t.allOutcomes;
     if (!Array.isArray(ao)) return null;
-    const continuous = ao.filter(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous'));
+    const continuous = ao.filter(isContinuousOutcome);
     if (continuous.length) {
       // Generic inverse-variance synthesis requires a finite effect and
       // a strictly positive finite variance with a representable weight.
@@ -366,13 +378,13 @@
               uninformativeBinaryRows++;
               return;
             }
-            // A study with both 2x2 event counts and typed MD/SE supplies
+            // A study with 2x2 counts and a continuous candidate (including
+            // MD/SE with missing or invalid type metadata) supplies
             // two incompatible candidate endpoints. Choosing the binary data
             // solely because they appear first can substitute a different
             // estimand for the protocol-selected outcome (Cochrane Ch 6).
             // Refuse until an outcome-level extraction is source-verified.
-            if (counts && Array.isArray(t.allOutcomes) && t.allOutcomes.some(o =>
-                o && (o.type === 'CONTINUOUS' || o.type === 'continuous'))) {
+            if (counts && Array.isArray(t.allOutcomes) && t.allOutcomes.some(hasContinuousCandidate)) {
               ambiguousMixedEffectRows++;
               return;
             }
