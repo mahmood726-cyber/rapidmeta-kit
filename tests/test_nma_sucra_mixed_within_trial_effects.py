@@ -18,4 +18,4 @@ def test_sucra_refuses_mixed_within_trial_candidate_effects():
         f"SUCRA mixed-effect gate failed ({result.returncode})\n"
         f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
-    assert "162 source-executed OR/MD same-study" in result.stdout
+    assert "180 source-executed OR/MD same-study" in result.stdout

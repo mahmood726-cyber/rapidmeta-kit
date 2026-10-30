@@ -80,7 +80,8 @@
   // crude 2x2 counts. Select and source-verify one endpoint/estimand first.
   function hasPublishedSurvivalCandidate(o) {
     return !!o && typeof o === 'object' &&
-      (['pubHR', 'pubHR_LCI', 'pubHR_UCI', 'publishedHR', 'hrLCI', 'hrUCI']
+      (['pubHR', 'pubHR_LCI', 'pubHR_UCI', 'publishedHR', 'hrLCI', 'hrUCI',
+        'HR', 'hazardRatio', 'logHR']
         .some(key => Object.prototype.hasOwnProperty.call(o, key)) ||
        (typeof o.type === 'string' &&
         ['HR', 'HAZARD_RATIO', 'TIME_TO_EVENT'].includes(o.type.trim().toUpperCase())));

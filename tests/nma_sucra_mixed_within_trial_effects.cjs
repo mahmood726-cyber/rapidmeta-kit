@@ -50,6 +50,13 @@ const cases = [
   { name: "publishedHR inside allOutcomes cannot silently select OR",
     a: { ...binary(), allOutcomes: [{ type: "PRIMARY", publishedHR: 0.8 }] },
     b: binary(1), want: "survival" },
+  // Untyped hazard-ratio aliases must not be mistaken for binary endpoints.
+  { name: "untyped HR field in A cannot silently select OR",
+    a: { ...binary(), allOutcomes: [{ HR: 0.78 }] }, b: binary(1), want: "survival" },
+  { name: "untyped hazardRatio in B cannot silently select OR",
+    a: binary(), b: { ...binary(1), allOutcomes: [{ hazardRatio: 0.78 }] }, want: "survival" },
+  { name: "untyped logHR in A cannot silently select OR",
+    a: { ...binary(), allOutcomes: [{ logHR: -0.2 }] }, b: binary(1), want: "survival" },
   // Root-level counts have no outcome key. Two binary outcome rows, even
   // when individually well-typed, leave endpoint selection ambiguous.
   // Synthetic regression: old source produced an OR ranking for these cases.
@@ -166,4 +173,16 @@ for (const [i, original] of sources.entries()) {
     paths[i] + ": removing refusal gate must reproduce false OR acceptance");
 }
 console.log("PASS: 3 in-memory gate-deletion mutants reproducibly restore false OR acceptance.");
+// Mutating away the untyped HR aliases must restore false OR acceptance.
+const hazardAliases = "'HR', 'hazardRatio', 'logHR'";
+for (const [i, original] of sources.entries()) {
+  assert.equal(original.split(hazardAliases).length - 1, 1, paths[i] + ": survival alias anchor");
+  const deletedAliases = original.replace(hazardAliases, "");
+  for (const fixture of cases.filter(c => /untyped (HR|hazardRatio|logHR)/.test(c.name))) {
+    const bad = exercise(deletedAliases, fixture, false);
+    assert.ok(bad.summary.startsWith("OR scale"),
+      paths[i] + ": removing aliases must reproduce false OR acceptance");
+  }
+}
+console.log("PASS: 9 in-memory survival-alias mutation negatives recover false OR ranking.");
 console.log("PASS: " + passed + " source-executed OR/MD same-study refusal and control scenarios; no R parity claimed.");
