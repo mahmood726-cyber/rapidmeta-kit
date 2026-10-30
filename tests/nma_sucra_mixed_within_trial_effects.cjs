@@ -35,6 +35,9 @@ const cases = [
   { name: "unknown effect type with explicit MD and SE cannot silently select OR", a: { ...binary(), allOutcomes: [{ type: "UNKNOWN", md: 12, se: 2 }] }, b: binary(1), want: "mixed" },
   { name: "missing effect type with explicit MD and SE cannot silently select OR", a: { ...binary(), allOutcomes: [{ md: 12, se: 2 }] }, b: binary(1), want: "mixed" },
   { name: "MD-only title-case outcomes remain valid", a: { allOutcomes: [{ ...kccq, type: "Continuous", md: 3, se: 1 }] }, b: { allOutcomes: [{ ...kccq, type: " CoNtInUoUs ", md: 2, se: 1 }] }, want: "MD" },
+  { name: "object-shaped continuous metadata must not silently select OR", a: { ...binary(), allOutcomes: { type: "CONTINUOUS", md: 12, se: 2 } }, b: binary(1), want: "shape" },
+  { name: "string allOutcomes must not silently select OR", a: binary(), b: { ...binary(1), allOutcomes: "CONTINUOUS" }, want: "shape" },
+  { name: "null allOutcomes cannot establish absent continuous endpoint", a: { ...binary(), allOutcomes: null }, b: binary(1), want: "shape" },
   { name: "ordinary binary studies", a: binary(), b: binary(1), want: "OR" },
   { name: "binary plus non-continuous metadata", a: { ...binary(), allOutcomes: [{ type: "PRIMARY", shortLabel: "mortality" }] }, b: binary(1), want: "OR" },
   { name: "MD-only studies", a: md(3), b: md(2), want: "MD" },
@@ -77,6 +80,7 @@ function exercise(source, fixture, reversed) {
 
 const starts = {
   mixed: "Refused: mixed binary and continuous candidate outcomes in a trial",
+  shape: "Refused: malformed outcome metadata",
   OR: "OR scale",
   MD: "MD scale",
   invalid: "Refused: invalid binary 2×2",
@@ -89,7 +93,7 @@ for (const [i, source] of sources.entries()) {
       const panel = exercise(source, fixture, reversed);
       const label = paths[i] + " / " + fixture.name + " / reversed=" + reversed;
       assert.ok(panel.summary.startsWith(starts[fixture.want]), label + ": " + panel.summary);
-      if (["mixed", "invalid", "zero"].includes(fixture.want)) {
+      if (["mixed", "invalid", "zero", "shape"].includes(fixture.want)) {
         assert.match(panel.bodyHtml, /role="alert"/, label);
         const requiredRefusal = fixture.want === "invalid"
           ? /No SUCRA, treatment hierarchy or pooled estimate was computed/

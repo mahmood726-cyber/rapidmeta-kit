@@ -333,6 +333,7 @@
     let invalidContinuousRows = 0;
     let ambiguousContinuousRows = 0;
     let ambiguousMixedEffectRows = 0;
+    let malformedOutcomeMetadataRows = 0;
     let unstablePools = 0;
     let unresolvedTrialRefs = 0;
     let missingDirectEffects = 0;
@@ -355,6 +356,14 @@
               return;
             }
             const flip = (c.t1 === reference);
+            // The extraction contract requires allOutcomes to be an array.
+            // A malformed object/string/null must not silently mask an MD/SE
+            // endpoint and cause binary-first OR substitution.
+            if (Object.prototype.hasOwnProperty.call(t, 'allOutcomes') &&
+                !Array.isArray(t.allOutcomes)) {
+              malformedOutcomeMetadataRows++;
+              return;
+            }
             // Try binary first, then continuous
             const counts = binaryCounts(t);
             // Cochrane Handbook Ch 10 §10.4.4.2 / Ch 6 §6.4.1: when
@@ -430,6 +439,23 @@
                   'Silently omitting studies would change the evidence set and treatment rankings. ' +
                   'No SUCRA, treatment hierarchy or pooled result was computed. ' +
                   'Verify each study reference and its source data before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (malformedOutcomeMetadataRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: malformed outcome metadata',
+        bodyHtml: '<div role="alert">Found ' + malformedOutcomeMetadataRows +
+                  ' trial row(s) where allOutcomes is present but not an array. ' +
+                  'Treating this invalid extraction structure as missing could ' +
+                  'silently substitute an available binary odds ratio for an ' +
+                  'unparsed continuous endpoint. No SUCRA, treatment hierarchy ' +
+                  'or pooled result was computed. Verify the source extraction ' +
+                  'and provide an array of typed outcomes before synthesis.</div>',
         storageKey: STORAGE_KEY,
       });
       const existing = document.getElementById('nma-sucra-panel');
