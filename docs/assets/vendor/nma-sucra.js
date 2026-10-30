@@ -64,10 +64,41 @@
 
   const CONT_LABEL_RE = /^(CDR_?SB|CDR-?SB|MMSE|ADAS|PPF[Ee]V1|FEV1|BCVA|KCCQ|SF36|EQ5D|EQ-?5D|ETDRS|HADS|PHQ|GAD|HRSD|MADRS|YBOCS|SLEDAI|UPDRS|MD|change|score)/i;
 
+  // Effect types are extraction metadata; casing or whitespace cannot cause
+  // a continuous endpoint to be silently replaced by an unrelated binary one.
+  function isContinuousOutcome(o) {
+    return !!o && typeof o.type === 'string' &&
+      o.type.trim().toUpperCase() === 'CONTINUOUS';
+  }
+  function hasContinuousCandidate(o) {
+    return isContinuousOutcome(o) || (!!o && typeof o === 'object' &&
+      (Object.prototype.hasOwnProperty.call(o, 'md') ||
+       Object.prototype.hasOwnProperty.call(o, 'se')));
+  }
+
+  // A separately reported time-to-event effect is not an odds ratio from
+  // crude 2x2 counts. Select and source-verify one endpoint/estimand first.
+  function hasPublishedSurvivalCandidate(o) {
+    return !!o && typeof o === 'object' &&
+      (['pubHR', 'pubHR_LCI', 'pubHR_UCI', 'publishedHR', 'hrLCI', 'hrUCI',
+        'HR', 'hazardRatio', 'logHR']
+        .some(key => Object.prototype.hasOwnProperty.call(o, key)) ||
+       (typeof o.type === 'string' &&
+        ['HR', 'HAZARD_RATIO', 'TIME_TO_EVENT'].includes(o.type.trim().toUpperCase())));
+  }
+  // Multiple explicitly typed binary outcomes can have different events,
+  // follow-up and estimands. Trial-level tE/tN/cE/cN cannot identify which
+  // endpoint they belong to; choosing them without an outcome key is unsafe.
+  // This is a source-identity/selection gate, not a network model.
+  function hasMultipleBinaryOutcomeCandidates(t) {
+    return Array.isArray(t.allOutcomes) &&
+      t.allOutcomes.filter(o => o && typeof o.type === 'string' &&
+        o.type.trim().toUpperCase() === 'BINARY').length > 1;
+  }
   function trialContinuous(t) {
     const ao = t.allOutcomes;
     if (!Array.isArray(ao)) return null;
-    const continuous = ao.filter(o => o && (o.type === 'CONTINUOUS' || o.type === 'continuous'));
+    const continuous = ao.filter(isContinuousOutcome);
     if (continuous.length) {
       // Generic inverse-variance synthesis requires a finite effect and
       // a strictly positive finite variance with a representable weight.
@@ -320,6 +351,10 @@
     let ambiguousPublishedRatioRows = 0;
     let invalidContinuousRows = 0;
     let ambiguousContinuousRows = 0;
+    let ambiguousMixedEffectRows = 0;
+    let ambiguousMixedSurvivalRows = 0;
+    let ambiguousBinaryOutcomeRows = 0;
+    let malformedOutcomeMetadataRows = 0;
     let unstablePools = 0;
     let unresolvedTrialRefs = 0;
     let missingDirectEffects = 0;
@@ -342,6 +377,14 @@
               return;
             }
             const flip = (c.t1 === reference);
+            // The extraction contract requires allOutcomes to be an array.
+            // A malformed object/string/null must not silently mask an MD/SE
+            // endpoint and cause binary-first OR substitution.
+            if (Object.prototype.hasOwnProperty.call(t, 'allOutcomes') &&
+                !Array.isArray(t.allOutcomes)) {
+              malformedOutcomeMetadataRows++;
+              return;
+            }
             // Try binary first, then continuous
             const counts = binaryCounts(t);
             // Cochrane Handbook Ch 10 §10.4.4.2 / Ch 6 §6.4.1: when
@@ -352,6 +395,30 @@
             if (counts && ((counts.tE === 0 && counts.cE === 0) ||
                 (counts.tE === counts.tN && counts.cE === counts.cN))) {
               uninformativeBinaryRows++;
+              return;
+            }
+            // A study with 2x2 counts and a continuous candidate (including
+            // MD/SE with missing or invalid type metadata) supplies
+            // two incompatible candidate endpoints. Choosing the binary data
+            // solely because they appear first can substitute a different
+            // estimand for the protocol-selected outcome (Cochrane Ch 6).
+            // Refuse until an outcome-level extraction is source-verified.
+            if (counts && Array.isArray(t.allOutcomes) && t.allOutcomes.some(hasContinuousCandidate)) {
+              ambiguousMixedEffectRows++;
+              return;
+            }
+            // Published HR/time-to-event evidence and crude event-count ORs
+            // cannot be selected interchangeably on the basis of field order.
+            if (counts && Array.isArray(t.allOutcomes) &&
+                t.allOutcomes.some(hasPublishedSurvivalCandidate)) {
+              ambiguousMixedSurvivalRows++;
+              return;
+            }
+            // Without an outcome key, trial-level counts do not establish which
+            // of several binary endpoints the protocol requested. Refuse a
+            // potentially wrong arm/endpoint rather than rank unrelated counts.
+            if (counts && hasMultipleBinaryOutcomeCandidates(t)) {
+              ambiguousBinaryOutcomeRows++;
               return;
             }
             const lo = counts && counts !== false ? trialLogOR(counts) : null;
@@ -407,6 +474,77 @@
                   'Silently omitting studies would change the evidence set and treatment rankings. ' +
                   'No SUCRA, treatment hierarchy or pooled result was computed. ' +
                   'Verify each study reference and its source data before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (malformedOutcomeMetadataRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: malformed outcome metadata',
+        bodyHtml: '<div role="alert">Found ' + malformedOutcomeMetadataRows +
+                  ' trial row(s) where allOutcomes is present but not an array. ' +
+                  'Treating this invalid extraction structure as missing could ' +
+                  'silently substitute an available binary odds ratio for an ' +
+                  'unparsed continuous endpoint. No SUCRA, treatment hierarchy ' +
+                  'or pooled result was computed. Verify the source extraction ' +
+                  'and provide an array of typed outcomes before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (ambiguousMixedEffectRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: mixed binary and continuous candidate outcomes in a trial',
+        bodyHtml: '<div role="alert">Found ' + ambiguousMixedEffectRows +
+                  ' trial row(s) containing both valid binary 2×2 counts and ' +
+                  'typed continuous mean-difference effects. Binary-first ' +
+                  'selection can silently replace the requested continuous ' +
+                  'endpoint with an unrelated event outcome (or vice versa). ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Select one prespecified endpoint and verify its data type, ' +
+                  'effect measure and study extraction against primary sources.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (ambiguousMixedSurvivalRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: binary counts and time-to-event effect candidate',
+        bodyHtml: '<div role="alert">Found ' + ambiguousMixedSurvivalRows +
+                  ' trial row(s) with both binary 2x2 event counts and ' +
+                  'published hazard-ratio or time-to-event evidence. These ' +
+                  'are not interchangeable effects, and a binary-first OR ' +
+                  'ranking could silently replace the requested endpoint. ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed. ' +
+                  'Select the protocol outcome and source-verify its effect ' +
+                  'measure and uncertainty before synthesis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true;
+    }
+    if (ambiguousBinaryOutcomeRows) {
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: multiple binary outcomes without endpoint selection',
+        bodyHtml: '<div role="alert">Found ' + ambiguousBinaryOutcomeRows +
+                  ' trial row(s) with more than one typed binary outcome but ' +
+                  'only trial-level event counts. Those counts cannot identify ' +
+                  'which endpoint, follow-up or estimand they describe; ' +
+                  'automatically choosing one can produce a wrong-endpoint OR ' +
+                  'ranking. No SUCRA, treatment hierarchy or pooled result ' +
+                  'was computed. Select and source-verify the protocol outcome ' +
+                  'and its arm-specific event counts before synthesis.</div>',
         storageKey: STORAGE_KEY,
       });
       const existing = document.getElementById('nma-sucra-panel');
