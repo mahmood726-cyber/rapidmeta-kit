@@ -130,12 +130,29 @@ def compare_results(shipped, reference, endpoint_tolerance=1e-6):
                 "%s differs: shipped=%.17g, independent R=%.17g"
                 % (key, a, b)
             )
+        # Preserve HKSJ floor validity and material activation. Two
+        # independently computed q-star factors can round to 1 versus
+        # 1 + one machine ULP at the floor, despite agreeing numerically.
+        # Do not mistake this representational noise for a method mismatch.
+        # Anything beyond eight ULPs remains a strict boundary check.
+        if key == "hksjFactor":
+            if a < 1 or b < 1:
+                raise AssertionError(
+                    "hksjFactor differs: floored factor below 1"
+                )
+            floor_band = 8 * math.ulp(1.0)
+            if (a > 1.0 + floor_band) != (b > 1.0 + floor_band):
+                raise AssertionError(
+                    "hksjFactor differs: material HKSJ-floor activation "
+                    "shipped=%.17g, independent R=%.17g" % (a, b)
+                )
+            continue
         # Small absolute tolerances cannot turn a contrary RR/OR direction,
-        # CI/PI null crossing, tau2 zero boundary, or HKSJ floor activation
-        # into a parity PASS. Flag these for method-specific adjudication.
+        # CI/PI null crossing, or tau2 zero boundary into a parity PASS.
+        # Flag these for method-specific adjudication.
         null = 0.0 if key in {"mu_log", "tau2"} else (
             1.0 if key in {"mu", "ci_lo", "ci_hi",
-                           "pi_lo", "pi_hi", "hksjFactor"} else None
+                           "pi_lo", "pi_hi"} else None
         )
         if null is not None and (
                 (a > null) - (a < null) != (b > null) - (b < null)):
@@ -387,6 +404,26 @@ class ActualRPairwiseOracle(unittest.TestCase):
                         dict(synthetic, **{key: below}),
                         dict(synthetic, **{key: above}),
                     )
+        # Native R sometimes computes q-star exactly 1 while the shipped
+        # JS yields 1 + one representable ULP. This is not meaningful HKSJ
+        # activation and must not falsely fail method-matched parity.
+        compare_results(
+            dict(synthetic, hksjFactor=math.nextafter(1.0, math.inf)),
+            dict(synthetic, hksjFactor=1.0),
+        )
+        # Values below the documented floored HKSJ factor remain invalid,
+        # including sub-ULP-sized deviations that numeric tolerance hides.
+        with self.assertRaisesRegex(AssertionError, "hksjFactor differs"):
+            compare_results(
+                dict(synthetic, hksjFactor=math.nextafter(1.0, 0.0)),
+                synthetic,
+            )
+        # A clearly activated HKSJ factor must not match a floor-clamped
+        # reference even when the absolute pooled-numeric tolerance passes.
+        with self.assertRaisesRegex(AssertionError, "hksjFactor differs"):
+            compare_results(
+                dict(synthetic, hksjFactor=1.0 + 1e-12), synthetic
+            )
         # Tolerated same-side drift remains a positive control.
         compare_results(
             dict(synthetic, mu_log=2e-10, mu=1 + 2e-10,
