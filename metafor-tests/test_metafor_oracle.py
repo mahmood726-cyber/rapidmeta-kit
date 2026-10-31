@@ -60,8 +60,13 @@ def invoke_metafor(rows, measure, method, matched_cc05=False):
 def match_model(js_result, r_result):
     for key in FIELDS:
         value = js_result[key]
+        reference_value = r_result[key]
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
             raise AssertionError("non-finite shipped " + key)
+        if (isinstance(reference_value, bool) or
+                not isinstance(reference_value, (int, float)) or
+                not math.isfinite(reference_value)):
+            raise AssertionError("non-finite metafor " + key)
         if key == "k_used":
             reference_k = r_result[key]
             if (isinstance(reference_k, bool) or
@@ -76,11 +81,24 @@ def match_model(js_result, r_result):
         # The externally implemented PM solver need not converge bitwise to
         # the JS bisection. This is a stated numerical, not semantic, bound.
         tolerance = 3e-6 if key in ("tau2", "ci_lo", "ci_hi") else 1e-8
-        if not math.isclose(value, r_result[key],
+        if not math.isclose(value, reference_value,
                             rel_tol=tolerance, abs_tol=tolerance):
             raise AssertionError(
                 "%s differs: JS=%.17g metafor=%.17g" %
-                (key, value, r_result[key])
+                (key, value, reference_value)
+            )
+        # Tolerance must not conceal opposite effect directions, a zero-vs-
+        # positive heterogeneity boundary, or a CI crossing the null ratio 1.
+        # Such a case needs adjudication even if the numeric drift is tiny.
+        null = 0.0 if key in ("mu_log", "tau2") else (
+            1.0 if key in ("ci_lo", "ci_hi") else None
+        )
+        if null is not None and (
+                (value > null) - (value < null) !=
+                (reference_value > null) - (reference_value < null)):
+            raise AssertionError(
+                "%s differs: null-boundary classification JS=%.17g metafor=%.17g" %
+                (key, value, reference_value)
             )
 
 
@@ -221,6 +239,25 @@ class ActualMetaforOracle(unittest.TestCase):
             match_model(dict(model, k_used=1.000000001), model)
         with self.assertRaisesRegex(AssertionError, "k_used differs"):
             match_model(model, dict(model, k_used=True))
+        # False PASS previously: tiny tolerance-compatible changes reversed
+        # the pooled log-effect direction, tau2 zero boundary, or CI null
+        # crossing. These are synthetic comparator mutation tests, not R runs.
+        for key, below, above in (
+                ("mu_log", -1e-10, 1e-10),
+                ("tau2", 0.0, 1e-10),
+                ("ci_lo", 1.0 - 1e-10, 1.0 + 1e-10),
+                ("ci_hi", 1.0 - 1e-10, 1.0 + 1e-10)):
+            with self.subTest(null_boundary=key):
+                with self.assertRaisesRegex(AssertionError, key + " differs"):
+                    match_model(dict(model, **{key: below}),
+                                dict(model, **{key: above}))
+        # Valid same-side numerical drift must remain eligible for tolerance.
+        match_model(
+            dict(model, mu_log=2e-10, tau2=2e-10,
+                 ci_lo=1 - 2e-10, ci_hi=1 + 2e-10),
+            dict(model, mu_log=3e-10, tau2=3e-10,
+                 ci_lo=1 - 3e-10, ci_hi=1 + 3e-10),
+        )
 
 
 if __name__ == "__main__":
