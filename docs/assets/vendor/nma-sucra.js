@@ -312,14 +312,31 @@
       c.trials.forEach(ref => {
         const identities = [];
         if (typeof ref === 'string' && ref.trim()) {
-          identities.push('reference:' + ref.trim());
+          const referenceId = ref.trim();
+          // Registry IDs are case-insensitive even when data-map aliases differ.
+          // Leave non-registry keys untouched: they may be distinct study aliases.
+          const canonicalRef = /^NCT\d{8}$/i.test(referenceId) ? referenceId.toUpperCase() : referenceId;
+          identities.push('reference:' + canonicalRef);
+          // Match a registry reference to the same trial's materialized nct.
+          if (/^NCT\d{8}$/i.test(referenceId)) identities.push('registry:' + canonicalRef);
         }
         const trial = (typeof ref === 'string' && rd[ref]) ? rd[ref] : ref;
         if (trial && typeof trial === 'object') {
           identities.push(trial); // repeated object reference, without inventing a study ID
-          const id = [trial.studyId, trial.study_id, trial.nctId, trial.nct_id]
-            .find(v => typeof v === 'string' && v.trim());
-          if (id) identities.push('study:' + id.trim().toLowerCase());
+          // The published config uses `nct`; other extraction routes carry
+          // studyId/nctId aliases. A single study can expose more than one ID,
+          // so index *all* available identifiers, not just the first alias.
+          // Shared IDs in separately materialized records still imply possible
+          // duplicated participants / correlated multi-arm contrasts.
+          [trial.studyId, trial.study_id, trial.nctId, trial.nct_id, trial.nct].forEach(id => {
+            if (typeof id === 'string' && id.trim()) {
+              const normalizedId = id.trim();
+              identities.push('study:' + normalizedId.toLowerCase());
+              if (/^NCT\d{8}$/i.test(normalizedId)) {
+                identities.push('registry:' + normalizedId.toUpperCase());
+              }
+            }
+          });
         }
         if (identities.some(id => seenDirectEvidence.has(id))) reusedDirectEvidence++;
         identities.forEach(id => seenDirectEvidence.add(id));
