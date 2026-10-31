@@ -88,8 +88,10 @@ def parse_reference(text):
 
 
 def run_r(rows, measure, method):
+    # Preserve every source count. Numeric %d formatting silently truncates
+    # fractional events/denominators, which could manufacture false R parity.
     tsv = "tE\ttN\tcE\tcN\n" + "".join(
-        "%d\t%d\t%d\t%d\n" % row for row in rows
+        "\t".join(str(value) for value in row) + "\n" for row in rows
     )
     cp = subprocess.run(
         ["Rscript", str(R_SCRIPT), measure, method],
@@ -239,6 +241,44 @@ class ActualRPairwiseOracle(unittest.TestCase):
         forged = dict(shipped, pi_hi=shipped["pi_hi"] * 1.0001)
         with self.assertRaisesRegex(AssertionError, "pi_hi differs"):
             compare_results(forged, independent_r, endpoint_tolerance=1e-7)
+
+    def test_native_base_r_refuses_fractional_and_unsafe_counts(self):
+        # Native R must receive original count lexemes, not %d-truncated data.
+        # Synthetic malformed evidence; never modify any clinical records.
+        invalid = {
+            "fractional_event": (1.5, 100, 5, 100),
+            "fractional_denominator": (4, 100.5, 5, 100),
+            "unsafe_denominator": (4, 2**53, 5, 100),
+            "unsafe_event": (2**53, 2**53 + 2, 5, 100),
+        }
+        for label, first in invalid.items():
+            for method in ("DL", "PM"):
+                with self.subTest(case=label, method=method):
+                    with self.assertRaisesRegex(
+                        AssertionError, "invalid binomial count integrity"
+                    ):
+                        run_r((first,) + CASESETS["near_homogeneous"], "RR", method)
+        # Positive control: genuine safe integer tables are accepted.
+        self.assertEqual(
+            run_r(CASESETS["near_homogeneous"], "RR", "DL")["k_used"], 4
+        )
+
+    def test_native_base_r_transport_does_not_truncate_counts(self):
+        # Mocked process boundary is a transport test, not an R parity claim.
+        from unittest.mock import patch
+        rows = ((1.5, 100, 5, 100), (4, 100.5, 5, 100),
+                (2**53, 2**53 + 2, 5, 100))
+        with patch.object(subprocess, "run") as mocked:
+            mocked.return_value.returncode = 1
+            mocked.return_value.stderr = "invalid binomial count integrity"
+            with self.assertRaisesRegex(
+                AssertionError, "invalid binomial count integrity"
+            ):
+                run_r(rows, "RR", "DL")
+            payload = mocked.call_args.kwargs["input"]
+        self.assertIn("1.5\t100\t5\t100", payload)
+        self.assertIn("4\t100.5\t5\t100", payload)
+        self.assertIn("9007199254740992\t9007199254740994", payload)
 
     def test_oracle_refuses_rounded_zero_variance_precision_boundary(self):
         # Independent base-R reference also refuses this synthetic RR edge
