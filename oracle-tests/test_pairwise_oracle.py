@@ -112,6 +112,8 @@ def compare_results(shipped, reference, endpoint_tolerance=1e-6):
         a, b = shipped[key], reference[key]
         if isinstance(a, bool) or not isinstance(a, (int, float)) or not math.isfinite(a):
             raise AssertionError(key + ": non-finite shipped result")
+        if isinstance(b, bool) or not isinstance(b, (int, float)) or not math.isfinite(b):
+            raise AssertionError(key + ": non-finite independent R result")
         if key == "k_used":
             # A fractional or boolean study count must never be accepted
             # merely because it falls inside a floating-point tolerance.
@@ -126,6 +128,19 @@ def compare_results(shipped, reference, endpoint_tolerance=1e-6):
         if not ok:
             raise AssertionError(
                 "%s differs: shipped=%.17g, independent R=%.17g"
+                % (key, a, b)
+            )
+        # Small absolute tolerances cannot turn a contrary RR/OR direction,
+        # CI/PI null crossing, tau2 zero boundary, or HKSJ floor activation
+        # into a parity PASS. Flag these for method-specific adjudication.
+        null = 0.0 if key in {"mu_log", "tau2"} else (
+            1.0 if key in {"mu", "ci_lo", "ci_hi",
+                           "pi_lo", "pi_hi", "hksjFactor"} else None
+        )
+        if null is not None and (
+                (a > null) - (a < null) != (b > null) - (b < null)):
+            raise AssertionError(
+                "%s differs: null-boundary classification shipped=%.17g, independent R=%.17g"
                 % (key, a, b)
             )
 
@@ -354,6 +369,35 @@ class ActualRPairwiseOracle(unittest.TestCase):
             compare_results(dict(synthetic, k_used=True), synthetic)
         with self.assertRaisesRegex(AssertionError, "k_used differs"):
             compare_results(dict(synthetic, k_used=1.000000001), synthetic)
+        # These tolerance-compatible forged results formerly passed,
+        # despite changing the effect direction, null crossing or method floor.
+        # No native R invocation is claimed by these mutation controls.
+        for key, below, above in (
+                ("mu_log", -1e-10, 1e-10),
+                ("mu", 1 - 1e-10, 1 + 1e-10),
+                ("tau2", 0.0, 1e-10),
+                ("ci_lo", 1 - 1e-10, 1 + 1e-10),
+                ("ci_hi", 1 - 1e-10, 1 + 1e-10),
+                ("pi_lo", 1 - 1e-10, 1 + 1e-10),
+                ("pi_hi", 1 - 1e-10, 1 + 1e-10),
+                ("hksjFactor", 1.0, 1.0 + 1e-10)):
+            with self.subTest(null_boundary=key):
+                with self.assertRaisesRegex(AssertionError, key + " differs"):
+                    compare_results(
+                        dict(synthetic, **{key: below}),
+                        dict(synthetic, **{key: above}),
+                    )
+        # Tolerated same-side drift remains a positive control.
+        compare_results(
+            dict(synthetic, mu_log=2e-10, mu=1 + 2e-10,
+                 tau2=2e-10, ci_lo=1 - 2e-10, ci_hi=1 + 2e-10,
+                 pi_lo=1 - 2e-10, pi_hi=1 + 2e-10,
+                 hksjFactor=1 + 2e-10),
+            dict(synthetic, mu_log=3e-10, mu=1 + 3e-10,
+                 tau2=3e-10, ci_lo=1 - 3e-10, ci_hi=1 + 3e-10,
+                 pi_lo=1 - 3e-10, pi_hi=1 + 3e-10,
+                 hksjFactor=1 + 3e-10),
+        )
 
 
 if __name__ == "__main__":
