@@ -254,7 +254,7 @@ class ActualMetaforOracle(unittest.TestCase):
             match_model(dict(model, k_used=True), model)
         with self.assertRaisesRegex(AssertionError, "k_used differs"):
             match_model(dict(model, k_used=1.000000001), model)
-        with self.assertRaisesRegex(AssertionError, "k_used differs"):
+        with self.assertRaisesRegex(AssertionError, "non-finite metafor k_used"):
             match_model(model, dict(model, k_used=True))
         # False PASS previously: tiny tolerance-compatible changes reversed
         # the pooled log-effect direction, tau2 zero boundary, or CI null
