@@ -169,24 +169,41 @@ class ActualMetaforOracle(unittest.TestCase):
             "unsafe_denominator": (4, 2**53, 5, 100),
             "unsafe_event": (2**53, 2**53 + 2, 5, 100),
         }
+        # Preserve the full 4 cases × 2 effects × 2 estimators native-R
+        # refusal matrix from stacked PR #21, on the real lossless transport
+        # from PR #22. A single RR/DL refusal cannot establish OR/PM safety.
+        # Also check both correction policies at a representative method.
         for label, row in malformed.items():
-            for matched_cc05 in (False, True):
-                with self.subTest(case=label, matched_cc05=matched_cc05):
-                    cp = invoke_metafor(
-                        (row,) + CASESETS["near_homogeneous"],
-                        "RR", "DL", matched_cc05=matched_cc05,
-                    )
-                    self.assertNotEqual(cp.returncode, 0)
-                    self.assertIn("invalid binomial count integrity", cp.stderr)
+            rows = (row,) + CASESETS["near_homogeneous"]
+            for measure in ("RR", "OR"):
+                for method in ("DL", "PM"):
+                    with self.subTest(case=label, measure=measure, method=method):
+                        cp = invoke_metafor(rows, measure, method)
+                        self.assertNotEqual(cp.returncode, 0)
+                        self.assertIn("invalid binomial count integrity", cp.stderr)
+                        # Native R refusal must agree with shipped JS refusal;
+                        # neither may silently omit the malformed study.
+                        with self.assertRaisesRegex(
+                            AssertionError, "shipped JS refused"
+                        ):
+                            run_js(rows, measure, method)
+            with self.subTest(case=label, matched_cc05=True):
+                cp = invoke_metafor(rows, "RR", "DL", matched_cc05=True)
+                self.assertNotEqual(cp.returncode, 0)
+                self.assertIn("invalid binomial count integrity", cp.stderr)
 
-        # Positive source-domain control: valid integer rows remain eligible
-        # under either deliberately selected correction convention.
-        for matched_cc05 in (False, True):
-            with self.subTest(valid=True, matched_cc05=matched_cc05):
-                cp = invoke_metafor(CASESETS["near_homogeneous"],
-                                    "RR", "DL", matched_cc05=matched_cc05)
-                self.assertEqual(cp.returncode, 0, cp.stderr)
-                parse_metafor_result(cp.stdout)
+        # Positive controls keep all supported effect/method/correction
+        # combinations eligible on genuine safe-integer interior tables.
+        for measure in ("RR", "OR"):
+            for method in ("DL", "PM"):
+                for matched_cc05 in (False, True):
+                    with self.subTest(valid=True, measure=measure,
+                                      method=method, matched_cc05=matched_cc05):
+                        cp = invoke_metafor(CASESETS["near_homogeneous"],
+                                            measure, method,
+                                            matched_cc05=matched_cc05)
+                        self.assertEqual(cp.returncode, 0, cp.stderr)
+                        parse_metafor_result(cp.stdout)
 
     def test_refuses_unrecognised_correction_modes(self):
         # Never allow a typo to change the quantitative correction silently.
