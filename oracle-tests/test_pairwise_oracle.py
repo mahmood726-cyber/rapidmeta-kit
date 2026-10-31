@@ -110,9 +110,15 @@ def compare_results(shipped, reference, endpoint_tolerance=1e-6):
     # independently R-checked asymptotic expansion for df>30.
     for key in EXPECTED_KEYS:
         a, b = shipped[key], reference[key]
-        if not isinstance(a, (int, float)) or not math.isfinite(a):
+        if isinstance(a, bool) or not isinstance(a, (int, float)) or not math.isfinite(a):
             raise AssertionError(key + ": non-finite shipped result")
-        if key in {"ci_lo", "ci_hi", "pi_lo", "pi_hi"}:
+        if key == "k_used":
+            # A fractional or boolean study count must never be accepted
+            # merely because it falls inside a floating-point tolerance.
+            ok = (not isinstance(b, bool) and
+                  isinstance(b, (int, float)) and math.isfinite(b) and
+                  a == b and a == math.floor(a))
+        elif key in {"ci_lo", "ci_hi", "pi_lo", "pi_hi"}:
             ok = math.isclose(a, b, rel_tol=endpoint_tolerance,
                               abs_tol=endpoint_tolerance)
         else:
@@ -342,6 +348,12 @@ class ActualRPairwiseOracle(unittest.TestCase):
         tampered = dict(js, tau2=js["tau2"] + 0.1)
         with self.assertRaisesRegex(AssertionError, "tau2 differs"):
             compare_results(tampered, truth)
+        # These fake result shapes used to pass a method-matched check.
+        synthetic = {key: 1.0 for key in EXPECTED_KEYS}
+        with self.assertRaisesRegex(AssertionError, "non-finite shipped result"):
+            compare_results(dict(synthetic, k_used=True), synthetic)
+        with self.assertRaisesRegex(AssertionError, "k_used differs"):
+            compare_results(dict(synthetic, k_used=1.000000001), synthetic)
 
 
 if __name__ == "__main__":

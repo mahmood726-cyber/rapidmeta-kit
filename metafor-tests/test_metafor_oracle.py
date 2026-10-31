@@ -60,8 +60,19 @@ def invoke_metafor(rows, measure, method, matched_cc05=False):
 def match_model(js_result, r_result):
     for key in FIELDS:
         value = js_result[key]
-        if not isinstance(value, (int, float)) or not math.isfinite(value):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
             raise AssertionError("non-finite shipped " + key)
+        if key == "k_used":
+            reference_k = r_result[key]
+            if (isinstance(reference_k, bool) or
+                    not isinstance(reference_k, (int, float)) or
+                    not math.isfinite(reference_k) or
+                    value != reference_k or value != math.floor(value)):
+                raise AssertionError(
+                    "k_used differs or is not an integer: JS=%r metafor=%r" %
+                    (value, reference_k)
+                )
+            continue
         # The externally implemented PM solver need not converge bitwise to
         # the JS bisection. This is a stated numerical, not semantic, bound.
         tolerance = 3e-6 if key in ("tau2", "ci_lo", "ci_hi") else 1e-8
@@ -202,6 +213,14 @@ class ActualMetaforOracle(unittest.TestCase):
         model = dict((key, 1.0) for key in FIELDS)
         with self.assertRaisesRegex(AssertionError, "tau2 differs"):
             match_model(dict(model, tau2=1.1), model)
+        # A JSON boolean must not pass as numeric k=1; tiny k mutations
+        # cannot hide inside pooled-effect tolerances.
+        with self.assertRaisesRegex(AssertionError, "non-finite shipped k_used"):
+            match_model(dict(model, k_used=True), model)
+        with self.assertRaisesRegex(AssertionError, "k_used differs"):
+            match_model(dict(model, k_used=1.000000001), model)
+        with self.assertRaisesRegex(AssertionError, "k_used differs"):
+            match_model(model, dict(model, k_used=True))
 
 
 if __name__ == "__main__":
