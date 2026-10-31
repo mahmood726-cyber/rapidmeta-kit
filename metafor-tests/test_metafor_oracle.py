@@ -42,8 +42,10 @@ def parse_metafor_result(output):
 
 
 def invoke_metafor(rows, measure, method, matched_cc05=False):
+    # Preserve fractional source lexemes for the native R count gate.
+    # Python's %d silently truncates 1.5 to 1, manufacturing false parity.
     tab = "tE\ttN\tcE\tcN\n" + "".join(
-        "%d\t%d\t%d\t%d\n" % row for row in rows
+        "\t".join(str(value) for value in row) + "\n" for row in rows
     )
     args = ["Rscript", str(R_SCRIPT), measure, method]
     if matched_cc05:
@@ -128,6 +130,34 @@ class ActualMetaforOracle(unittest.TestCase):
                 cp = invoke_metafor(rows, measure, "DL", matched_cc05=True)
                 self.assertNotEqual(cp.returncode, 0)
                 self.assertIn("CC05 refuses uninformative", cp.stderr)
+
+    def test_binomial_count_integrity_refuses_fractional_and_unsafe_sources(self):
+        # Native R must see original values (not %d-truncated values).
+        # These are malformed synthetic tables, never clinical data.
+        malformed = {
+            "fractional_event": (1.5, 100, 5, 100),
+            "fractional_denominator": (4, 100.5, 5, 100),
+            "unsafe_denominator": (4, 2**53, 5, 100),
+            "unsafe_event": (2**53, 2**53 + 2, 5, 100),
+        }
+        for label, row in malformed.items():
+            for matched_cc05 in (False, True):
+                with self.subTest(case=label, matched_cc05=matched_cc05):
+                    cp = invoke_metafor(
+                        (row,) + CASESETS["near_homogeneous"],
+                        "RR", "DL", matched_cc05=matched_cc05,
+                    )
+                    self.assertNotEqual(cp.returncode, 0)
+                    self.assertIn("invalid binomial count integrity", cp.stderr)
+
+        # Positive source-domain control: valid integer rows remain eligible
+        # under either deliberately selected correction convention.
+        for matched_cc05 in (False, True):
+            with self.subTest(valid=True, matched_cc05=matched_cc05):
+                cp = invoke_metafor(CASESETS["near_homogeneous"],
+                                    "RR", "DL", matched_cc05=matched_cc05)
+                self.assertEqual(cp.returncode, 0, cp.stderr)
+                parse_metafor_result(cp.stdout)
 
     def test_refuses_unrecognised_correction_modes(self):
         # Never allow a typo to change the quantitative correction silently.
