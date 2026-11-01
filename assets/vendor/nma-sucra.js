@@ -152,6 +152,8 @@
     const others = treatments.filter(t => t !== reference);
     const tr = []; // [{ name, mean, se, scale }]
     let scale = null;
+    // Refuse mixing log odds ratios with mean differences (Cochrane Handbook, Chapter 6).
+    const effectTypes = new Set();
     others.forEach(T => {
       const points = [];
       let pickedScale = null;
@@ -164,23 +166,40 @@
             // Try binary first, then continuous
             const lo = trialLogOR(t);
             if (lo) {
+              effectTypes.add('OR');
               points.push({ yi: flip ? -lo.yi : lo.yi, vi: lo.vi });
               pickedScale = pickedScale || 'OR';
               return;
             }
             const cont = trialContinuous(t);
             if (cont) {
+              effectTypes.add('MD');
               points.push({ yi: flip ? -cont.yi : cont.yi, vi: cont.vi });
               pickedScale = pickedScale || 'MD';
             }
           });
         }
       });
+      if (effectTypes.size > 1) return;  // no mixed-scale pooling, even transiently
       const pool = poolDLRE(points);
       if (!pool || pool.k === 0) return;
       tr.push({ name: T, mean: pool.mean, se: pool.se });
       scale = scale || pickedScale;
     });
+    if (effectTypes.size > 1) {
+      // An explicit refusal panel is preferable to silently hiding the rank panel.
+      const panel = P.buildCollapsiblePanel({
+        id: 'nma-sucra-panel', badge: 'SUCRA',
+        summary: 'Refused: incompatible OR and MD effect measures',
+        bodyHtml: '<div role="alert">Cannot pool or rank log odds ratios together with mean differences. ' +
+                  'No SUCRA, treatment hierarchy or pooled result was computed for this input. ' +
+                  'Select one source-verified endpoint and compatible effect measure before analysis.</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('nma-sucra-panel');
+      if (existing) existing.replaceWith(panel); else P.insertAfterRBadge(panel);
+      return true; // panel rendered; does NOT mean statistical success
+    }
     if (tr.length < 2) return false;
     if (!scale) scale = 'OR';
 

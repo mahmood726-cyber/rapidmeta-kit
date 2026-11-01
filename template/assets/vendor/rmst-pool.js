@@ -15,11 +15,20 @@
     if (!rd) return [];
     var out = [];
     Object.values(rd).forEach(function (t) {
-      if (Array.isArray(t.km_curve) && t.km_curve.length >= 2 &&
-          isFinite(+t.km_curve[0].surv_trt) && isFinite(+t.km_curve[0].surv_ctl)) {
+      // Retain every explicitly supplied curve, including malformed ones.
+      // The engine must refuse an invalid study instead of pooling a subset.
+      if (t && typeof t === 'object' &&
+          Object.prototype.hasOwnProperty.call(t, 'km_curve')) {
         out.push({
           studlab: String(t.name || t.studlab || '?'),
-          km_curve: t.km_curve
+          km_curve: t.km_curve,
+          // Preserve every stable identity alias: the direct engine must
+          // detect reports from the same trial before pooling RMST contrasts.
+          nct: t.nct, nctId: t.nctId, nct_id: t.nct_id,
+          studyId: t.studyId, study_id: t.study_id,
+          // Keep the reported study-level uncertainty attached to its curve.
+          // The engine must refuse missing/invalid source SE rather than invent one.
+          rmst_diff_se: t.rmst_diff_se
         });
       }
     });
@@ -29,7 +38,9 @@
   function defaultTau(trials) {
     // Use the minimum last-knot across trials as the conservative default
     var taus = trials.map(function (t) {
-      return t.km_curve[t.km_curve.length - 1].t_months;
+      var curve = t.km_curve;
+      var last = Array.isArray(curve) && curve.length ? curve[curve.length - 1] : null;
+      return last && typeof last === 'object' ? +last.t_months : NaN;
     });
     return Math.min.apply(null, taus);
   }
@@ -38,8 +49,13 @@
     var fmt = P.fmt;
     var html = '';
 
-    if (!pool || pool.k === 0) {
-      return '<div style="color:#fbbf24;font-size:11.5px;">No trials supplied reconstructed KM curves; RMST pool unavailable.</div>';
+    if (!pool || pool.k === 0 || pool.error) {
+      // A supplied curve with missing source uncertainty is not "no trials".
+      // Display the reason for refusal instead of a misleading empty-set note.
+      var reason = pool && pool.error
+        ? pool.error
+        : 'No eligible RMST records with source-based uncertainty';
+      return '<div style="color:#fbbf24;font-size:11.5px;">RMST unavailable: ' + reason + '</div>';
     }
 
     var sig = (pool.ci_lo > 0) || (pool.ci_hi < 0);
@@ -80,10 +96,11 @@
     html += '</tbody></table>';
 
     html += '<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.5;">'
-          + 'Method: Per-trial RMST computed by trapezoid integration of the supplied KM survival to τ*. '
-          + 'RMST-difference SE approximated using Greenwood-style finite-difference. '
-          + 'Differences pooled via inverse-variance random-effects (REML if k≥5, fixed-effect if k&lt;5). '
-          + 'RMST is the recommended summary when proportional-hazards is in doubt (Cochrane v6.5 §10.10).'
+          + 'Method: Per-trial RMST computed as the area under the supplied right-continuous Kaplan–Meier step curve to τ*. '
+          + 'Reported, source-based RMST-difference standard errors are required; no variance is inferred from a curve. '
+          + 'Differences pooled using inverse-variance REML with floored HKSJ t-inference for k≥2; '
+          + 'k=1 uses a fixed-effect normal interval. '
+          + 'Experimental curve integration; censoring-aware RMST estimation and native-R RMST parity are not verified.'
           + '</div>';
 
     return html;
@@ -108,7 +125,9 @@
     if (!pool) return false;
 
     var fmt = P.fmt;
-    var summary = 'ΔRMST = ' + fmt(pool.pooled_diff, 2) + ' mo · 95% CI ' + fmt(pool.ci_lo, 2) + ' to ' + fmt(pool.ci_hi, 2) + ' · k=' + pool.k + ' · τ*=' + fmt(tau, 0) + 'mo';
+    var summary = (pool.error || pool.k === 0)
+      ? 'RMST unavailable — source-based uncertainty required'
+      : 'ΔRMST = ' + fmt(pool.pooled_diff, 2) + ' mo · 95% CI ' + fmt(pool.ci_lo, 2) + ' to ' + fmt(pool.ci_hi, 2) + ' · k=' + pool.k + ' · τ*=' + fmt(tau, 0) + 'mo';
 
     var panel = P.buildCollapsiblePanel({
       id: 'rmst-pool-panel',
