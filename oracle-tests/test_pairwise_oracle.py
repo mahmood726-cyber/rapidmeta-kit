@@ -88,8 +88,10 @@ def parse_reference(text):
 
 
 def run_r(rows, measure, method):
+    # Preserve every source count. Numeric %d formatting silently truncates
+    # fractional events/denominators, which could manufacture false R parity.
     tsv = "tE\ttN\tcE\tcN\n" + "".join(
-        "%d\t%d\t%d\t%d\n" % row for row in rows
+        "\t".join(str(value) for value in row) + "\n" for row in rows
     )
     cp = subprocess.run(
         ["Rscript", str(R_SCRIPT), measure, method],
@@ -108,9 +110,17 @@ def compare_results(shipped, reference, endpoint_tolerance=1e-6):
     # independently R-checked asymptotic expansion for df>30.
     for key in EXPECTED_KEYS:
         a, b = shipped[key], reference[key]
-        if not isinstance(a, (int, float)) or not math.isfinite(a):
+        if isinstance(a, bool) or not isinstance(a, (int, float)) or not math.isfinite(a):
             raise AssertionError(key + ": non-finite shipped result")
-        if key in {"ci_lo", "ci_hi", "pi_lo", "pi_hi"}:
+        if isinstance(b, bool) or not isinstance(b, (int, float)) or not math.isfinite(b):
+            raise AssertionError(key + ": non-finite independent R result")
+        if key == "k_used":
+            # A fractional or boolean study count must never be accepted
+            # merely because it falls inside a floating-point tolerance.
+            ok = (not isinstance(b, bool) and
+                  isinstance(b, (int, float)) and math.isfinite(b) and
+                  a == b and a == math.floor(a))
+        elif key in {"ci_lo", "ci_hi", "pi_lo", "pi_hi"}:
             ok = math.isclose(a, b, rel_tol=endpoint_tolerance,
                               abs_tol=endpoint_tolerance)
         else:
@@ -118,6 +128,36 @@ def compare_results(shipped, reference, endpoint_tolerance=1e-6):
         if not ok:
             raise AssertionError(
                 "%s differs: shipped=%.17g, independent R=%.17g"
+                % (key, a, b)
+            )
+        # Preserve HKSJ floor validity and material activation. Two
+        # independently computed q-star factors can round to 1 versus
+        # 1 + one machine ULP at the floor, despite agreeing numerically.
+        # Do not mistake this representational noise for a method mismatch.
+        # Anything beyond eight ULPs remains a strict boundary check.
+        if key == "hksjFactor":
+            if a < 1 or b < 1:
+                raise AssertionError(
+                    "hksjFactor differs: floored factor below 1"
+                )
+            floor_band = 8 * math.ulp(1.0)
+            if (a > 1.0 + floor_band) != (b > 1.0 + floor_band):
+                raise AssertionError(
+                    "hksjFactor differs: material HKSJ-floor activation "
+                    "shipped=%.17g, independent R=%.17g" % (a, b)
+                )
+            continue
+        # Small absolute tolerances cannot turn a contrary RR/OR direction,
+        # CI/PI null crossing, or tau2 zero boundary into a parity PASS.
+        # Flag these for method-specific adjudication.
+        null = 0.0 if key in {"mu_log", "tau2"} else (
+            1.0 if key in {"mu", "ci_lo", "ci_hi",
+                           "pi_lo", "pi_hi"} else None
+        )
+        if null is not None and (
+                (a > null) - (a < null) != (b > null) - (b < null)):
+            raise AssertionError(
+                "%s differs: null-boundary classification shipped=%.17g, independent R=%.17g"
                 % (key, a, b)
             )
 
@@ -240,6 +280,44 @@ class ActualRPairwiseOracle(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "pi_hi differs"):
             compare_results(forged, independent_r, endpoint_tolerance=1e-7)
 
+    def test_native_base_r_refuses_fractional_and_unsafe_counts(self):
+        # Native R must receive original count lexemes, not %d-truncated data.
+        # Synthetic malformed evidence; never modify any clinical records.
+        invalid = {
+            "fractional_event": (1.5, 100, 5, 100),
+            "fractional_denominator": (4, 100.5, 5, 100),
+            "unsafe_denominator": (4, 2**53, 5, 100),
+            "unsafe_event": (2**53, 2**53 + 2, 5, 100),
+        }
+        for label, first in invalid.items():
+            for method in ("DL", "PM"):
+                with self.subTest(case=label, method=method):
+                    with self.assertRaisesRegex(
+                        AssertionError, "invalid binomial count integrity"
+                    ):
+                        run_r((first,) + CASESETS["near_homogeneous"], "RR", method)
+        # Positive control: genuine safe integer tables are accepted.
+        self.assertEqual(
+            run_r(CASESETS["near_homogeneous"], "RR", "DL")["k_used"], 4
+        )
+
+    def test_native_base_r_transport_does_not_truncate_counts(self):
+        # Mocked process boundary is a transport test, not an R parity claim.
+        from unittest.mock import patch
+        rows = ((1.5, 100, 5, 100), (4, 100.5, 5, 100),
+                (2**53, 2**53 + 2, 5, 100))
+        with patch.object(subprocess, "run") as mocked:
+            mocked.return_value.returncode = 1
+            mocked.return_value.stderr = "invalid binomial count integrity"
+            with self.assertRaisesRegex(
+                AssertionError, "invalid binomial count integrity"
+            ):
+                run_r(rows, "RR", "DL")
+            payload = mocked.call_args.kwargs["input"]
+        self.assertIn("1.5\t100\t5\t100", payload)
+        self.assertIn("4\t100.5\t5\t100", payload)
+        self.assertIn("9007199254740992\t9007199254740994", payload)
+
     def test_oracle_refuses_rounded_zero_variance_precision_boundary(self):
         # Independent base-R reference also refuses this synthetic RR edge
         # case: safe-integer counts whose 1/events - 1/total differences
@@ -302,6 +380,61 @@ class ActualRPairwiseOracle(unittest.TestCase):
         tampered = dict(js, tau2=js["tau2"] + 0.1)
         with self.assertRaisesRegex(AssertionError, "tau2 differs"):
             compare_results(tampered, truth)
+        # These fake result shapes used to pass a method-matched check.
+        synthetic = {key: 1.0 for key in EXPECTED_KEYS}
+        with self.assertRaisesRegex(AssertionError, "non-finite shipped result"):
+            compare_results(dict(synthetic, k_used=True), synthetic)
+        with self.assertRaisesRegex(AssertionError, "k_used differs"):
+            compare_results(dict(synthetic, k_used=1.000000001), synthetic)
+        # These tolerance-compatible forged results formerly passed,
+        # despite changing the effect direction, null crossing or method floor.
+        # No native R invocation is claimed by these mutation controls.
+        for key, below, above in (
+                ("mu_log", -1e-10, 1e-10),
+                ("mu", 1 - 1e-10, 1 + 1e-10),
+                ("tau2", 0.0, 1e-10),
+                ("ci_lo", 1 - 1e-10, 1 + 1e-10),
+                ("ci_hi", 1 - 1e-10, 1 + 1e-10),
+                ("pi_lo", 1 - 1e-10, 1 + 1e-10),
+                ("pi_hi", 1 - 1e-10, 1 + 1e-10),
+                ("hksjFactor", 1.0, 1.0 + 1e-10)):
+            with self.subTest(null_boundary=key):
+                with self.assertRaisesRegex(AssertionError, key + " differs"):
+                    compare_results(
+                        dict(synthetic, **{key: below}),
+                        dict(synthetic, **{key: above}),
+                    )
+        # Native R sometimes computes q-star exactly 1 while the shipped
+        # JS yields 1 + one representable ULP. This is not meaningful HKSJ
+        # activation and must not falsely fail method-matched parity.
+        compare_results(
+            dict(synthetic, hksjFactor=math.nextafter(1.0, math.inf)),
+            dict(synthetic, hksjFactor=1.0),
+        )
+        # Values below the documented floored HKSJ factor remain invalid,
+        # including sub-ULP-sized deviations that numeric tolerance hides.
+        with self.assertRaisesRegex(AssertionError, "hksjFactor differs"):
+            compare_results(
+                dict(synthetic, hksjFactor=math.nextafter(1.0, 0.0)),
+                synthetic,
+            )
+        # A clearly activated HKSJ factor must not match a floor-clamped
+        # reference even when the absolute pooled-numeric tolerance passes.
+        with self.assertRaisesRegex(AssertionError, "hksjFactor differs"):
+            compare_results(
+                dict(synthetic, hksjFactor=1.0 + 1e-12), synthetic
+            )
+        # Tolerated same-side drift remains a positive control.
+        compare_results(
+            dict(synthetic, mu_log=2e-10, mu=1 + 2e-10,
+                 tau2=2e-10, ci_lo=1 - 2e-10, ci_hi=1 + 2e-10,
+                 pi_lo=1 - 2e-10, pi_hi=1 + 2e-10,
+                 hksjFactor=1 + 2e-10),
+            dict(synthetic, mu_log=3e-10, mu=1 + 3e-10,
+                 tau2=3e-10, ci_lo=1 - 3e-10, ci_hi=1 + 3e-10,
+                 pi_lo=1 - 3e-10, pi_hi=1 + 3e-10,
+                 hksjFactor=1 + 3e-10),
+        )
 
 
 if __name__ == "__main__":
