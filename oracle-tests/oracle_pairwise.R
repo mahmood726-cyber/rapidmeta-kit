@@ -20,6 +20,14 @@ if (!identical(names(d), c("tE", "tN", "cE", "cN")) ||
     any(!is.finite(as.matrix(d)))) {
   stop("oracle requires >=3 complete finite 2x2 rows", call. = FALSE)
 }
+# The source-domain contract is discrete binomial counts. Refuse fractional
+# and IEEE-754-unsafe values before effect or variance calculations; otherwise
+# a malformed source could look like a valid interior 2x2 table.
+counts <- as.matrix(d)
+if (any(counts != floor(counts)) || any(counts < 0) ||
+    any(counts > 9007199254740991)) {
+  stop("invalid binomial count integrity: require safe integers", call. = FALSE)
+}
 if (any(d$tE <= 0 | d$tE >= d$tN |
         d$cE <= 0 | d$cE >= d$cN)) {
   stop("interior-only oracle: reject zero/all event cells (no matched correction)", call. = FALSE)

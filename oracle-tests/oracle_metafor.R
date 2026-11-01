@@ -35,6 +35,14 @@ if (any(d$tN <= 0 | d$cN <= 0 | d$tE < 0 | d$cE < 0 |
         d$tE > d$tN | d$cE > d$cN)) {
   stop("invalid binomial table: refusing correction", call. = FALSE)
 }
+# Do not allow fractional or IEEE-754-unsafe input counts to masquerade as
+# discrete trials. The shipped JS API only accepts safe-integer arm counts.
+# This independent R reference must enforce the same source domain.
+counts <- as.matrix(d)
+if (any(counts != floor(counts)) ||
+    any(counts > 9007199254740991)) {
+  stop("invalid binomial count integrity: require safe integers", call. = FALSE)
+}
 # Both-zero and both-full tables are excluded in the JS module. The oracle
 # cannot silently include them as if they were matched; reject whole request.
 if (matched_cc05 && any((d$tE == 0 & d$cE == 0) |
