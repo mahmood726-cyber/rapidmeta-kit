@@ -319,6 +319,23 @@
       piHi = muRE + tPi * seP;
     }
 
+    // A valid ratio and its interval endpoints must be strictly positive and
+    // finite after exponentiation. JSON.stringify silently maps Infinity/NaN
+    // to null; Math.exp underflow can instead produce a misleading zero.
+    // Reject the complete pool, rather than expose an invalid 95% CI or PI.
+    const pooledEndpoints = k >= 3 ? [muRE, ciLo, ciHi, piLo, piHi]
+      : [muRE, ciLo, ciHi];
+    if (pooledEndpoints.some(logValue => {
+      const ratio = Math.exp(logValue);
+      return !Number.isFinite(logValue) || !Number.isFinite(ratio) || ratio <= 0;
+    })) {
+      out.error = 'Unrepresentable pooled ratio or interval endpoint in double precision; '
+        + 'pooling refused rather than returning a zero, Infinity, or JSON null';
+      out.perStudy = [];
+      out.k_used = 0;
+      return out;
+    }
+
     // I^2 (Higgins-Thompson)
     const I2 = Math.max(0, (Q - df) / Q) * 100;
 
