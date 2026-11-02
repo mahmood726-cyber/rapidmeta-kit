@@ -93,6 +93,20 @@ def test_finite_positive_se_controls_still_pool(copy, rows, effect):
     assert "REFUSED" not in result["summary"]
 
 
+
+@pytest.mark.parametrize("copy", COPIES)
+@pytest.mark.parametrize("rows", (
+    GOOD_MD + ({"md": 1.5, "md_se": 0.3},),
+    GOOD_SMD + ({"smd": 0.25, "smd_se": 0.3},),
+))
+def test_inapplicable_preextracted_scale_is_not_displayed_as_nan(copy, rows):
+    """An MD-only report has no study SMD; an SMD-only report has no study MD."""
+    result = run_panel(copy, rows)
+    assert result["rendered"] is True
+    assert result["badge"] == "Continuous"
+    assert "NaN" not in result["bodyHtml"]
+    assert "—" in result["bodyHtml"]
+
 def test_three_shipped_continuous_engines_remain_identical():
     blobs = [(ROOT / path).read_bytes() for path in COPIES]
     assert blobs[0] == blobs[1] == blobs[2]
