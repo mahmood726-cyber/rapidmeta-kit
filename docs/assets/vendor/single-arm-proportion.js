@@ -235,6 +235,8 @@
   }
 
   function render() {
+    // Clear stale provenance when data or panels are unavailable.
+    if (global.SingleArmProportion) global.SingleArmProportion.lastFit = null;
     const P = global.PanelHelper;
     if (!P) return false;
     const rd = P.getRealData();
@@ -250,6 +252,11 @@
 
     const harmonicN = trials.length / trials.reduce((s, t) => s + 1 / t.n, 0);
     const logitProp = invLogit(logitPool.yi);
+    // Truthful runtime metadata for R-comparison UI; this is DL/Wald, not REML/HKSJ.
+    // This records no clinical source, R execution, or independent validation.
+    global.SingleArmProportion.lastFit = {
+      prop: logitProp, k: logitPool.k, method: 'logit-RE-DL-Wald'
+    };
     const summary = 'Pooled ' + P.fmt(logitProp * 100, 1) + '%'
                   + ' [' + P.fmt(invLogit(logitPool.ci_low) * 100, 1)
                   + '–' + P.fmt(invLogit(logitPool.ci_high) * 100, 1)

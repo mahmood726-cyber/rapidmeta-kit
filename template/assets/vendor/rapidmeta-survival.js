@@ -8,11 +8,12 @@
  * EXPERIMENTAL — RMST-difference pooling (poolRMSTDiff) and the interval-HR
  * pool (intervalHRPool) operate on inputs (reconstructed KM curves / per-window
  * HRs) that are NOT carried by the default rapidmeta data model and have NO
- * external R oracle bit-check on disk. They self-skip silently unless a topic
- * pack supplies km_curve / intervals. The summary-HR pool (fit) and NNT
+ * original-study validation. A pinned R 4.4.3 / metafor 4.8-0 oracle checks
+ * synthetic interval-HR REML/HKSJ cases only (no clinical or RMST oracle).
+ * Panels self-skip unless a topic pack supplies km_curve / intervals. The summary-HR pool (fit) and NNT
  * conversion (nntForHR) ARE R-checkable: fit() reproduces the in-page
  * REML + HKSJ-floor + t_{k-1} pooler (Cochrane v6.5 / metafor rma(method="REML",
- * test="knha")) on the log-HR scale; nntForHR is the closed-form Altman-Andersen
+ * test="adhoc")) on the log-HR scale; nntForHR is the closed-form Altman-Andersen
  * (2002) survival NNT. Panels that surface RMST / interval-HR results MUST badge
  * them "Experimental" at the point of display.
  *
@@ -111,7 +112,7 @@
   // ---- core IV random-effects pool on a generic log-effect scale ------------
   // REML τ² (Viechtbauer 2005 Fisher scoring, matches in-page engine), then
   // RE weights; CI by HKSJ with the Cochrane v6.5 floor max(1, q*) and t_{k-1}.
-  // For k < 5 falls back to a fixed-effect pool (REML τ² unstable at tiny k).
+  // Only k=1 uses a fixed-effect normal CI; k>=2 uses REML + floored HKSJ.
   function poolLogRE(yi, vi) {
     var k = yi.length;
     if (k < 1) return null;
@@ -168,7 +169,9 @@
                 Q: Q, df: df, I2: I2, method: 'REML+HKSJ', fallback: null };
     // Cochrane v6.5 prediction interval: t_{k-1} × sqrt(tau2 + SE_mu^2); undefined k<3.
     if (k >= 3) {
-      var seP = Math.sqrt(tau2 + seMu * seMu);
+      // Use the HKSJ-floored SE of the summary mean in the prediction interval,
+      // as in the fitted CI. The unadjusted seMu understates uncertainty when q* > 1.
+      var seP = Math.sqrt(tau2 + hSE * hSE);
       out.pi_lo = mu - tc * seP; out.pi_hi = mu + tc * seP;
     }
     return out;
@@ -182,18 +185,55 @@
   }
 
   // ---- public: summary log-HR pool -----------------------------------------
+  // Accept ordinary decimal/scientific-number source tokens only. In particular,
+  // Number(true), Number([0.8]), Number("0x1") and Number("") are not HR evidence.
+  function finiteDecimal(value) {
+    if (typeof value === 'number') return isFinite(value) ? value : null;
+    if (typeof value !== 'string') return null;
+    var raw = value.trim();
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)) return null;
+    var numeric = Number(raw);
+    return isFinite(numeric) ? numeric : null;
+  }
+
   function fit(trials) {
+    if (!Array.isArray(trials) || trials.length < 1) return null;
     var pts = [];
-    (trials || []).forEach(function (t) {
-      var HR = +t.HR, lo = +t.HR_ci_lo, hi = +t.HR_ci_hi;
-      if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
-        pts.push(logHRfromCI(HR, lo, hi));
+    // A reported trial is one study, even if it has multiple publications or IDs.
+    var seenStudyIds = Object.create(null);
+    var studyIdFields = ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'];
+    for (var i = 0; i < trials.length; i++) {
+      var t = trials[i];
+      if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
+      // A directly invoked fit must also reject RR/OR records, not relabel them HR.
+      // Presence matters: explicit null/false/[] is malformed, not an absent type.
+      if (Object.prototype.hasOwnProperty.call(t, 'estimandType') &&
+          (typeof t.estimandType !== 'string' ||
+           t.estimandType.trim().toUpperCase() !== 'HR')) return null;
+      // Inspect every stable source alias. A different first alias cannot
+      // conceal a repeated NCT. Aliases within the same row are permitted.
+      for (var si = 0; si < studyIdFields.length; si++) {
+        var rawStudyId = t[studyIdFields[si]];
+        if (typeof rawStudyId !== 'string') continue;
+        var studyId = rawStudyId.trim().toLowerCase();
+        if (!studyId) continue;
+        if (Object.prototype.hasOwnProperty.call(seenStudyIds, studyId) &&
+            seenStudyIds[studyId] !== i) return null;
+        seenStudyIds[studyId] = i;
       }
-    });
-    if (pts.length < 1) return null;
+      var HR = finiteDecimal(t.HR);
+      var lo = finiteDecimal(t.HR_ci_lo);
+      var hi = finiteDecimal(t.HR_ci_hi);
+      // Never silently remove a declared study from a pooled effect.
+      if (HR === null || lo === null || hi === null ||
+          !(0 < lo && lo <= HR && HR <= hi && lo < hi)) return null;
+      var point = logHRfromCI(HR, lo, hi);
+      if (!isFinite(point.yi) || !isFinite(point.vi) || !(point.vi > 0)) return null;
+      pts.push(point);
+    }
     var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));
     if (!p) return null;
-    return {
+    var result = {
       pooled_HR: Math.exp(p.mu),
       pooled_HR_ci_lo: Math.exp(p.ci_lo),
       pooled_HR_ci_hi: Math.exp(p.ci_hi),
@@ -202,33 +242,206 @@
       logHR: p.mu, se: p.se, k: p.k, tau2: p.tau2, I2: p.I2,
       Q: p.Q, df: p.df, method: p.method, fallback: p.fallback
     };
+    if (![result.pooled_HR, result.pooled_HR_ci_lo, result.pooled_HR_ci_hi,
+          result.logHR, result.se, result.tau2, result.Q, result.I2].every(isFinite) ||
+        !(0 < result.pooled_HR_ci_lo &&
+          result.pooled_HR_ci_lo <= result.pooled_HR &&
+          result.pooled_HR <= result.pooled_HR_ci_hi &&
+          isFinite(result.k) && result.k === trials.length)) return null;
+    if (p.k >= 3 && !(isFinite(result.pooled_HR_pi_lo) &&
+                      isFinite(result.pooled_HR_pi_hi) &&
+                      result.pooled_HR_pi_lo > 0 &&
+                      result.pooled_HR_pi_hi > 0)) return null;
+    return result;
   }
 
   // ---- public: per-window (interval) HR pool  [EXPERIMENTAL] ----------------
   // trials[i].intervals = [{ t0, t1, HR, HR_ci_lo, HR_ci_hi }, ...]
   // bp = sorted breakpoint array; pools each [t0,t1] window across trials.
+  // A missing/blank follow-up boundary is not a reported month-zero value.
+  // Preserve nonblank numeric-string compatibility with imported source data.
+  // Strict decimal / scientific-notation strings only.  Number("0x1"),
+  // Number("0b1") and Number("0o1") silently reinterpret non-decimal source
+  // text as numeric clinical effects or follow-up times.
+  function validDecimalText(value) {
+    if (typeof value !== 'string') return false;
+    var raw = value.trim();
+    return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(raw)
+      && isFinite(Number(raw));
+  }
+
+  function validTimeBoundary(value) {
+    return (typeof value === 'number' && isFinite(value)) || validDecimalText(value);
+  }
+
+  // Reported effects must be finite numbers or explicitly decimal text.
+  // Refuse implicit boolean/array/hex/binary/octal conversions before fitting.
+  function validEffectValue(value) {
+    return (typeof value === 'number' && isFinite(value)) || validDecimalText(value);
+  }
+
   function intervalHRPool(trials, bp) {
-    if (!Array.isArray(bp) || bp.length < 2) return null;
+    if (!Array.isArray(bp) || bp.length < 2) {
+      return { intervals: [], error:
+        'At least two interval-HR time boundaries required; pooling refused' };
+    }
+    // Interpret decimal/scientific-notation windows once, before both
+    // the source-alignment check and the fitting loop. Without normalization,
+    // text windows pass alignment but fail strict number===string selection,
+    // silently dropping every source effect. Reject malformed/duplicate/
+    // nonchronological windows rather than publishing a partial analysis.
+    var boundaries = [];
+    for (var bi = 0; bi < bp.length; bi++) {
+      var boundary = finiteDecimal(bp[bi]);
+      if (boundary === null || boundary < 0 ||
+          (bi > 0 && !(boundary > boundaries[bi - 1]))) {
+        return { intervals: [], error:
+          'Invalid interval-HR time boundaries (non-increasing or malformed); pooling refused' };
+      }
+      boundaries.push(boundary);
+    }
+    // A reported HR for [0,6] is not an HR for [0,3] or [3,6].
+    // Unioning trial breakpoints can otherwise silently omit spanning effects
+    // and publish a subset of the requested evidence without disclosure.
+    // Only source effects overlapping the requested analysis range are relevant.
+    var requestedStart = boundaries[0], requestedEnd = boundaries[boundaries.length - 1];
+    for (var ti = 0; ti < (trials || []).length; ti++) {
+      var trial = trials[ti];
+      if (!trial || typeof trial !== 'object' || Array.isArray(trial)) {
+        return { intervals: [], error: 'Malformed interval-HR trial evidence for trial '
+          + (ti + 1) + '; pooling refused' };
+      }
+      // RR/OR and HR are different estimands even when numerically similar.
+      // Preserve absent legacy metadata, but refuse every explicitly
+      // non-HR or malformed source declaration before inverse-variance pooling.
+      if (Object.prototype.hasOwnProperty.call(trial, 'estimandType') &&
+          (typeof trial.estimandType !== 'string' ||
+           trial.estimandType.trim().toUpperCase() !== 'HR')) {
+        return { intervals: [], error: 'Non-HR estimand for interval-HR trial '
+          + (ti + 1) + '; pooling refused' };
+      }
+      // Only an absent field denotes an unreported legacy interval list.
+      // A present null/false/zero/empty text list is malformed source data;
+      // never silently omit that trial while pooling the remaining evidence.
+      var records = Object.prototype.hasOwnProperty.call(trial, 'intervals')
+        ? trial.intervals : [];
+      if (!Array.isArray(records)) {
+        return { intervals: [], error: 'Malformed interval-HR records for trial '
+          + (ti + 1) + '; pooling refused' };
+      }
+      for (var ri = 0; ri < records.length; ri++) {
+        var record = records[ri];
+        if (!record || typeof record !== 'object' || Array.isArray(record)) {
+          return { intervals: [], error: 'Malformed interval-HR effect record for trial '
+            + (ti + 1) + '; pooling refused' };
+        }
+        if (Object.prototype.hasOwnProperty.call(record, 'estimandType') &&
+            (typeof record.estimandType !== 'string' ||
+             record.estimandType.trim().toUpperCase() !== 'HR')) {
+          return { intervals: [], error: 'Non-HR estimand in interval-HR effect record for trial '
+            + (ti + 1) + '; pooling refused' };
+        }
+        var rawStart = record.t0, rawEnd = record.t1;
+        var a = Number(rawStart), b = Number(rawEnd);
+        if (!validTimeBoundary(rawStart) || !validTimeBoundary(rawEnd)
+            || !(a >= 0) || !(b > a)) {
+          return { intervals: [], error: 'Invalid interval-HR time boundaries for trial '
+            + (ti + 1) + '; pooling refused' };
+        }
+        if (b <= requestedStart || a >= requestedEnd) continue;
+        var aligned = false;
+        for (var wi = 0; wi + 1 < boundaries.length; wi++) {
+          if (a === boundaries[wi] && b === boundaries[wi + 1]) {
+            aligned = true;
+            break;
+          }
+        }
+        if (!aligned) {
+          return { intervals: [], error: 'Non-aligned interval-HR time window for trial '
+            + (ti + 1) + '; pooling refused rather than silently omitting a study effect' };
+        }
+      }
+    }
     var windows = [];
-    for (var i = 0; i + 1 < bp.length; i++) {
-      var t0 = bp[i], t1 = bp[i + 1];
-      var pts = [];
-      (trials || []).forEach(function (t) {
+    for (var i = 0; i + 1 < boundaries.length; i++) {
+      var t0 = boundaries[i], t1 = boundaries[i + 1];
+      var pts = [], repeatedTrial = null, invalidTrial = null;
+      // Multiple input objects can represent the SAME randomized study.
+      // Track every supplied stable study identifier per analysis window.
+      var seenTrialIds = Object.create(null);
+      (trials || []).forEach(function (t, trialIndex) {
+        var matchingIntervals = 0;
         (t.intervals || []).forEach(function (iv) {
           if (+iv.t0 === t0 && +iv.t1 === t1) {
-            var HR = +iv.HR, lo = +iv.HR_ci_lo, hi = +iv.HR_ci_hi;
-            if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo) {
+            matchingIntervals++;
+            var typedEffect = validEffectValue(iv.HR)
+              && validEffectValue(iv.HR_ci_lo) && validEffectValue(iv.HR_ci_hi);
+            var HR = typedEffect ? Number(iv.HR) : NaN;
+            var lo = typedEffect ? Number(iv.HR_ci_lo) : NaN;
+            var hi = typedEffect ? Number(iv.HR_ci_hi) : NaN;
+            // The point estimate and its 95% CI must represent one coherent effect.
+            // A point HR outside those bounds cannot be inverse-variance pooled.
+            if (isFinite(HR) && isFinite(lo) && isFinite(hi) && HR > 0 && lo > 0 && hi > 0 && hi > lo
+                && HR >= lo && HR <= hi) {
               pts.push(logHRfromCI(HR, lo, hi));
+            } else {
+              invalidTrial = trialIndex + 1;
             }
           }
         });
+        // A single trial cannot contribute two independent inverse-variance
+        // observations to the same follow-up window. Count even malformed
+        // duplicates: ignoring one would silently change the evidence set.
+        if (matchingIntervals > 1) repeatedTrial = trialIndex + 1;
+        if (matchingIntervals > 0) {
+          // nct is the canonical config identifier (AGENTS.md).  Inspect ALL
+          // supplied aliases: an unrelated first alias must not hide an NCT
+          // shared by separately materialized records of one study.
+          ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'].forEach(function (field) {
+            var raw = t[field];
+            if (typeof raw !== 'string') return;
+            var id = raw.trim().toLowerCase();
+            if (!id) return;
+            if (Object.prototype.hasOwnProperty.call(seenTrialIds, id)
+                && seenTrialIds[id] !== trialIndex) {
+              repeatedTrial = trialIndex + 1;
+            } else {
+              seenTrialIds[id] = trialIndex;
+            }
+          });
+        }
       });
+      if (repeatedTrial !== null) {
+        // Refuse both within-object duplicates and matching stable study IDs
+        // across distinct input objects. Never expose partial pooled windows.
+        return { intervals: [], error: 'Repeated interval-HR records for trial '
+          + repeatedTrial + ' within one time window; pooling refused to avoid double-counting study evidence' };
+      }
+      // An explicit record for a requested window must not disappear
+      // merely because its HR/CI is unusable; refuse the whole analysis.
+      if (invalidTrial !== null) {
+        return { intervals: [], error: 'Invalid interval-HR effect or confidence limits for trial '
+          + invalidTrial + ' within one time window; pooling refused to avoid silently omitting study evidence' };
+      }
       if (pts.length === 0) continue;
       var p = poolLogRE(pts.map(function (x) { return x.yi; }), pts.map(function (x) { return x.vi; }));
       if (!p) continue;
+      // A computed log-scale fit is not a representable hazard ratio if
+      // exponentiation overflows or underflows a confidence limit.
+      // Reject rather than render zero, Infinity or JSON-null as a valid CI.
+      var pooledHR = Math.exp(p.mu);
+      var pooledLo = Math.exp(p.ci_lo);
+      var pooledHi = Math.exp(p.ci_hi);
+      if (!isFinite(pooledHR) || !isFinite(pooledLo) || !isFinite(pooledHi)
+          || !(pooledLo > 0) || !(pooledLo <= pooledHR)
+          || !(pooledHR <= pooledHi) || !isFinite(p.tau2)
+          || !(p.tau2 >= 0) || !isFinite(p.I2)) {
+        return { intervals: [], error: 'Unrepresentable interval-HR pooled estimate or confidence limits'
+          + ' for ' + t0 + '–' + t1 + ' mo; pooling refused' };
+      }
       windows.push({
         label: t0 + '–' + t1 + ' mo', t0: t0, t1: t1, k: p.k,
-        HR: Math.exp(p.mu), HR_ci_lo: Math.exp(p.ci_lo), HR_ci_hi: Math.exp(p.ci_hi),
+        HR: pooledHR, HR_ci_lo: pooledLo, HR_ci_hi: pooledHi,
         tau2: p.tau2, I2: p.I2
       });
     }
@@ -237,54 +450,123 @@
 
   // ---- public: RMST-difference pool  [EXPERIMENTAL] -------------------------
   // trials[i].km_curve = [{ t_months, surv_trt, surv_ctl }, ...] (monotone t).
-  // Per-trial RMST = trapezoid integral of S(t) to tau*; pool the DIFFERENCES.
-  function trapezoidRMST(curve, tau, key) {
-    // integrate step-/trapezoid survival to tau (clamp last point at tau).
+  // Per-trial RMST = exact KM step-function area to tau*; pool DIFFERENCES.
+  // KM is a right-continuous step function: area before an event
+  // uses the preceding survival value, not trapezoid interpolation.
+  // A drop at exactly tau has zero impact on the interval preceding tau.
+  // Source: survRM2 vignette, restricted mean survival time estimator.
+  function stepKMIntegral(curve, tau, key) {
     var area = 0, prevT = 0, prevS = 1;
     for (var i = 0; i < curve.length; i++) {
       var t = +curve[i].t_months, s = +curve[i][key];
-      if (!isFinite(t) || !isFinite(s)) continue;
       if (t >= tau) {
-        area += (tau - prevT) * 0.5 * (prevS + interpAt(prevT, prevS, t, s, tau));
+        area += (tau - prevT) * prevS;
         return area;
       }
-      area += (t - prevT) * 0.5 * (prevS + s);
+      area += (t - prevT) * prevS;
       prevT = t; prevS = s;
     }
-    // curve ended before tau: extend flat at last S
-    area += (tau - prevT) * prevS;
-    return area;
+    // validKMCurve rejects truncated support; defensive fallback only.
+    return area + (tau - prevT) * prevS;
   }
-  function interpAt(t0, s0, t1, s1, t) {
-    if (t1 === t0) return s1;
-    return s0 + (s1 - s0) * (t - t0) / (t1 - t0);
+
+  // A malformed or truncated KM curve cannot be silently skipped or repaired.
+  // RMST requires an in-range, chronological, non-increasing survival curve
+  // over a common restriction horizon. This is input validation only: the
+  // experimental integration estimator is not changed or R-validated here.
+  function validKMCurve(curve, horizon) {
+    if (!Array.isArray(curve) || curve.length < 2) return false;
+    var prevT = -Infinity, prevTrt = 1, prevCtl = 1;
+    for (var idx = 0; idx < curve.length; idx++) {
+      var knot = curve[idx];
+      if (!knot || typeof knot !== 'object' || Array.isArray(knot)) return false;
+      var time = finiteDecimal(knot.t_months);
+      var trt = finiteDecimal(knot.surv_trt);
+      var ctl = finiteDecimal(knot.surv_ctl);
+      if (time === null || trt === null || ctl === null ||
+          time < 0 || time < prevT ||
+          trt < 0 || trt > 1 || ctl < 0 || ctl > 1 ||
+          trt > prevTrt || ctl > prevCtl) return false;
+      prevT = time;
+      prevTrt = trt;
+      prevCtl = ctl;
+    }
+    return prevT >= horizon;  // never extrapolate RMST beyond supplied support
   }
 
   function poolRMSTDiff(trials, tau) {
+    var horizon = finiteDecimal(tau);
+    if (horizon === null || !(horizon > 0)) {
+      return { k: 0, per_study: [], error:
+        'Invalid RMST restriction horizon; pooling refused' };
+    }
     var per = [], yi = [], vi = [];
-    (trials || []).forEach(function (t) {
-      var c = t.km_curve;
-      if (!Array.isArray(c) || c.length < 2) return;
-      var rmstT = trapezoidRMST(c, tau, 'surv_trt');
-      var rmstC = trapezoidRMST(c, tau, 'surv_ctl');
+    // This simple IV pool assumes one independent RMST contrast per study.
+    // Multiple reports or materialized records with a common stable ID
+    // cannot be treated as independent studies without their covariance.
+    var seenStudyIds = Object.create(null);
+    var studyIdFields = ['nct', 'nctId', 'nct_id', 'studyId', 'study_id'];
+    for (var trialIndex = 0; trialIndex < (trials || []).length; trialIndex++) {
+      var t = trials[trialIndex];
+      if (t && typeof t === 'object' && !Array.isArray(t)) {
+        for (var idIndex = 0; idIndex < studyIdFields.length; idIndex++) {
+          var rawId = t[studyIdFields[idIndex]];
+          if (typeof rawId !== 'string') continue;
+          var studyId = rawId.trim().toLowerCase();
+          if (!studyId) continue;
+          if (Object.prototype.hasOwnProperty.call(seenStudyIds, studyId) &&
+              seenStudyIds[studyId] !== trialIndex) {
+            return { k: 0, per_study: [], error:
+              'Repeated RMST study identity for trial ' + (trialIndex + 1) +
+              '; pooling refused to avoid double-counting independent evidence' };
+          }
+          seenStudyIds[studyId] = trialIndex;
+        }
+      }
+      var c = t && t.km_curve;
+      if (!validKMCurve(c, horizon)) {
+        return { k: 0, per_study: [], error:
+          'Invalid, truncated or nonmonotone KM curve for trial '
+          + (trialIndex + 1) + '; pooling refused' };
+      }
+      var rmstT = stepKMIntegral(c, horizon, 'surv_trt');
+      var rmstC = stepKMIntegral(c, horizon, 'surv_ctl');
       var diff = rmstT - rmstC;
-      // SE: if curve carries per-point se, use Greenwood-style finite diff;
-      // else fall back to a coarse area-variance proxy. Honest: this is the
-      // EXPERIMENTAL part — no R oracle for the SE without IPD.
-      var se;
-      if (isFinite(+t.rmst_diff_se)) {
-        se = +t.rmst_diff_se;
-      } else {
-        // proxy: variance ~ (tau/ (2*sqrt(n_eff)))^2 scaled by survival spread.
-        var nEff = isFinite(+t.n_eff) ? +t.n_eff : (isFinite(+t.tN) && isFinite(+t.cN) ? (+t.tN + +t.cN) : 200);
-        se = tau / (2 * Math.sqrt(Math.max(1, nEff))) * Math.max(0.25, Math.abs(rmstT + rmstC) / (2 * tau));
+      // A KM curve alone does not establish the sampling variance of RMST.
+      // Never invent precision from a default n_eff, arm size, or survival
+      // spread; preserve the valid reported-SE pathway only. Original
+      // individual-level/censoring-based RMST variance remains unverified.
+      var se = finiteDecimal(t.rmst_diff_se);
+      if (se === null || !(se > 0)) {
+        return { k: 0, per_study: [], error:
+          'Missing or invalid reported RMST difference standard error for trial '
+          + (trialIndex + 1) + '; pooling refused without source-based uncertainty' };
+      }
+      // Even a finite, positive reported SE can square to zero/Infinity in
+      // double precision. Never hand a nonrepresentable sampling variance to
+      // inverse-variance REML/HKSJ and emit NaN/Infinity as a clinical result.
+      var samplingVariance = se * se;
+      if (!isFinite(samplingVariance) || !(samplingVariance > 0) ||
+          !isFinite(1 / samplingVariance)) {
+        return { k: 0, per_study: [], error:
+          'Unrepresentable RMST sampling variance for trial ' + (trialIndex + 1) +
+          '; pooling refused' };
       }
       per.push({ studlab: String(t.studlab || t.name || '?'),
                  rmst_trt: rmstT, rmst_ctl: rmstC, rmst_diff: diff, se: se });
-      yi.push(diff); vi.push(se * se);
-    });
+      yi.push(diff); vi.push(samplingVariance);
+    }
     if (per.length === 0) return { k: 0, per_study: [] };
     var p = poolLogRE(yi, vi);   // raw-scale RE pool (not log) — diff is additive
+    // Overflow can still occur inside the REML/HKSJ iteration with extreme but
+    // finite weights; a malformed numerical fit must never reach the UI.
+    if (!p || !isFinite(p.mu) || !isFinite(p.ci_lo) || !isFinite(p.ci_hi) ||
+        !(p.ci_lo <= p.mu && p.mu <= p.ci_hi) ||
+        !isFinite(p.se) || !(p.se > 0) ||
+        !isFinite(p.tau2) || p.tau2 < 0 || !isFinite(p.I2)) {
+      return { k: 0, per_study: [], error:
+        'Numerically unrepresentable RMST pooled estimate or confidence limits; pooling refused' };
+    }
     return {
       k: p.k, pooled_diff: p.mu, ci_lo: p.ci_lo, ci_hi: p.ci_hi,
       tau2: p.tau2, I2: p.I2, fallback: p.fallback, per_study: per
@@ -294,17 +576,34 @@
   // ---- public: NNT from HR (Altman & Andersen 2002) -------------------------
   // ARR = R_ctl - (1 - (1 - R_ctl)^HR);  NNT = 1/|ARR|.
   function nntForHR(HR, baselineRisk) {
-    var Rc = +baselineRisk;
-    if (!isFinite(HR) || HR <= 0 || !isFinite(Rc) || Rc <= 0 || Rc >= 1) {
+    // Effect and fixed-time control risk must be numeric evidence, not
+    // booleans, arrays, objects, blank strings or radix-prefixed tokens.
+    // Preserve legitimate finite decimal/scientific string inputs.
+    var hr = finiteDecimal(HR), Rc = finiteDecimal(baselineRisk);
+    if (hr === null || !(hr > 0) || Rc === null || !(Rc > 0 && Rc < 1)) {
       return { nnt: null, arr: null, tx_risk: null, direction: null };
     }
-    var txRisk = 1 - Math.pow(1 - Rc, HR);
-    var arr = Rc - txRisk;                       // >0 ⇒ treatment lowers risk
-    if (Math.abs(arr) < 1e-9) {
+    // Altman-Andersen fixed-time ARR on the survival scale.  Subtracting
+    // nearly equal absolute risks cancels valid near-null differences;
+    // an arbitrary 1e-9 ARR floor also mislabels finite NNT as undefined.
+    // This computes only conditional arithmetic: a real source-derived
+    // S_control(t), shared horizon, and appropriate PH assumption remain
+    // the caller's responsibility (crude event fractions are insufficient).
+    var logSc = Math.log1p(-Rc);
+    var txRisk = -Math.expm1(hr * logSc);
+    var arr = (1 - Rc) * Math.expm1((hr - 1) * logSc);
+    if (!isFinite(txRisk) || txRisk < 0 || txRisk > 1 || !isFinite(arr)) {
+      return { nnt: null, arr: null, tx_risk: null, direction: null };
+    }
+    if (arr === 0) {
+      return { nnt: null, arr: arr, tx_risk: txRisk, direction: null };
+    }
+    var nnt = 1 / Math.abs(arr);
+    if (!isFinite(nnt)) {
       return { nnt: null, arr: arr, tx_risk: txRisk, direction: null };
     }
     return {
-      nnt: 1 / Math.abs(arr),
+      nnt: nnt,
       arr: arr,
       tx_risk: txRisk,
       direction: arr > 0 ? 'NNTB' : 'NNTH'

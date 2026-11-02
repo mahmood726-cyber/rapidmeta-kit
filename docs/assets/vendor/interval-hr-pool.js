@@ -11,20 +11,57 @@
   var STORAGE_KEY = 'interval-hr-pool-expanded';
 
   function extractTrialsWithIntervals(rd) {
-    if (!rd) return [];
-    var out = [];
-    Object.values(rd).forEach(function (t) {
-      if (Array.isArray(t.intervals) && t.intervals.length > 0) {
-        out.push({
-          studlab: String(t.name || t.studlab || '?'),
-          HR: +t.HR,
-          HR_ci_lo: +t.HR_ci_lo,
-          HR_ci_hi: +t.HR_ci_hi,
-          intervals: t.intervals
-        });
+    if (!rd || typeof rd !== 'object') return { trials: [], error: null };
+    var out = [], error = null;
+    Object.values(rd).forEach(function (t, index) {
+      if (!t || typeof t !== 'object' || Array.isArray(t)) {
+        // A malformed declared study cannot be discarded while other
+        // studies contribute an apparently complete pooled result.
+        if (error === null) {
+          error = 'Malformed interval-HR study record in source row ' + (index + 1);
+        }
+        return;
       }
+      if (!Object.prototype.hasOwnProperty.call(t, 'intervals')) return;
+      // Only a truly absent/empty legacy list may be noncontributing.
+      // Passing malformed present lists through the engine would refuse,
+      // but the panel must also avoid .forEach() crashing before rendering.
+      if (!Array.isArray(t.intervals)) {
+        if (error === null) {
+          error = 'Malformed interval-HR records in source row ' + (index + 1);
+        }
+        return;
+      }
+      if (t.intervals.length === 0) return;
+      if (t.intervals.some(function (iv) {
+        return !iv || typeof iv !== 'object' || Array.isArray(iv);
+      })) {
+        if (error === null) {
+          error = 'Malformed interval-HR effect record in source row ' + (index + 1);
+        }
+        return;
+      }
+      var row = {
+        studlab: String(t.name || t.studlab || '?'),
+        // Preserve every stable study identity for unit-of-analysis checks.
+        nct: t.nct,
+        nctId: t.nctId,
+        nct_id: t.nct_id,
+        studyId: t.studyId,
+        study_id: t.study_id,
+        HR: +t.HR,
+        HR_ci_lo: +t.HR_ci_lo,
+        HR_ci_hi: +t.HR_ci_hi,
+        intervals: t.intervals
+      };
+      // The engine refuses RR/OR or malformed declared trial types, but
+      // only if the panel does not strip this source provenance.
+      if (Object.prototype.hasOwnProperty.call(t, 'estimandType')) {
+        row.estimandType = t.estimandType;
+      }
+      out.push(row);
     });
-    return out;
+    return { trials: out, error: error };
   }
 
   function defaultBreakpoints(trials) {
@@ -41,6 +78,10 @@
     var fmt = P.fmt;
     var html = '';
 
+    if (pool && pool.error) {
+      return '<div role="alert" style="color:#fbbf24;font-size:11.5px;">'
+          + 'Interval-HR pooling refused: ' + pool.error + '</div>';
+    }
     if (!pool || !pool.intervals || pool.intervals.length === 0) {
       return '<div style="color:#fbbf24;font-size:11.5px;">No matching intervals across trials.</div>';
     }
@@ -53,10 +94,11 @@
       hrSpread = first - last;
     }
     if (hrSpread != null && Math.abs(hrSpread) > 0.15) {
-      var sign = hrSpread > 0 ? 'late' : 'early';
+      // Descriptive difference only: this is NOT a within-trial PH diagnostic.
+      // Cochrane Handbook v6.5, §§6.8 and 10.9: follow-up/estimand matter.
       html += '<div style="background:#3a2a0a;border:1px solid #92400e;color:#fbbf24;padding:8px 10px;border-radius:6px;margin-bottom:10px;font-size:11.5px;">'
-            + '⚠ <strong>Interval-HR spread = ' + fmt(Math.abs(hrSpread), 2) + '</strong> (' + sign + ' window favours treatment) — '
-            + 'consistent with non-proportional hazards; the pooled overall HR averages across these.'
+            + '⚠ <strong>Descriptive interval-HR spread = ' + fmt(Math.abs(hrSpread), 2) + '</strong>. '
+            + 'This is not a proportional-hazards test: sampling variation, different study sets, or different reported estimands can produce cross-window differences.'
             + '</div>';
     }
 
@@ -84,9 +126,10 @@
     html += '</tbody></table>';
 
     html += '<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.5;">'
-          + 'Method: For each prespecified time window [t₀, t₁], pool the trial-reported within-window HRs '
-          + 'via inverse-variance random-effects (REML if k≥5, fixed-effect if k&lt;5). '
-          + 'A pooled HR that visibly differs between early and late windows is direct evidence of non-PH.'
+          + 'Method: For each supplied time window [t₀, t₁], inverse-variance pooling of trial-reported log-HRs. '
+          + 'For k≥2: REML random-effects with floored HKSJ and t(k−1) 95% CI; '
+          + 'for k=1: fixed-effect normal 95% CI (not a meta-analysis). '
+          + 'Cross-window differences are descriptive only and do not establish non-proportional hazards.'
           + '</div>';
 
     return html;
@@ -98,25 +141,35 @@
     if (!P || !SURV) return false;
     var rd = P.getRealData();
     if (!rd) return false;
-    var trials = extractTrialsWithIntervals(rd);
-    if (trials.length < 1) return false;
-
-    var bp = defaultBreakpoints(trials);
-    if (bp.length < 2) return false;
-
+    var extracted = extractTrialsWithIntervals(rd);
+    var trials = extracted.trials;
     var pool;
-    try { pool = SURV.intervalHRPool(trials, bp); }
-    catch (e) {
-      console.warn('[interval-hr-pool] failed:', e);
-      return false;
+    if (extracted.error) {
+      // Preserve the declared evidence-set error in the normal visible
+      // refusal panel; never publish only the remaining valid studies.
+      pool = { intervals: [], error: extracted.error };
+    } else {
+      if (trials.length < 1) return false;
+      var bp = defaultBreakpoints(trials);
+      // Even a sole malformed/zero-width declared interval must render the
+      // engine's explicit refusal rather than silently suppressing the panel.
+      // intervalHRPool() checks bp.length and refuses without fitting.
+
+      try { pool = SURV.intervalHRPool(trials, bp); }
+      catch (e) {
+        console.warn('[interval-hr-pool] failed:', e);
+        return false;
+      }
     }
     if (!pool) return false;
 
     var fmt = P.fmt;
-    var summary = 'Interval HRs across ' + pool.intervals.length + ' windows · '
-                + pool.intervals.map(function (iv) {
-                    return iv.label + '=' + fmt(iv.HR, 2);
-                  }).join(' · ');
+    var summary = pool.error
+      ? 'Refused: invalid, non-aligned, or repeated interval-HR evidence'
+      : 'Interval HRs across ' + pool.intervals.length + ' windows · '
+        + pool.intervals.map(function (iv) {
+            return iv.label + '=' + fmt(iv.HR, 2);
+          }).join(' · ');
 
     var panel = P.buildCollapsiblePanel({
       id: 'interval-hr-pool-panel',

@@ -29,20 +29,19 @@ if (!identical(names(d), c("tE", "tN", "cE", "cN")) ||
     any(!is.finite(as.matrix(d)))) {
   stop("requires >=2 complete finite 2x2 rows", call. = FALSE)
 }
-# Match the shipped JavaScript count-domain contract *before* metafor::escalc.
-# Event and participant counts are integers, not fractional observations;
-# JS Number.isSafeInteger refuses numbers above 2^53-1. Without this gate
-# the two oracle interfaces could disagree about whether input is eligible.
-count_matrix <- as.matrix(d)
-if (any(count_matrix != trunc(count_matrix)) ||
-    any(abs(count_matrix) > 9007199254740991)) {
-  stop("invalid binomial table: requires safe integer raw counts", call. = FALSE)
-}
 # Refuse malformed tables before any escalc correction can make them appear
-# estimable.
+# estimable. JS already validates safe-integer/arm-count bounds separately.
 if (any(d$tN <= 0 | d$cN <= 0 | d$tE < 0 | d$cE < 0 |
         d$tE > d$tN | d$cE > d$cN)) {
   stop("invalid binomial table: refusing correction", call. = FALSE)
+}
+# Do not allow fractional or IEEE-754-unsafe input counts to masquerade as
+# discrete trials. The shipped JS API only accepts safe-integer arm counts.
+# This independent R reference must enforce the same source domain.
+counts <- as.matrix(d)
+if (any(counts != floor(counts)) ||
+    any(counts > 9007199254740991)) {
+  stop("invalid binomial count integrity: require safe integers", call. = FALSE)
 }
 # Both-zero and both-full tables are excluded in the JS module. The oracle
 # cannot silently include them as if they were matched; reject whole request.

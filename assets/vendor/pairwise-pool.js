@@ -251,9 +251,8 @@
         unrepresentableTrial = idx + 1;
         return;
       }
-      // Finite log effects and variances do not guarantee representable
-      // exponentiated Wald limits. Refuse instead of serializing Infinity
-      // as JSON null or publishing an underflowed zero confidence limit.
+      // Even finite log effects/variances can overflow or underflow their
+      // exponentiated individual-study Wald limits. Refuse, never JSON-null.
       const halfWidth = zStudy * Math.sqrt(e.varLog);
       const studyEff = Math.exp(e.logEff);
       const studyCiLo = Math.exp(e.logEff - halfWidth);
