@@ -229,8 +229,10 @@
           + '<th style="padding:3px 6px;border-bottom:1px solid #1e293b;text-align:right;">SMD (g)</th>'
           + '</tr></thead><tbody>';
     trials.forEach(t => {
-      const md_t = md(t);
-      const smd_t = smdHedges(t);
+      // Pre-extracted MD and SMD are distinct estimands. Never invent a
+      // cross-scale per-study value merely to fill the other table column.
+      const md_t = t.kind === 'smd_pre' ? null : md(t);
+      const smd_t = t.kind === 'md_pre' ? null : smdHedges(t);
       const txCol = t.kind === 'full'
         ? fmt(t.m1, 2) + ' ± ' + fmt(t.sd1, 2) + ', N=' + t.n1
         : '—';
@@ -241,8 +243,8 @@
             + '<td style="padding:3px 6px;color:#e2e8f0;">' + t.name + '</td>'
             + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#cbd5e1;">' + txCol + '</td>'
             + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#cbd5e1;">' + ctlCol + '</td>'
-            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + fmt(md_t.yi, 2) + '</td>'
-            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + fmt(smd_t.yi, 2) + '</td>'
+            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + (md_t ? fmt(md_t.yi, 2) : '—') + '</td>'
+            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + (smd_t ? fmt(smd_t.yi, 2) : '—') + '</td>'
             + '</tr>';
     });
     html += '</tbody></table>';
@@ -266,8 +268,40 @@
     const trials = pickContinuousTrials(rd);
     if (trials.length < 2) return false;
 
-    const mdPoints = trials.map(md).filter(p => isFinite(p.yi) && p.vi > 0);
-    const smdPoints = trials.map(smdHedges).filter(p => isFinite(p.yi) && p.vi > 0);
+    // An overflowing SE² yields Infinity: its inverse-variance weight is
+    // zero, yet the previous code still counted it in k/df, HKSJ and PI.
+    // Underflowed or invalid variances were silently omitted instead.
+    // Keep MD and SMD on distinct scales, and REFUSE either whole panel if
+    // a supplied candidate cannot be represented as a finite positive variance.
+    const mdTrials = trials.filter(t => t.kind !== 'smd_pre');
+    const smdTrials = trials.filter(t => t.kind !== 'md_pre');
+    const mdPoints = mdTrials.map(md);
+    const smdPoints = smdTrials.map(smdHedges);
+    const validPoint = p => Number.isFinite(p.yi) && Number.isFinite(p.vi) && p.vi > 0;
+    const badMd = mdPoints.findIndex(p => !validPoint(p));
+    const badSmd = smdPoints.findIndex(p => !validPoint(p));
+    if (badMd !== -1 || badSmd !== -1) {
+      const kind = badMd !== -1 ? 'MD' : 'SMD';
+      const invalidTrial = badMd !== -1 ? mdTrials[badMd] : smdTrials[badSmd];
+      const trialIndex = trials.indexOf(invalidTrial) + 1;
+      const summary = 'Pooling REFUSED: unrepresentable ' + kind
+        + ' effect or variance in continuous trial ' + trialIndex;
+      const panel = P.buildCollapsiblePanel({
+        id: 'continuous-outcome-panel',
+        badge: 'Continuous · REFUSED',
+        summary,
+        bodyHtml: '<div style="color:#fbbf24;font-size:11.5px;">'
+          + 'No continuous outcome pooled: trial ' + trialIndex
+          + ' has an invalid, underflowed, or overflowed effect variance. '
+          + 'Review the original effect estimate, standard error, sample size and SD before synthesis.'
+          + '</div>',
+        storageKey: STORAGE_KEY,
+      });
+      const existing = document.getElementById('continuous-outcome-panel');
+      if (existing) existing.replaceWith(panel);
+      else P.insertAfterRBadge(panel);
+      return true;
+    }
     const mdPool = poolRE(mdPoints);
     const smdPool = poolRE(smdPoints);
 
