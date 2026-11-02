@@ -229,8 +229,10 @@
           + '<th style="padding:3px 6px;border-bottom:1px solid #1e293b;text-align:right;">SMD (g)</th>'
           + '</tr></thead><tbody>';
     trials.forEach(t => {
-      const md_t = md(t);
-      const smd_t = smdHedges(t);
+      // Pre-extracted MD and SMD are distinct estimands. Never invent a
+      // cross-scale per-study value merely to fill the other table column.
+      const md_t = t.kind === 'smd_pre' ? null : md(t);
+      const smd_t = t.kind === 'md_pre' ? null : smdHedges(t);
       const txCol = t.kind === 'full'
         ? fmt(t.m1, 2) + ' ± ' + fmt(t.sd1, 2) + ', N=' + t.n1
         : '—';
@@ -241,8 +243,8 @@
             + '<td style="padding:3px 6px;color:#e2e8f0;">' + t.name + '</td>'
             + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#cbd5e1;">' + txCol + '</td>'
             + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#cbd5e1;">' + ctlCol + '</td>'
-            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + fmt(md_t.yi, 2) + '</td>'
-            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + fmt(smd_t.yi, 2) + '</td>'
+            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + (md_t ? fmt(md_t.yi, 2) : '—') + '</td>'
+            + '<td style="padding:3px 6px;text-align:right;font-family:JetBrains Mono,monospace;color:#7dd3fc;">' + (smd_t ? fmt(smd_t.yi, 2) : '—') + '</td>'
             + '</tr>';
     });
     html += '</tbody></table>';
