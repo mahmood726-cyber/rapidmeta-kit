@@ -1,0 +1,44 @@
+# Worker 04 — All-cause mortality (three-trial finerenone benchmark)
+
+**Run/date:** 2026-11-07; **status: PARTIAL / MISMATCH_UNRESOLVED (scientific benchmark), not REPRODUCED**. This worker edits only this lane file; no outreach or main-branch edits.
+
+## Frozen benchmark and rights
+- Rivera-Martinez et al., *Cardiovascular Drugs and Therapy*, online 2025-01-04, DOI [10.1007/s10557-024-07666-x](https://doi.org/10.1007/s10557-024-07666-x), 2026 issue. Search cutoff 2024-09-01.
+- Three distinct trial families: **FIDELIO-DKD** NCT02540993; **FIGARO-DKD** NCT02545049; **FINEARTS-HF** NCT04435626. Total 19,027 randomized.
+- Source material used: publicly accessible publisher HTML/PDF Table 3 and Fig. 2, and publicly available numeric tables from CADTH and Nature Medicine. Source article's license is **CC BY-NC-ND 4.0** (publisher rights section); calculations and independently written descriptions only, no republished or adapted figures. No JAMA Network content.
+- Target printed in abstract/text: random-effects **RR 0.86 (0.77–0.97), I²=0%, p=0.01**. The paper's actual **Fig. 2** instead prints **RR 0.87 (0.79–0.97), I²=0%**. This is a distinct internal presentation mismatch, not just model variation.
+
+## Trial-level all-cause death counts, denominators and provenance
+
+| Trial | Treatment a/N | Placebo c/N | Analysis population and independent evidence | Individual RR |
+|---|---:|---:|---|---:|
+| FIDELIO-DKD, NCT02540993 | 219/2833 | 244/2841 | Full analysis set (FAS); CADTH Table 21 [source](https://www.ncbi.nlm.nih.gov/books/NBK594386/table/t21a/) and benchmark Table 3 | 0.900076 |
+| FIGARO-DKD, NCT02545049 | 333/3686 | 370/3666 | FAS; CADTH Table 21 [source](https://www.ncbi.nlm.nih.gov/books/NBK594386/table/t21a/) and benchmark Table 3 | 0.895117 |
+| FINEARTS-HF, NCT04435626 | **491/3003** | **522/2998** | Randomized finerenone/placebo; Vaduganathan et al. [FINE-HEART](https://doi.org/10.1038/s41591-024-03264-4), Extended Data Fig. 4 (trial-specific all-cause mortality). [FINEARTS original trial metadata](https://pubmed.ncbi.nlm.nih.gov/39225278/) verifies 3003/2998; pooled primary data independently support 491/522 | 0.939047 |
+
+**Critical conflicting source row:** Rivera-Martinez **Table 3**, FINEARTS-HF all-cause death column, prints **70/3003 vs 97/2998**, and Fig. 2 displays an individual RR of **0.72 (0.53–0.98)**. Those counts cannot represent *all-cause deaths at the stated follow-up*: the very same Table 3 reports **242 vs 260 cardiovascular deaths** in that same FINEARTS-HF population; all-cause deaths cannot be fewer than deaths from a subset of causes. Source [publisher Table 3 and Fig. 2](https://link.springer.com/article/10.1007/s10557-024-07666-x). The independent 2024 FINE-HEART Extended Data Fig. 4 gives **491 vs 522** deaths, much larger and internally consistent. Source of 70/97 remains **unidentified**; do not label it a specific alternative endpoint without verification. Possibilities include transcribed different endpoint, subset, or earlier version.
+
+**Population qualification:** 19,027 is the sum of the three original randomized trial sizes; the later prespecified FINE-HEART pooled **time-to-event** report uses n=18,991 and FIGARO **332** rather than **333** finerenone all-cause deaths. These datasets, HRs, and denominators must not be silently interchanged. The present *risk-ratio* reconstruction uses the 19,027 denominators also printed in Rivera-Martinez Table 3.
+
+## Independent numerical computation (actually executed, 2026-11-07)
+
+Implementation A: independent Python/SciPy calculation using for each study
+`yi=log((a/n1)/(c/n0))`, `vi=1/a-1/n1+1/c-1/n0`; inverse-variance weighting and DerSimonian-Laird `tau²=max(0,(Q-(k-1))/C)`; z-based two-sided 95% CI, Cochran Q and I². No continuity correction is needed (all cells positive). At all three datasets Q<2 and tau²=0. **Separate check:** `statsmodels.stats.meta_analysis.combine_effects(..., method_re="iterated", use_t=False)` (Paule–Mandel) gives identical RR and CI to displayed precision because tau²=0. Note: untruncated negative DL tau² is invalid; apply the zero boundary.
+
+| Exactly three input trials | Recomputed RR [95% CI] | p (two-sided) | Q (df=2) / p_het | I² | tau² | Interpretation |
+|---|---|---:|---|---|---|---|
+| **As printed Table 3:** 219/244, 333/370, **70/97** with denominators 2833/2841, 3686/3666, 3003/2998 | **0.874591 [0.788886, 0.969608]** | 0.010879 | 1.778865 / 0.410889 | 0% | 0 | Reproduces *Figure 2* **0.87 [0.79–0.97]** and its weights (~34.8/53.6/11.6%); fails endpoint-integrity gate |
+| **Independently adjudicated all-cause:** 219/244, 333/370, **491/522**, same denominators | **0.917310 [0.848071, 0.992201]** | 0.031121 | 0.328333 / 0.848601 | 0% | 0 | Recomputed **0.92 [0.85–0.99]**; distinct from published RR **0.86 [0.77–0.97]** and figure **0.87 [0.79–0.97]** |
+| Sensitivity: substitute FINE-HEART FIGARO count **332** for 333, otherwise same as preceding row | **0.916466 [0.847273, 0.991310]** | 0.029413 | 0.357842 / 0.836172 | 0% | 0 | Little impact; not a replacement analysis population |
+
+Effect-size consequence: with the same three original trial denominators, risk reduction is ~**8.3%** rather than the paper's **14%** text claim (or 12.5% from its Figure 2); p remains below 0.05 in this particular normal-approximation model. Do **not** say the direction or statistical significance reverses, and do not compare the separately reported FINE-HEART pooled Cox HR 0.91 with an RR as if identical estimands.
+
+**False-positive/alternative checks:** (1) Both outputs have I²=0%, so heterogeneity does not explain the ~0.04 RR shift; (2) Fig. 2 weights and single-study RR independently recreate the Table 3 70/97 calculation, indicating those counts drove the published forest; (3) 70<242 and 97<260 invalidate the reported *all-cause* label for that population and follow-up; (4) the source's 491/522 counts also agree with the 2024 pooled event totals 1042 and 1136 when combined with the stated trial-specific CKD counts (FIGARO=332 for FINE-HEART); (5) a different population, definition or early cutoff is possible, but is **NOT_ENOUGH_INFO** until source/path verified.
+
+### Execution/validation limitations and next gates
+- **Actual RapidMeta Kit build/browser execution: NOT RUN.** Connected environment exposes the GitHub repository, but this isolated computational environment could not fetch or clone GitHub (DNS unavailable). Bundled example config is a different composite and **must not be used**. No claim of Kit/browser parity is made. Worker-specific input rows and exact statistical method are recorded above for a verified outcome-specific configuration. Worker 8/controller should execute browser/Kit against the adjudicated rows and independently check console/output.
+- **Independent oracle: EXECUTED** via Python/SciPy manual formulas plus statsmodels iterative method. This is *numerical corroboration*, not two independent human data extractors. Second independent source-level human/adjudicator check of FINEARTS counts and follow-up remains pending.
+- **Benchmark numerical acceptance gate: FAIL/PARTIAL**, because published numeric replication with the source's 70/97 achieves the forest estimate but violates endpoint identity, while independently adjudicated counts yield a different result. **No updated post-2024 trial search or claims of improved clinical evidence** are included in this worker's lane.
+- Remaining: independently confirm whether 70/97 are some other defined outcome; compare full 2024 original report's all-cause mortality table with FINE-HEART; establish author/software version and potential correction history; run Kit from outcome-specific validated config; verify the 2024 pooled 332/333 analysis population difference; run model/CI sensitivity under a declared benchmark estimator; ask controller to reconcile—not email authors.
+
+**No outreach; no edits to other lanes or public main.**
