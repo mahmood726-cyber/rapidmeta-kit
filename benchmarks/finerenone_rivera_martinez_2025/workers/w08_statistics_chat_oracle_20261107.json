@@ -1,0 +1,297 @@
+{
+  "date_utc": "2026-11-07",
+  "executor": "Chat connector JS only — no local shell, Work or Codex",
+  "project_doi": "10.1007/s10557-024-07666-x",
+  "trial_order": [
+    "FIDELIO-DKD NCT02540993",
+    "FIGARO-DKD NCT02545049",
+    "FINEARTS-HF NCT04435626"
+  ],
+  "source_notes": {
+    "W07": "benchmarks/finerenone_rivera_martinez_2025/workers/w07_adverse_events.md, GitHub blob 6754c4c067e1ee33336b7f7fa9e9d0741966bd35",
+    "W06": "benchmarks/finerenone_rivera_martinez_2025/workers/w06_hyperkalemia.md",
+    "publisher": "https://doi.org/10.1007/s10557-024-07666-x"
+  },
+  "scope": "Independent direct model-calculation crosscheck of worker extracted public counts, NOT a RapidMeta Kit/browser execution, independent primary extraction, or R run",
+  "methods": "log RR y=ln((a/nT)/(c/nC)); v=1/a-1/nT+1/c-1/nC; Q/I2; DL tau2; REML Fisher scoring with zero boundary; separately independently bisected REML score root; conventional normal 1.96 and HKSJ floor t(2)=4.3026527299",
+  "summary": {
+    "datasets": 5,
+    "passed_checks": true,
+    "Kit_run": "NOT_RUN",
+    "R_run": "NOT_RUN",
+    "CI_branch_run": "NOT_RUN",
+    "second_extractor": "NOT_ENOUGH_INFO"
+  },
+  "cases": {
+    "AKI": {
+      "inputs_event_N_fine_vs_placebo": [
+        [
+          129,
+          2833,
+          136,
+          2841
+        ],
+        [
+          91,
+          3686,
+          98,
+          3666
+        ],
+        [
+          57,
+          2897,
+          34,
+          2888
+        ]
+      ],
+      "log_ratio": [
+        -0.050022599350708546,
+        -0.0795486819838402,
+        0.5135792454617552
+      ],
+      "within_study_variance": [
+        0.014399907720758763,
+        0.020649018954444726,
+        0.04626417929339305
+      ],
+      "Q": 6.079322230923202,
+      "I2_percent": 67.10159580246035,
+      "DL_tau2": 0.04813260329594252,
+      "REML_Fisher_tau2": 0.06289609250530895,
+      "REML_score_root_tau2": 0.06289609250533112,
+      "score_root_difference": 2.2176704916887502e-14,
+      "pooled_REML_RR": 1.0954405867789065,
+      "REML_normal95": [
+        0.7829813430535916,
+        1.5325908973547293
+      ],
+      "HKSJ_floor95": [
+        0.5019691309413332,
+        2.3905654853958778
+      ],
+      "reversed_arm_pooled_ratio": 0.9128747027170635,
+      "arm_reversal_product": 0.9999999999999999,
+      "iterations": 18,
+      "checks": {
+        "REML_two_methods_equal": true,
+        "reversed_arms_reciprocal": true
+      }
+    },
+    "serious_AE": {
+      "inputs_event_N_fine_vs_placebo": [
+        [
+          902,
+          2833,
+          971,
+          2841
+        ],
+        [
+          1158,
+          3686,
+          1215,
+          3666
+        ],
+        [
+          1157,
+          2993,
+          1213,
+          2993
+        ]
+      ],
+      "log_ratio": [
+        -0.07089206620502994,
+        -0.05349040747182652,
+        -0.047266181750373566
+      ],
+      "within_study_variance": [
+        0.001433542127307654,
+        0.0011425294586468984,
+        0.0010204806830764201
+      ],
+      "Q": 0.2349116201566878,
+      "I2_percent": 0,
+      "DL_tau2": 0,
+      "REML_Fisher_tau2": 0,
+      "REML_score_root_tau2": 0,
+      "score_root_difference": 0,
+      "pooled_REML_RR": 0.9456749921249038,
+      "REML_normal95": [
+        0.9096920262808985,
+        0.9830812680491615
+      ],
+      "HKSJ_floor95": [
+        0.8684757858165757,
+        1.029736470878781
+      ],
+      "reversed_arm_pooled_ratio": 1.0574457486213413,
+      "arm_reversal_product": 1,
+      "iterations": 0,
+      "checks": {
+        "REML_two_methods_equal": true,
+        "reversed_arms_reciprocal": true
+      }
+    },
+    "UTI": {
+      "inputs_event_N_fine_vs_placebo": [
+        [
+          179,
+          2833,
+          192,
+          2841
+        ],
+        [
+          252,
+          3686,
+          240,
+          3666
+        ],
+        [
+          29,
+          3003,
+          26,
+          2998
+        ]
+      ],
+      "log_ratio": [
+        -0.06728968416335512,
+        0.04334945433931363,
+        0.10753290264420483
+      ],
+      "within_study_variance": [
+        0.010089954071896334,
+        0.007590846967701309,
+        0.07227774104542525
+      ],
+      "Q": 0.855150006762617,
+      "I2_percent": 0,
+      "DL_tau2": 0,
+      "REML_Fisher_tau2": 0,
+      "REML_score_root_tau2": 0,
+      "score_root_difference": 0,
+      "pooled_REML_RR": 1.0021665786318728,
+      "REML_normal95": [
+        0.8841425108894752,
+        1.135945663687541
+      ],
+      "HKSJ_floor95": [
+        0.7611681716534968,
+        1.3194690591764706
+      ],
+      "reversed_arm_pooled_ratio": 0.9978381052830254,
+      "arm_reversal_product": 1,
+      "iterations": 0,
+      "checks": {
+        "REML_two_methods_equal": true,
+        "reversed_arms_reciprocal": true
+      }
+    },
+    "pneumonia": {
+      "inputs_event_N_fine_vs_placebo": [
+        [
+          128,
+          2833,
+          181,
+          2841
+        ],
+        [
+          143,
+          3686,
+          206,
+          3666
+        ],
+        [
+          87,
+          3003,
+          110,
+          2998
+        ]
+      ],
+      "log_ratio": [
+        -0.3436468853225371,
+        -0.370472248359792,
+        -0.23623863645861978
+      ],
+      "within_study_variance": [
+        0.01263239043824509,
+        0.011303302257826504,
+        0.01991860592766944
+      ],
+      "Q": 0.6010025031910291,
+      "I2_percent": 0,
+      "DL_tau2": 0,
+      "REML_Fisher_tau2": 0,
+      "REML_score_root_tau2": 0,
+      "score_root_difference": 0,
+      "pooled_REML_RR": 0.7190767109954229,
+      "REML_normal95": [
+        0.6296537189313771,
+        0.8211994954521153
+      ],
+      "HKSJ_floor95": [
+        0.5372404172187007,
+        0.9624579605772747
+      ],
+      "reversed_arm_pooled_ratio": 1.390672211613825,
+      "arm_reversal_product": 1,
+      "iterations": 0,
+      "checks": {
+        "REML_two_methods_equal": true,
+        "reversed_arms_reciprocal": true
+      }
+    },
+    "treatment_related_hyperkalemia": {
+      "inputs_event_N_fine_vs_placebo": [
+        [
+          333,
+          2833,
+          135,
+          2841
+        ],
+        [
+          240,
+          3686,
+          114,
+          3666
+        ],
+        [
+          16,
+          2993,
+          6,
+          2993
+        ]
+      ],
+      "log_ratio": [
+        0.9056875935656858,
+        0.7389997651173776,
+        0.9808292530117263
+      ],
+      "within_study_variance": [
+        0.009705438970202462,
+        0.012394522824008745,
+        0.22849844080632584
+      ],
+      "Q": 1.3513009020622457,
+      "I2_percent": 0,
+      "DL_tau2": 0,
+      "REML_Fisher_tau2": 0.001755931598317969,
+      "REML_score_root_tau2": 0.0017559315983116152,
+      "score_root_difference": 6.35385841163405e-15,
+      "pooled_REML_RR": 2.305049184511508,
+      "REML_normal95": [
+        1.9763152328108837,
+        2.6884636898032768
+      ],
+      "HKSJ_floor95": [
+        1.6443192015391357,
+        3.231277563409705
+      ],
+      "reversed_arm_pooled_ratio": 0.43383022224400924,
+      "arm_reversal_product": 1,
+      "iterations": 12,
+      "checks": {
+        "REML_two_methods_equal": true,
+        "reversed_arms_reciprocal": true
+      }
+    }
+  }
+}
