@@ -1,0 +1,277 @@
+{
+  "meta": {
+    "date": "2026-11-07",
+    "benchmark": "10.1007/s10557-024-07666-x",
+    "worker": "W08",
+    "three_ncts": [
+      "NCT02540993",
+      "NCT02545049",
+      "NCT04435626"
+    ],
+    "oracle": "Python 3.13 SciPy 1.17.0 NumPy 2.3.5 statsmodels 0.14.6",
+    "R": "not installed",
+    "kit": "NOT_RUN",
+    "source": "worker W02-W07 dated GitHub checkpoints; second extractor pending"
+  },
+  "test_results": {
+    "statsmodels_DL_PM_parity": "PASS all 13 cases; negative raw DL tau boundary handled",
+    "REML_score_root_vs_bounded_restricted_likelihood": "PASS all 13 cases",
+    "RR_reverse_arm_orientation": "PASS eight binary 2x2 cases",
+    "all_HR_vs_RR_estimands": "explicitly separated",
+    "Kit_browser_parity": "NOT_RUN",
+    "source_compatibility": "NOT_ENOUGH_INFO"
+  },
+  "rows": [
+    [
+      "cv_death_source",
+      0.27905475,
+      0,
+      0,
+      0.90237183,
+      [
+        0.80547172,
+        1.01092926
+      ],
+      0,
+      0.90237183,
+      [
+        0.80547172,
+        1.01092926
+      ]
+    ],
+    [
+      "cv_death_figure",
+      0.33317009,
+      0,
+      0,
+      0.90783844,
+      [
+        0.82018661,
+        1.00485747
+      ],
+      0,
+      0.90783844,
+      [
+        0.82018661,
+        1.00485747
+      ]
+    ],
+    [
+      "hf_hosp_figure",
+      1.45713341,
+      0,
+      0,
+      0.80442875,
+      [
+        0.72275861,
+        0.89532743
+      ],
+      0,
+      0.80442875,
+      [
+        0.72275861,
+        0.89532743
+      ]
+    ],
+    [
+      "hf_hosp_first_event_sensitivity",
+      2.03228488,
+      1.589,
+      0.000154086,
+      0.83005695,
+      [
+        0.75160727,
+        0.91669489
+      ],
+      0,
+      0.8305934,
+      [
+        0.75316588,
+        0.91598068
+      ]
+    ],
+    [
+      "renal_figure_rounded_only",
+      11.52646359,
+      82.6486,
+      0.13166114,
+      1.05124498,
+      [
+        0.66626731,
+        1.65866762
+      ],
+      0.19909226,
+      1.06017108,
+      [
+        0.61578056,
+        1.82526502
+      ]
+    ],
+    [
+      "all_cause_as_printed",
+      1.77886452,
+      0,
+      0,
+      0.87459135,
+      [
+        0.78888623,
+        0.96960752
+      ],
+      0,
+      0.87459135,
+      [
+        0.78888623,
+        0.96960752
+      ]
+    ],
+    [
+      "all_cause_source_crosscheck",
+      0.32833308,
+      0,
+      0,
+      0.91730973,
+      [
+        0.84807084,
+        0.99220148
+      ],
+      0,
+      0.91730973,
+      [
+        0.84807084,
+        0.99220148
+      ]
+    ],
+    [
+      "hyper_related",
+      1.3513009,
+      0,
+      0,
+      2.30697327,
+      [
+        1.99975314,
+        2.66139133
+      ],
+      0.001755932,
+      2.30504918,
+      [
+        1.97631523,
+        2.68846369
+      ]
+    ],
+    [
+      "hyper_investigator",
+      1.19253862,
+      0,
+      0,
+      2.09145514,
+      [
+        1.90204352,
+        2.29972898
+      ],
+      0,
+      2.09145514,
+      [
+        1.90204352,
+        2.29972898
+      ]
+    ],
+    [
+      "serious_ae",
+      0.23491162,
+      0,
+      0,
+      0.94567499,
+      [
+        0.90969203,
+        0.98308127
+      ],
+      0,
+      0.94567499,
+      [
+        0.90969203,
+        0.98308127
+      ]
+    ],
+    [
+      "aki",
+      6.07932223,
+      67.102,
+      0.048132603,
+      1.08841572,
+      [
+        0.80178447,
+        1.47751526
+      ],
+      0.062896093,
+      1.09544059,
+      [
+        0.78298134,
+        1.5325909
+      ]
+    ],
+    [
+      "uti",
+      0.85515001,
+      0,
+      0,
+      1.00216658,
+      [
+        0.88414251,
+        1.13594566
+      ],
+      0,
+      1.00216658,
+      [
+        0.88414251,
+        1.13594566
+      ]
+    ],
+    [
+      "pneumonia",
+      0.6010025,
+      0,
+      0,
+      0.71907671,
+      [
+        0.62965372,
+        0.8211995
+      ],
+      0,
+      0.71907671,
+      [
+        0.62965372,
+        0.8211995
+      ]
+    ]
+  ],
+  "columns": [
+    "outcome",
+    "Q",
+    "I2_percent",
+    "DL_tau2",
+    "DL_effect",
+    "DL_CI95",
+    "REML_tau2",
+    "REML_effect",
+    "REML_CI95"
+  ],
+  "sensitivity": {
+    "AKI_PM": {
+      "tau2": 0.074923637,
+      "effect": 1.09980816,
+      "CI": [
+        0.76855228,
+        1.57383957
+      ]
+    },
+    "AKI_REML_HKSJ_floor_CI": [
+      0.501969,
+      2.390565
+    ],
+    "ALLCAUSE491_REML_HKSJ_floor_CI": [
+      0.772136,
+      1.089778
+    ]
+  },
+  "source_status": "Not all endpoint definitions or 2x2 arm populations independently source-adjudicated; conditional statistical output only."
+}
